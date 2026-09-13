@@ -1,0 +1,833 @@
+/* ==========================================================================
+   GitHub Markdown Explorer - Custom GitHub Primer Stylesheet
+   ========================================================================== */
+
+:root {
+  /* GitHub Primer Color Tokens (Light Theme) */
+  --color-canvas-default: #ffffff;
+  --color-canvas-subtle: #f6f8fa;
+  --color-canvas-inset: #f6f8fa;
+  --color-border-default: #d0d7de;
+  --color-border-muted: #hsla(210, 18%, 87%, 1);
+  --color-fg-default: #1f2328;
+  --color-fg-muted: #656d76;
+  --color-fg-subtle: #8c959f;
+  --color-accent-fg: #0969da;
+  --color-accent-emphasis: #0969da;
+  --color-success-fg: #1a7f37;
+  --color-attention-fg: #9a6700;
+  --color-danger-fg: #cf222e;
+  --color-star-gold: #e3b341;
+  --color-header-bg: #24292f;
+  --color-header-text: #ffffff;
+  
+  /* Layout & Fonts */
+  --font-family-system: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace;
+  
+  /* Zoom Level Property */
+  --md-content-scale: 1;
+}
+
+/* Dark Mode Support (Automatic via system preferences or manual) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas-default: #0d1117;
+    --color-canvas-subtle: #161b22;
+    --color-canvas-inset: #010409;
+    --color-border-default: #30363d;
+    --color-fg-default: #e6edf3;
+    --color-fg-muted: #8d96a0;
+    --color-fg-subtle: #6e7681;
+    --color-accent-fg: #58a6ff;
+    --color-accent-emphasis: #1f6feb;
+    --color-success-fg: #3fb950;
+    --color-attention-fg: #d29922;
+    --color-danger-fg: #f85149;
+    --color-header-bg: #161b22;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family-system);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-fg-default);
+  background-color: var(--color-canvas-subtle);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Helper Utilities */
+.hidden {
+  display: none !important;
+}
+
+.text-muted {
+  color: var(--color-fg-muted);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--color-accent-fg);
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: underline;
+}
+.btn-link:hover {
+  color: var(--color-accent-emphasis);
+}
+
+/* --------------------------------------------------------------------------
+   Header Bar
+   -------------------------------------------------------------------------- */
+.gh-header {
+  background-color: var(--color-header-bg);
+  color: var(--color-header-text);
+  height: 56px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  z-index: 100;
+}
+
+.gh-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gh-header-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.gh-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Badges */
+.gh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.gh-badge-success {
+  background-color: rgba(46, 160, 67, 0.15);
+  color: #3fb950;
+  border-color: rgba(46, 160, 67, 0.4);
+}
+
+.gh-badge-attention {
+  background-color: rgba(210, 153, 34, 0.15);
+  color: #d29922;
+  border-color: rgba(210, 153, 34, 0.4);
+}
+
+.gh-badge-secondary {
+  background-color: rgba(110, 118, 129, 0.2);
+  color: #8d96a0;
+  border-color: rgba(110, 118, 129, 0.3);
+}
+
+.badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+/* Flash Alerts */
+.gh-flash-container {
+  position: fixed;
+  top: 68px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 400px;
+}
+
+.gh-flash {
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px solid;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.gh-flash-success {
+  background-color: var(--color-canvas-default);
+  color: var(--color-success-fg);
+  border-color: var(--color-success-fg);
+}
+
+.gh-flash-error {
+  background-color: var(--color-canvas-default);
+  color: var(--color-danger-fg);
+  border-color: var(--color-danger-fg);
+}
+
+.gh-flash-info {
+  background-color: var(--color-canvas-default);
+  color: var(--color-accent-fg);
+  border-color: var(--color-accent-fg);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Buttons */
+.gh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--color-fg-default);
+  background-color: var(--color-canvas-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: 80ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.gh-btn:hover {
+  background-color: var(--color-canvas-subtle);
+  border-color: var(--color-border-default);
+}
+
+.gh-btn-primary {
+  color: #ffffff;
+  background-color: #1f883d;
+  border-color: rgba(31, 35, 40, 0.15);
+}
+.gh-btn-primary:hover {
+  background-color: #1a7f37;
+}
+
+.gh-btn-sm {
+  padding: 3px 8px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.gh-btn-icon {
+  padding: 6px;
+  background: transparent;
+  border: none;
+  color: var(--color-header-text);
+  opacity: 0.85;
+}
+.gh-btn-icon:hover {
+  opacity: 1;
+  background-color: rgba(255,255,255,0.1);
+}
+
+/* --------------------------------------------------------------------------
+   Layout Container
+   -------------------------------------------------------------------------- */
+.gh-container {
+  flex: 1;
+  padding: 24px 20px;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* PAT Card Box */
+.pat-card-box {
+  max-width: 600px;
+  margin: 40px auto;
+}
+
+.pat-intro-text {
+  font-size: 14px;
+  color: var(--color-fg-muted);
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.form-control {
+  flex: 1;
+  padding: 5px 12px;
+  font-size: 14px;
+  color: var(--color-fg-default);
+  background-color: var(--color-canvas-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  outline: none;
+}
+
+.form-control:focus {
+  border-color: var(--color-accent-fg);
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+}
+
+.form-control-sm {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.form-error {
+  margin-top: 6px;
+  color: var(--color-danger-fg);
+  font-size: 12px;
+}
+
+.pat-help-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-default);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-fg-muted);
+}
+
+/* --------------------------------------------------------------------------
+   App Shell Two-Column Layout
+   -------------------------------------------------------------------------- */
+.gh-app-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .gh-app-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* GitHub Boxes */
+.gh-box {
+  background-color: var(--color-canvas-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gh-box-header {
+  padding: 12px 16px;
+  background-color: var(--color-canvas-subtle);
+  border-bottom: 1px solid var(--color-border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gh-box-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gh-box-body {
+  padding: 16px;
+}
+.gh-box-body.p-0 {
+  padding: 0;
+}
+
+/* Sidebar */
+.gh-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Subnav Tabs */
+.gh-subnav {
+  display: flex;
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.gh-subnav-tab {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.gh-subnav-tab:hover {
+  color: var(--color-fg-default);
+}
+
+.gh-subnav-tab.active {
+  color: var(--color-fg-default);
+  border-bottom-color: #fd8c73;
+}
+
+.sidebar-search {
+  padding: 0 4px;
+}
+
+/* Action Lists */
+.gh-action-list {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-canvas-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  max-height: calc(100vh - 230px);
+  overflow-y: auto;
+}
+
+.gh-action-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+.gh-action-item:last-child {
+  border-bottom: none;
+}
+.gh-action-item:hover {
+  background-color: var(--color-canvas-subtle);
+}
+.gh-action-item.active {
+  background-color: rgba(9, 105, 218, 0.08);
+}
+
+.repo-item-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.repo-name {
+  font-weight: 600;
+  color: var(--color-accent-fg);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repo-desc {
+  font-size: 11px;
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-star-icon {
+  background: none;
+  border: none;
+  color: var(--color-fg-subtle);
+  cursor: pointer;
+  padding: 4px;
+}
+.btn-star-icon:hover {
+  color: var(--color-star-gold);
+}
+.btn-star-icon.favorited {
+  color: var(--color-star-gold);
+}
+
+.favorites-header-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.fav-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* --------------------------------------------------------------------------
+   Main Content Area & Tree Panel
+   -------------------------------------------------------------------------- */
+.gh-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.tree-box {
+  min-height: 200px;
+}
+
+.gh-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.crumb-link {
+  color: var(--color-accent-fg);
+  cursor: pointer;
+}
+.crumb-link:hover {
+  text-decoration: underline;
+}
+
+.file-tree-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border-default);
+  cursor: pointer;
+  font-size: 13px;
+}
+.tree-row:last-child {
+  border-bottom: none;
+}
+.tree-row:hover {
+  background-color: var(--color-canvas-subtle);
+}
+
+.tree-name {
+  flex: 1;
+  color: var(--color-fg-default);
+}
+.tree-row.is-md .tree-name {
+  color: var(--color-accent-fg);
+  font-weight: 500;
+}
+
+/* Blankslate (Empty state) */
+.blankslate {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--color-fg-muted);
+}
+.blankslate h3 {
+  font-size: 16px;
+  margin: 12px 0 6px;
+  color: var(--color-fg-default);
+}
+.blankslate p {
+  font-size: 13px;
+}
+
+/* --------------------------------------------------------------------------
+   Markdown Viewer Panel & Zoom Font Scaling
+   -------------------------------------------------------------------------- */
+.viewer-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.viewer-header {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.viewer-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.viewer-filename {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-family-mono);
+}
+
+.viewer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.zoom-controls .gh-btn {
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--color-border-default);
+}
+.zoom-controls .gh-btn:last-child {
+  border-right: none;
+}
+
+.btn-scale-badge {
+  font-size: 11px !important;
+  min-width: 48px;
+  font-weight: 600;
+}
+
+.viewer-body {
+  min-height: 400px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  background-color: var(--color-canvas-default);
+}
+
+/* GitHub Markdown Body Custom Font Zoom Rule */
+.markdown-body {
+  font-size: calc(16px * var(--md-content-scale, 1)) !important;
+  color: var(--color-fg-default) !important;
+  background-color: transparent !important;
+}
+
+.markdown-body h1 {
+  font-size: calc(2em * var(--md-content-scale, 1)) !important;
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.markdown-body h2 {
+  font-size: calc(1.5em * var(--md-content-scale, 1)) !important;
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.markdown-body h3 {
+  font-size: calc(1.25em * var(--md-content-scale, 1)) !important;
+}
+
+.markdown-body pre,
+.markdown-body code {
+  font-size: calc(85% * var(--md-content-scale, 1)) !important;
+  font-family: var(--font-family-mono) !important;
+}
+
+.markdown-body img {
+  transform-origin: top left;
+  scale: var(--md-content-scale, 1);
+  max-width: 100%;
+}
+
+.markdown-body .mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+  background-color: transparent;
+  overflow-x: auto;
+  min-height: 50px;
+}
+
+.markdown-body .mermaid svg {
+  max-width: 100% !important;
+  height: auto !important;
+  transform-origin: center center;
+  scale: var(--md-content-scale, 1);
+}
+
+.raw-content-panel {
+  font-family: var(--font-family-mono);
+  font-size: calc(13px * var(--md-content-scale, 1));
+  white-space: pre-wrap;
+  word-break: break-all;
+  padding: 16px;
+  background-color: var(--color-canvas-subtle);
+  border-radius: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   Modal Dialogs
+   -------------------------------------------------------------------------- */
+.gh-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.gh-modal {
+  background-color: var(--color-canvas-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+.gh-modal-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gh-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.gh-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+}
+
+.gh-modal-tabs {
+  display: flex;
+  background-color: var(--color-canvas-subtle);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.gh-modal-tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.gh-modal-tab.active {
+  color: var(--color-accent-fg);
+  border-bottom-color: var(--color-accent-fg);
+  background-color: var(--color-canvas-default);
+}
+
+.gh-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  font-size: 13px;
+}
+
+.gh-modal-footer {
+  padding: 12px 16px;
+  background-color: var(--color-canvas-subtle);
+  border-top: 1px solid var(--color-border-default);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Step Cards for PAT guide */
+.step-card {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background-color: var(--color-canvas-subtle);
+}
+
+.step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--color-accent-fg);
+  color: #fff;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.step-details {
+  flex: 1;
+}
+
+.security-note {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 6px;
+  background-color: rgba(9, 105, 218, 0.08);
+  border: 1px solid rgba(9, 105, 218, 0.2);
+  color: var(--color-accent-fg);
+  margin-top: 16px;
+}
+
+.feature-item {
+  margin-bottom: 16px;
+}
+.feature-item h5 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
