@@ -113,6 +113,13 @@ body.mobile-app {
   gap: 8px;
 }
 
+.gh-header-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
 .gh-header-title {
   font-size: 15px;
   font-weight: 600;
