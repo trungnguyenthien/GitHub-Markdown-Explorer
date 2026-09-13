@@ -249,6 +249,7 @@ function switchMobileView(targetView, skipPushState = false) {
   }
 
   updateHeaderBackButton();
+  updateRepoFavoriteStar();
   saveCurrentLocationState();
 }
 
@@ -506,6 +507,28 @@ function toggleFavoriteRepo(owner, name) {
   localStorage.setItem('gh_favorite_repos', JSON.stringify(appState.favoriteRepos));
   renderRepoList();
   renderFavoritesList();
+  updateRepoFavoriteStar();
+}
+
+function toggleCurrentRepoFavorite() {
+  if (!appState.currentRepo) return;
+  const { owner, name } = appState.currentRepo;
+  toggleFavoriteRepo(owner, name);
+}
+
+function updateRepoFavoriteStar() {
+  const btn = document.getElementById('btnFavCurrentRepo');
+  if (!btn) return;
+
+  if (!appState.currentRepo) {
+    btn.classList.add('hidden');
+    return;
+  }
+
+  btn.classList.remove('hidden');
+  const isFav = isRepoFavorited(appState.currentRepo.owner, appState.currentRepo.name);
+  if (isFav) btn.classList.add('favorited');
+  else btn.classList.remove('favorited');
 }
 
 // --- LOGIC 4: Open Repo & Fetch Tree ---
@@ -515,6 +538,7 @@ async function openRepo(owner, name, keepPath = false) {
     appState.currentPath = [];
   }
   renderRepoList();
+  updateRepoFavoriteStar();
   
   switchMobileView('tree');
 
