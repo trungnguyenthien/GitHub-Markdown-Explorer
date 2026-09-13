@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi" data-color-mode="light" data-light-theme="light">
+<html lang="en" data-color-mode="light" data-light-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -30,7 +30,7 @@
         <svg class="octicon octicon-chevron-left" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
           <path d="M9.78 12.78a.75.75 0 0 1-1.06 0L4.47 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L6.06 8l3.72 3.72a.75.75 0 0 1 0 1.06Z"></path>
         </svg>
-        <span>Quay lại</span>
+        <span>Back</span>
       </button>
 
       <div class="gh-header-brand" id="headerBrand">
@@ -41,19 +41,19 @@
     
     <div class="gh-header-actions">
       <!-- Network Dot Indicator -->
-      <span id="networkBadge" class="gh-badge gh-badge-success" title="Trạng thái kết nối">
+      <span id="networkBadge" class="gh-badge gh-badge-success" title="Connection Status">
         <span class="badge-dot"></span> <span class="badge-text">Online</span>
       </span>
 
       <!-- Help Button -->
-      <button id="btnOpenHelp" class="gh-btn gh-btn-icon" onclick="toggleGuideModal(true, 'pat')" title="Hướng dẫn & PAT">
+      <button id="btnOpenHelp" class="gh-btn gh-btn-icon" onclick="toggleGuideModal(true, 'pat')" title="Help & PAT Guide">
         <svg class="octicon octicon-question" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
           <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085c.081-.57.552-.985 1.17-.985.644 0 1.16.477 1.16 1.066 0 .445-.244.757-.666 1.066l-.326.237c-.524.38-.858.883-.858 1.531v.5a.75.75 0 0 0 1.5 0v-.354c0-.285.127-.514.475-.767l.325-.236c.692-.503 1.15-1.189 1.15-2.046 0-1.408-1.205-2.466-2.76-2.466-1.503 0-2.658 1.002-2.784 2.378a.75.75 0 0 0 1.488.136ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path>
         </svg>
       </button>
 
       <!-- Settings Button -->
-      <button id="btnSettings" class="gh-btn gh-btn-icon hidden" title="Cài đặt & Ngắt kết nối">
+      <button id="btnSettings" class="gh-btn gh-btn-icon hidden" title="Settings & Disconnect">
         <svg class="octicon octicon-gear" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
           <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm6.5-2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"></path>
         </svg>
@@ -67,14 +67,14 @@
   <!-- Main Container -->
   <main class="gh-container">
     
-    <!-- MÀN HÌNH PAT Entry Card -->
+    <!-- PAT Entry Card -->
     <section id="patEntryCard" class="gh-box pat-card-box">
       <div class="gh-box-header">
-        <h2 class="gh-box-title">Kết nối GitHub PAT</h2>
+        <h2 class="gh-box-title">Connect GitHub PAT</h2>
       </div>
       <div class="gh-box-body">
         <p class="pat-intro-text">
-          Nhập Personal Access Token (PAT) để truy cập Favorite Pages, Favorite Repos và All Repos.
+          Enter your Personal Access Token (PAT) to access Favorite Pages, Favorite Repos, and All Repos.
         </p>
         
         <form id="patForm" onsubmit="event.preventDefault(); connectWithToken();">
@@ -82,7 +82,7 @@
             <label for="patInput" class="form-label">Personal Access Token</label>
             <div class="input-group">
               <input type="password" id="patInput" class="form-control" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="current-password" required>
-              <button type="submit" id="btnConnect" class="gh-btn gh-btn-primary">Kết nối</button>
+              <button type="submit" id="btnConnect" class="gh-btn gh-btn-primary">Connect</button>
             </div>
             <div id="patError" class="form-error hidden"></div>
           </div>
@@ -92,18 +92,18 @@
           <svg class="octicon octicon-info" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
             <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25V8.5h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path>
           </svg>
-          <button type="button" class="btn-link" onclick="toggleGuideModal(true, 'pat')">Hướng dẫn tạo PAT từng bước</button>
+          <button type="button" class="btn-link" onclick="toggleGuideModal(true, 'pat')">Step-by-step PAT creation guide</button>
         </div>
       </div>
     </section>
 
-    <!-- MÀN HÌNH App Shell Mobile -->
+    <!-- App Shell Mobile Layout -->
     <div id="appShell" class="gh-app-layout hidden">
       
       <!-- TAB 1: FAVORITE PAGES VIEW -->
       <section id="viewFavPages" class="mobile-view-panel">
         <div class="view-panel-header flex-row-header">
-          <h3 class="view-panel-title">Favorite Page</h3>
+          <h3 class="view-panel-title">Favorite Pages</h3>
           <button id="btnSyncAll" class="gh-btn gh-btn-sm" onclick="syncAllFavorites()">
             <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
               <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
@@ -113,32 +113,32 @@
         </div>
 
         <div id="favFilesContainer" class="gh-action-list mobile-list">
-          <div class="empty-state">Chưa có trang yêu thích nào.</div>
+          <div class="empty-state">No favorite pages yet.</div>
         </div>
       </section>
 
-      <!-- TAB 2: FAVORITE REPO VIEW -->
+      <!-- TAB 2: FAVORITE REPOS VIEW -->
       <section id="viewFavRepos" class="mobile-view-panel hidden">
         <div class="view-panel-header">
-          <h3 class="view-panel-title">Favorite Repo</h3>
+          <h3 class="view-panel-title">Favorite Repos</h3>
         </div>
 
         <div id="favReposContainer" class="gh-action-list mobile-list">
-          <div class="empty-state">Chưa có repo yêu thích nào.</div>
+          <div class="empty-state">No favorite repos yet.</div>
         </div>
       </section>
 
-      <!-- TAB 3: ALL REPO VIEW -->
+      <!-- TAB 3: ALL REPOS VIEW -->
       <section id="viewAllRepos" class="mobile-view-panel hidden">
         <div class="view-panel-header">
-          <h3 class="view-panel-title">All Repo</h3>
+          <h3 class="view-panel-title">All Repos</h3>
           <div class="search-box">
-            <input type="text" class="form-control form-control-sm" placeholder="Tìm kho lưu trữ..." oninput="filterList(this.value)">
+            <input type="text" class="form-control form-control-sm" placeholder="Search repositories..." oninput="filterList(this.value)">
           </div>
         </div>
 
         <div id="repoListContainer" class="gh-action-list mobile-list">
-          <div class="loading-state">Đang tải danh sách kho lưu trữ...</div>
+          <div class="loading-state">Loading repositories...</div>
         </div>
       </section>
 
@@ -155,31 +155,31 @@
         </div>
 
         <div id="historyFilesContainer" class="gh-action-list mobile-list">
-          <div class="empty-state">Chưa có lịch sử đọc.</div>
+          <div class="empty-state">No reading history yet.</div>
         </div>
       </section>
 
-      <!-- TREE VIEW (Duyệt thư mục trong repo) -->
+      <!-- TREE VIEW (Folder Explorer) -->
       <section id="viewTree" class="mobile-view-panel hidden">
         <div class="view-panel-header">
           <div id="breadcrumb" class="gh-breadcrumb">
-            <span class="text-muted">Chưa chọn kho lưu trữ</span>
+            <span class="text-muted">No repository selected</span>
           </div>
         </div>
         <div id="fileTreeContainer" class="file-tree-list mobile-list">
           <div class="blankslate">
-            <h3>Chưa chọn kho lưu trữ</h3>
-            <p>Nhấp vào kho lưu trữ từ tab All Repo hoặc Favorite Repo để duyệt file.</p>
+            <h3>No repository selected</h3>
+            <p>Click a repository from All Repos or Favorite Repos to browse files.</p>
           </div>
         </div>
       </section>
 
-      <!-- MARKDOWN VIEWER VIEW (Trình đọc toàn thư) -->
+      <!-- MARKDOWN VIEWER VIEW (Reader) -->
       <section id="viewViewer" class="mobile-view-panel hidden">
         <div class="viewer-mobile-header">
           <div class="viewer-title-group">
             <span id="viewerFileName" class="viewer-filename">Select a file</span>
-            <button id="btnFavCurrentFile" class="btn-star-icon" onclick="toggleCurrentFileFavorite()" title="Đánh dấu Yêu thích">
+            <button id="btnFavCurrentFile" class="btn-star-icon" onclick="toggleCurrentFileFavorite()" title="Toggle Favorite">
               <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
                 <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
               </svg>
@@ -189,7 +189,7 @@
           <div class="mobile-reader-toolbar">
             <span id="fileSyncBadge" class="gh-badge gh-badge-secondary">🟢 Synced</span>
             
-            <button id="btnSyncCurrentFile" class="gh-btn gh-btn-sm" onclick="syncCurrentFile()" title="Đồng bộ file">
+            <button id="btnSyncCurrentFile" class="gh-btn gh-btn-sm" onclick="syncCurrentFile()" title="Sync file">
               <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
                 <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
               </svg>
@@ -214,8 +214,8 @@
         <div class="viewer-body">
           <div id="markdownViewerPanel" class="markdown-body">
             <div class="blankslate">
-              <h3>Chưa chọn tài liệu</h3>
-              <p>Chọn một file Markdown để đọc.</p>
+              <h3>No document selected</h3>
+              <p>Select a Markdown file to read.</p>
             </div>
           </div>
           <pre id="rawMarkdownPanel" class="raw-content-panel hidden"></pre>
@@ -231,21 +231,21 @@
       <svg class="octicon octicon-file-code" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
         <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
       </svg>
-      <span>Fav Page</span>
+      <span>Fav Pages</span>
     </button>
 
     <button id="navBtnFavRepos" class="nav-item" onclick="switchMobileView('favRepos')">
       <svg class="octicon octicon-star" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
         <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
       </svg>
-      <span>Fav Repo</span>
+      <span>Fav Repos</span>
     </button>
 
     <button id="navBtnAllRepos" class="nav-item" onclick="switchMobileView('allRepos')">
       <svg class="octicon octicon-repo" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
         <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-3.5a.25.25 0 0 1-.25-.25Z"></path>
       </svg>
-      <span>All Repo</span>
+      <span>All Repos</span>
     </button>
 
     <button id="navBtnHistory" class="nav-item" onclick="switchMobileView('history')">
@@ -256,42 +256,42 @@
     </button>
 
     <button id="navBtnReader" class="nav-item" onclick="switchMobileView('reader')">
-      <svg class="octicon octicon-book" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
-        <path d="M0 1.75A1.75 1.75 0 0 1 1.75 0h4.25C7.01 0 8 .99 8 2.25V13.5c0-.69.56-1.25 1.25-1.25h4.25a.75.75 0 0 1 0 1.5H9.25a.25.25 0 0 0-.25.25v1.25a.75.75 0 0 1-1.5 0V2.25A.25.25 0 0 0 7.25 2H1.75a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h4.25a.75.75 0 0 1 0 1.5H1.75A1.75 1.75 0 0 1 0 13.5V1.75Z"></path>
+      <svg class="octicon octicon-eye" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+        <path d="M8 2c1.981 0 3.671.992 4.933 2.274 1.255 1.275 2.015 2.827 2.057 3.003.048.204.048.442 0 .646-.042.176-.802 1.728-2.057 3.003C11.671 12.008 9.981 13 8 13c-1.981 0-3.671-.992-4.933-2.274C1.812 9.451 1.052 7.899 1.01 7.723a.755.755 0 0 1 0-.646C1.052 6.901 1.812 5.349 3.067 4.074 4.329 2.792 6.019 2 8 2ZM2.502 7.4c.264.444.838 1.3 1.737 2.213C5.23 10.608 6.548 11.5 8 11.5c1.452 0 2.77-.892 3.761-1.887.899-.913 1.473-1.769 1.737-2.213-.264-.444-.838-1.3-1.737-2.213C10.77 4.192 9.452 3.3 8 3.3c-1.452 0-2.77.892-3.761 1.887C3.34 6.1 2.766 6.956 2.502 7.4ZM8 5.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"></path>
       </svg>
       <span>Reader</span>
     </button>
   </nav>
 
-  <!-- MODAL: Hướng dẫn sử dụng & Tạo PAT -->
+  <!-- MODAL: Help & Guide -->
   <div id="helpGuideModal" class="gh-modal-backdrop hidden">
     <div class="gh-modal">
       <div class="gh-modal-header">
-        <h3 class="gh-modal-title">Hướng dẫn & Trợ giúp</h3>
+        <h3 class="gh-modal-title">Help & Guide</h3>
         <button class="gh-modal-close" onclick="toggleGuideModal(false)">&times;</button>
       </div>
 
       <nav class="gh-modal-tabs">
-        <button id="tabGuidePat" class="gh-modal-tab active" onclick="switchGuideTab('pat')">Tạo PAT</button>
-        <button id="tabGuideFeatures" class="gh-modal-tab" onclick="switchGuideTab('features')">Tính năng</button>
+        <button id="tabGuidePat" class="gh-modal-tab active" onclick="switchGuideTab('pat')">Create PAT</button>
+        <button id="tabGuideFeatures" class="gh-modal-tab" onclick="switchGuideTab('features')">Features</button>
       </nav>
 
       <div class="gh-modal-body">
         <!-- Tab Content 1: PAT Guide -->
         <div id="guidePatContent" class="guide-tab-content">
-          <h4>Cách tạo GitHub Personal Access Token (PAT)</h4>
-          <p>Mã PAT giúp ứng dụng kết nối an toàn với GitHub API.</p>
+          <h4>How to create a GitHub Personal Access Token (PAT)</h4>
+          <p>A PAT enables a secure connection to the GitHub API.</p>
           
           <div class="step-card">
             <div class="step-number">1</div>
             <div class="step-details">
-              <strong>Tạo Token trên GitHub:</strong>
-              <p>Nhấp nút bên dưới để mở trang tạo Token với cấu hình điền sẵn:</p>
+              <strong>Create Token on GitHub:</strong>
+              <p>Click below to open the token creation page with pre-filled scopes:</p>
               <a href="https://github.com/settings/tokens/new?scopes=repo&description=GitHub-Markdown-Explorer" target="_blank" rel="noopener noreferrer" class="gh-btn gh-btn-primary" style="margin-top: 8px; display: inline-flex; align-items: center; gap: 6px;">
                 <svg class="octicon octicon-link-external" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
                   <path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.75.75 0 0 1 .75.75v4.146a.75.75 0 0 1-1.5 0V3.56L8.28 9.28a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l5.72-5.72h-2.29a.75.75 0 0 1 0-1.5Z"></path>
                 </svg>
-                <span>Mở trang tạo PAT GitHub</span>
+                <span>Open GitHub PAT Creation Page</span>
               </a>
             </div>
           </div>
@@ -299,40 +299,40 @@
           <div class="step-card">
             <div class="step-number">2</div>
             <div class="step-details">
-              <strong>Chọn quyền (Scopes):</strong>
-              <p>Tích chọn quyền <code>repo</code> (nếu cần xem repo riêng tư) hoặc <code>public_repo</code>.</p>
+              <strong>Select Permissions (Scopes):</strong>
+              <p>Check the <code>repo</code> scope (for private repos) or <code>public_repo</code> scope.</p>
             </div>
           </div>
 
           <div class="step-card">
             <div class="step-number">3</div>
             <div class="step-details">
-              <strong>Sao chép Token:</strong>
-              <p>Cuộn xuống cuối trang bấm <strong>Generate token</strong>, sao chép chuỗi token và dán vào ứng dụng.</p>
+              <strong>Copy Token:</strong>
+              <p>Scroll down and click <strong>Generate token</strong>, then copy and paste the token string into the app.</p>
             </div>
           </div>
         </div>
 
         <!-- Tab Content 2: Feature Guide -->
         <div id="guideFeaturesContent" class="guide-tab-content hidden">
-          <h4>3 Tab Chính của ứng dụng</h4>
+          <h4>Core App Features</h4>
           <div class="feature-item">
-            <h5>📄 Favorite Page</h5>
-            <p>Quản lý các trang Markdown đã thích, lưu cache offline đọc không cần mạng & nút Sync All làm mới nội dung.</p>
+            <h5>📄 Favorite Pages</h5>
+            <p>Manage favorited Markdown pages, read offline with auto-cache, and sync with one tap.</p>
           </div>
           <div class="feature-item">
-            <h5>⭐ Favorite Repo</h5>
-            <p>Duyệt nhanh các kho lưu trữ GitHub bạn thường xuyên làm việc.</p>
+            <h5>⭐ Favorite Repos</h5>
+            <p>Quickly access starred repositories you frequently work with.</p>
           </div>
           <div class="feature-item">
-            <h5>📁 All Repo</h5>
-            <p>Khám phá tất cả các kho lưu trữ GitHub của bạn.</p>
+            <h5>📁 All Repos</h5>
+            <p>Explore all your GitHub repositories with favorite repos pinned on top.</p>
           </div>
         </div>
       </div>
 
       <div class="gh-modal-footer">
-        <button class="gh-btn" onclick="toggleGuideModal(false)">Đóng</button>
+        <button class="gh-btn" onclick="toggleGuideModal(false)">Close</button>
       </div>
     </div>
   </div>

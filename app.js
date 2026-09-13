@@ -2,7 +2,7 @@
    GitHub Markdown Explorer - Mobile-First Core Application Logic
    ========================================================================== */
 
-// --- HELPER: Base64 UTF-8 Decoder (Hỗ trợ Tiếng Việt & Unicode) ---
+// --- HELPER: Base64 UTF-8 Decoder (Vietnamese & Unicode support) ---
 function base64ToUtf8(base64Str) {
   if (!base64Str) return '';
   try {
@@ -105,6 +105,15 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('offline', handleNetworkChange);
   handleNetworkChange();
 
+  // Handle Browser Back Button & Swipe-Back Gestures
+  window.addEventListener('popstate', (event) => {
+    if (appState.mobileView === 'viewer' || appState.mobileView === 'tree' || appState.currentPath.length > 0) {
+      handleHeaderBack(true);
+    } else if (event.state && event.state.view) {
+      switchMobileView(event.state.view, true);
+    }
+  });
+
   // Register PWA Service Worker for 100% full offline mode
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then((reg) => {
@@ -160,7 +169,7 @@ function handleNetworkChange() {
   if (appState.isOffline) {
     badge.className = 'gh-badge gh-badge-secondary';
     badge.innerHTML = '<span class="badge-dot"></span> <span class="badge-text">Offline</span>';
-    showFlash('Bạn đang ngoại tuyến (Offline Mode). Đang hiển thị bản Cache.', 'info');
+    showFlash('You are offline (Offline Mode). Displaying cached version.', 'info');
     if (btnSyncAll) btnSyncAll.disabled = true;
   } else {
     badge.className = 'gh-badge gh-badge-success';
@@ -170,7 +179,7 @@ function handleNetworkChange() {
 }
 
 // --- MOBILE VIEW SWITCHING & HEADER BACK BUTTON ---
-function switchMobileView(targetView) {
+function switchMobileView(targetView, skipPushState = false) {
   // Alias mapping for backward compatibility
   if (targetView === 'favorites') targetView = 'favPages';
   if (targetView === 'repos') targetView = 'allRepos';
@@ -180,6 +189,12 @@ function switchMobileView(targetView) {
     appState.previousView = appState.mobileView;
   }
   appState.mobileView = targetView;
+
+  if (!skipPushState) {
+    try {
+      history.pushState({ view: targetView, pathLength: appState.currentPath.length }, '', '#/' + targetView);
+    } catch (e) {}
+  }
 
   const viewFavPages = document.getElementById('viewFavPages');
   const viewFavRepos = document.getElementById('viewFavRepos');
@@ -249,27 +264,24 @@ function updateHeaderBackButton() {
   }
 }
 
-function handleHeaderBack() {
+function handleHeaderBack(isPopState = false) {
+  if (!isPopState && window.history.length > 1) {
+    history.back();
+    return;
+  }
+
   if (appState.mobileView === 'viewer') {
-    if (appState.previousView && appState.previousView !== 'viewer') {
-      switchMobileView(appState.previousView);
-    } else if (appState.currentRepo) {
-      switchMobileView('tree');
-    } else {
-      switchMobileView('favPages');
-    }
+    const target = (appState.previousView && appState.previousView !== 'viewer') ? appState.previousView : (appState.currentRepo ? 'tree' : 'favPages');
+    switchMobileView(target, true);
   } else if (appState.mobileView === 'tree') {
     if (appState.currentPath.length > 0) {
-      navigateFolder('..');
+      navigateFolder('..', true);
     } else {
-      if (appState.previousView === 'favRepos') {
-        switchMobileView('favRepos');
-      } else {
-        switchMobileView('allRepos');
-      }
+      const target = (appState.previousView === 'favRepos') ? 'favRepos' : 'allRepos';
+      switchMobileView(target, true);
     }
   } else {
-    switchMobileView('favPages');
+    switchMobileView('favPages', true);
   }
 }
 
@@ -280,7 +292,7 @@ async function connectWithToken() {
   const token = input.value.trim();
 
   if (!token) {
-    errorDiv.textContent = 'Bắt buộc nhập Personal Access Token.';
+    errorDiv.textContent = 'Personal Access Token is required.';
     errorDiv.classList.remove('hidden');
     return;
   }
@@ -288,7 +300,7 @@ async function connectWithToken() {
   errorDiv.classList.add('hidden');
   const btnConnect = document.getElementById('btnConnect');
   btnConnect.disabled = true;
-  btnConnect.textContent = 'Đang kết nối...';
+  btnConnect.textContent = 'Connecting...';
 
   try {
     const res = await fetch('https://api.github.com/user', {
@@ -303,23 +315,23 @@ async function connectWithToken() {
       appState.token = token;
       localStorage.setItem('gh_pat_token', token);
       
-      showFlash(`Chào ${userData.login}! Đã kết nối thành công.`, 'success');
+      showFlash(`Welcome ${userData.login}! Connected successfully.`, 'success');
       showAppShell();
       loadRepos();
     } else if (res.status === 401) {
-      errorDiv.textContent = 'Token không hợp lệ hoặc đã hết hạn.';
+      errorDiv.textContent = 'Invalid or expired Personal Access Token.';
       errorDiv.classList.remove('hidden');
     } else {
-      errorDiv.textContent = `Lỗi xác thực (HTTP ${res.status}).`;
+      errorDiv.textContent = `Authentication error (HTTP ${res.status}).`;
       errorDiv.classList.remove('hidden');
     }
   } catch (err) {
     console.error('Connect error:', err);
-    errorDiv.textContent = 'Lỗi kết nối mạng, vui lòng kiểm tra lại.';
+    errorDiv.textContent = 'Network error. Please check your connection.';
     errorDiv.classList.remove('hidden');
   } finally {
     btnConnect.disabled = false;
-    btnConnect.textContent = 'Kết nối';
+    btnConnect.textContent = 'Connect';
   }
 }
 
@@ -342,7 +354,7 @@ function showAppShell() {
 
 // --- LOGIC 11: Disconnect PAT ---
 function disconnectToken() {
-  if (confirm('Bạn có chắc muốn ngắt kết nối PAT? Các mục Yêu thích và bản Cache vẫn được giữ lại.')) {
+  if (confirm('Are you sure you want to disconnect PAT? Favorites and Cache will be preserved.')) {
     appState.token = null;
     localStorage.removeItem('gh_pat_token');
     appState.repos = [];
@@ -350,14 +362,14 @@ function disconnectToken() {
     appState.currentFile = null;
     appState.currentFileContent = null;
     showPatCard();
-    showFlash('Đã ngắt kết nối Token.', 'info');
+    showFlash('Token disconnected.', 'info');
   }
 }
 
 // --- LOGIC 2: Load Repositories ---
 async function loadRepos() {
   const container = document.getElementById('repoListContainer');
-  container.innerHTML = '<div class="blankslate"><p>Đang tải danh sách kho lưu trữ...</p></div>';
+  container.innerHTML = '<div class="blankslate"><p>Loading repository list...</p></div>';
 
   try {
     const res = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
@@ -380,11 +392,11 @@ async function loadRepos() {
       renderRepoList();
       renderFavoritesList();
     } else {
-      container.innerHTML = `<div class="blankslate"><p class="text-danger">Không thể tải repos (HTTP ${res.status}).</p></div>`;
+      container.innerHTML = `<div class="blankslate"><p class="text-danger">Unable to load repositories (HTTP ${res.status}).</p></div>`;
     }
   } catch (err) {
     console.error('Load repos error:', err);
-    container.innerHTML = '<div class="blankslate"><p class="text-danger">Lỗi kết nối khi tải danh sách repo.</p></div>';
+    container.innerHTML = '<div class="blankslate"><p class="text-danger">Connection error while loading repository list.</p></div>';
   }
 }
 
@@ -393,7 +405,7 @@ function renderRepoList(filteredList = null) {
   let list = filteredList || appState.repos;
 
   if (list.length === 0) {
-    container.innerHTML = '<div class="blankslate"><p>Không tìm thấy kho lưu trữ nào.</p></div>';
+    container.innerHTML = '<div class="blankslate"><p>No repositories found.</p></div>';
     return;
   }
 
@@ -415,11 +427,11 @@ function renderRepoList(filteredList = null) {
             <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-3.5a.25.25 0 0 1-.25-.25Z"></path>
           </svg>
           <div>
-            <div class="repo-name">${repo.owner}/${repo.name}</div>
+            <div class="repo-name">${repo.name}</div>
             ${repo.description ? `<div class="repo-desc">${repo.description}</div>` : ''}
           </div>
         </div>
-        <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteRepo('${repo.owner}', '${repo.name}')" title="Yêu thích">
+        <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteRepo('${repo.owner}', '${repo.name}')" title="Favorite">
           <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
             <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
           </svg>
@@ -438,10 +450,10 @@ function toggleFavoriteRepo(owner, name) {
   const index = appState.favoriteRepos.findIndex(r => r.owner === owner && r.name === name);
   if (index > -1) {
     appState.favoriteRepos.splice(index, 1);
-    showFlash(`Đã xóa ${owner}/${name} khỏi Yêu thích.`, 'info');
+    showFlash(`Removed ${owner}/${name} from Favorites.`, 'info');
   } else {
     appState.favoriteRepos.push({ owner, name });
-    showFlash(`Đã thêm ${owner}/${name} vào Yêu thích!`, 'success');
+    showFlash(`Added ${owner}/${name} to Favorites!`, 'success');
   }
 
   localStorage.setItem('gh_favorite_repos', JSON.stringify(appState.favoriteRepos));
@@ -458,7 +470,7 @@ async function openRepo(owner, name) {
   switchMobileView('tree');
 
   const treeContainer = document.getElementById('fileTreeContainer');
-  treeContainer.innerHTML = '<div class="blankslate"><p>Đang tải cây thư mục repository...</p></div>';
+  treeContainer.innerHTML = '<div class="blankslate"><p>Loading repository file tree...</p></div>';
   updateBreadcrumb();
 
   try {
@@ -488,7 +500,7 @@ async function openRepo(owner, name) {
     renderFileTree();
   } catch (err) {
     console.error('Open repo error:', err);
-    treeContainer.innerHTML = '<div class="blankslate"><p class="text-danger">Không thể tải cây thư mục file.</p></div>';
+    treeContainer.innerHTML = '<div class="blankslate"><p class="text-danger">Unable to load file tree.</p></div>';
   }
 }
 
@@ -508,7 +520,7 @@ function renderFileTree() {
   });
 
   if (entries.length === 0) {
-    container.innerHTML = '<div class="blankslate"><p>Thư mục này rỗng.</p></div>';
+    container.innerHTML = '<div class="blankslate"><p>This directory is empty.</p></div>';
     return;
   }
 
@@ -544,11 +556,16 @@ function renderFileTree() {
   }).join('');
 }
 
-function navigateFolder(folderName) {
+function navigateFolder(folderName, skipPushState = false) {
   if (folderName === '..') {
     appState.currentPath.pop();
   } else {
     appState.currentPath.push(folderName);
+  }
+  if (!skipPushState) {
+    try {
+      history.pushState({ view: 'tree', pathLength: appState.currentPath.length }, '', '#/tree');
+    } catch (e) {}
   }
   updateBreadcrumb();
   renderFileTree();
@@ -558,7 +575,7 @@ function navigateFolder(folderName) {
 function updateBreadcrumb() {
   const container = document.getElementById('breadcrumb');
   if (!appState.currentRepo) {
-    container.innerHTML = '<span class="text-muted">Chưa chọn kho lưu trữ</span>';
+    container.innerHTML = '<span class="text-muted">No repository selected</span>';
     return;
   }
 
@@ -587,7 +604,7 @@ async function openMarkdownFile(owner, name, path) {
 
   updateViewerFavoriteStar();
   const viewerPanel = document.getElementById('markdownViewerPanel');
-  viewerPanel.innerHTML = '<p class="text-muted">Đang nạp tài liệu...</p>';
+  viewerPanel.innerHTML = '<p class="text-muted">Loading document...</p>';
 
   // Step 1: Check Cache
   let cached = null;
@@ -603,9 +620,9 @@ async function openMarkdownFile(owner, name, path) {
   // Step 2: If Offline
   if (appState.isOffline) {
     if (!cached) {
-      viewerPanel.innerHTML = '<div class="blankslate"><p class="text-danger">Không có kết nối mạng và chưa có bản cache cho file này.</p></div>';
+      viewerPanel.innerHTML = '<div class="blankslate"><p class="text-danger">No network connection and no offline cached version available for this file.</p></div>';
     } else {
-      showFlash('Đang xem bản cache lưu ngoại tuyến.', 'info');
+      showFlash('Viewing offline cached version.', 'info');
     }
     return;
   }
@@ -654,13 +671,13 @@ async function openMarkdownFile(owner, name, path) {
     } else {
       if (!cached) {
         const errorText = await res.text().catch(() => '');
-        viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Không thể nạp file từ GitHub (HTTP ${res.status}). ${errorText ? `<br><small>${errorText}</small>` : ''}</p></div>`;
+        viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Unable to load file from GitHub (HTTP ${res.status}). ${errorText ? `<br><small>${errorText}</small>` : ''}</p></div>`;
       }
     }
   } catch (err) {
     console.error('Fetch markdown error:', err);
     if (!cached) {
-      viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Lỗi kết nối khi tải file: ${err.message || err}</p></div>`;
+      viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Connection error loading file: ${err.message || err}</p></div>`;
     }
   }
 }
@@ -711,7 +728,7 @@ function renderMarkdown(rawContent) {
       const url = `https://www.plantuml.com/plantuml/svg/${encoded}`;
       return `
         <div class="plantuml-diagram">
-          <img src="${url}" alt="PlantUML Diagram" onerror="this.onerror=null; this.replaceWith('Sơ đồ PlantUML hiển thị thất bại.');">
+          <img src="${url}" alt="PlantUML Diagram" onerror="this.onerror=null; this.replaceWith('PlantUML diagram failed to render.');">
         </div>
       `;
     }
@@ -833,10 +850,10 @@ async function toggleFavoriteFile(owner, name, path) {
   if (index > -1) {
     appState.favoriteFiles.splice(index, 1);
     try { await getIdb().del(fileKey); } catch (err) {}
-    showFlash('Đã xóa file khỏi Yêu thích.', 'info');
+    showFlash('Removed file from Favorites.', 'info');
   } else {
     appState.favoriteFiles.push({ owner, name, path });
-    showFlash('Đã thêm file vào Yêu thích & lưu Cache!', 'success');
+    showFlash('Added file to Favorites & Cached offline!', 'success');
     
     if (appState.currentFileContent && appState.currentFile && appState.currentFile.path === path) {
       cacheFavoriteFile(owner, name, path, appState.currentFileContent);
@@ -887,51 +904,70 @@ function updateViewerFavoriteStar() {
   }
 }
 
-function renderFavoritesList() {
+async function renderFavoritesList() {
   const favFilesContainer = document.getElementById('favFilesContainer');
   const favReposContainer = document.getElementById('favReposContainer');
 
+  if (!favFilesContainer || !favReposContainer) return;
+
   if (appState.favoriteFiles.length === 0) {
-    favFilesContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>Chưa có file yêu thích nào.</p></div>';
+    favFilesContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No favorite pages yet.</p></div>';
   } else {
-    favFilesContainer.innerHTML = appState.favoriteFiles.map(file => `
-      <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
-        <div class="repo-item-main">
-          <svg class="octicon octicon-file-code text-muted" viewBox="0 0 16 16" width="18" height="18" fill="#0969da">
-            <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
-          </svg>
-          <div>
-            <div class="repo-name">${file.path.split('/').pop()}</div>
-            <div class="repo-desc">${file.owner}/${file.name}</div>
+    const fileItemsHtml = await Promise.all(appState.favoriteFiles.map(async file => {
+      const cleanRepoName = (file.name || '').includes('/') ? file.name.split('/').pop() : file.name;
+      const fileKey = `${file.owner}/${cleanRepoName}/${file.path}`;
+      let syncText = '';
+      try {
+        const cached = await getIdb().get(fileKey);
+        if (cached && cached.lastSyncedAt) {
+          syncText = ` • <span class="text-muted">Synced ${formatTimeAgo(cached.lastSyncedAt)}</span>`;
+        }
+      } catch (e) {}
+
+      const isFav = isFileFavorited(file.owner, file.name, file.path);
+      return `
+        <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
+          <div class="repo-item-main">
+            <svg class="octicon octicon-file-code text-muted" viewBox="0 0 16 16" width="18" height="18" fill="#0969da">
+              <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
+            </svg>
+            <div>
+              <div class="repo-name">${file.path.split('/').pop()}</div>
+              <div class="repo-desc">${cleanRepoName}${syncText}</div>
+            </div>
           </div>
+          <button class="btn-star-icon favorited" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')" title="Favorite">
+            <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+              <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
+            </svg>
+          </button>
         </div>
-        <button class="btn-star-icon favorited" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')">
-          <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
-            <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
-          </svg>
-        </button>
-      </div>
-    `).join('');
+      `;
+    }));
+    favFilesContainer.innerHTML = fileItemsHtml.join('');
   }
 
   if (appState.favoriteRepos.length === 0) {
-    favReposContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>Chưa có repo yêu thích nào.</p></div>';
+    favReposContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No favorite repositories yet.</p></div>';
   } else {
-    favReposContainer.innerHTML = appState.favoriteRepos.map(repo => `
-      <div class="gh-action-item" onclick="openRepo('${repo.owner}', '${repo.name}')">
-        <div class="repo-item-main">
-          <svg class="octicon octicon-repo text-muted" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
-            <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-3.5a.25.25 0 0 1-.25-.25Z"></path>
-          </svg>
-          <div class="repo-name">${repo.owner}/${repo.name}</div>
+    favReposContainer.innerHTML = appState.favoriteRepos.map(repo => {
+      const cleanRepoName = (repo.name || '').includes('/') ? repo.name.split('/').pop() : repo.name;
+      return `
+        <div class="gh-action-item" onclick="openRepo('${repo.owner}', '${repo.name}')">
+          <div class="repo-item-main">
+            <svg class="octicon octicon-repo text-muted" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+              <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-3.5a.25.25 0 0 1-.25-.25Z"></path>
+            </svg>
+            <div class="repo-name">${cleanRepoName}</div>
+          </div>
+          <button class="btn-star-icon favorited" onclick="event.stopPropagation(); toggleFavoriteRepo('${repo.owner}', '${repo.name}')" title="Favorite">
+            <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+              <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
+            </svg>
+          </button>
         </div>
-        <button class="btn-star-icon favorited" onclick="event.stopPropagation(); toggleFavoriteRepo('${repo.owner}', '${repo.name}')">
-          <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
-            <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
-          </svg>
-        </button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 }
 
@@ -961,7 +997,7 @@ async function syncCurrentFile() {
 
 async function syncFavoriteFile(owner, name, path) {
   if (appState.isOffline) {
-    showFlash('Không thể đồng bộ khi đang ngoại tuyến.', 'info');
+    showFlash('Cannot sync while offline.', 'info');
     return;
   }
 
@@ -987,6 +1023,7 @@ async function syncFavoriteFile(owner, name, path) {
       }
       
       updateFileSyncBadge('synced', Date.now());
+      renderFavoritesList();
     } else {
       updateFileSyncBadge('cached');
     }
@@ -1000,7 +1037,7 @@ async function syncFavoriteFile(owner, name, path) {
 
 async function syncAllFavorites() {
   if (appState.isOffline) {
-    showFlash('Không thể đồng bộ khi đang ngoại tuyến.', 'info');
+    showFlash('Cannot sync while offline.', 'info');
     return;
   }
 
@@ -1013,6 +1050,7 @@ async function syncAllFavorites() {
   try {
     const promises = appState.favoriteFiles.map(f => syncFavoriteFile(f.owner, f.name, f.path));
     await Promise.allSettled(promises);
+    renderFavoritesList();
   } finally {
     setSyncSpinning(false);
   }
@@ -1041,13 +1079,14 @@ function renderHistoryList() {
   if (!container) return;
 
   if (appState.readingHistory.length === 0) {
-    container.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>Chưa có lịch sử đọc.</p></div>';
+    container.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No reading history yet.</p></div>';
     return;
   }
 
   container.innerHTML = appState.readingHistory.map(file => {
     const timeAgo = formatTimeAgo(file.readAt);
     const isFav = isFileFavorited(file.owner, file.name, file.path);
+    const cleanRepoName = (file.name || '').includes('/') ? file.name.split('/').pop() : file.name;
 
     return `
       <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
@@ -1057,10 +1096,10 @@ function renderHistoryList() {
           </svg>
           <div>
             <div class="repo-name">${file.path.split('/').pop()}</div>
-            <div class="repo-desc">${file.owner}/${file.name} • <span class="text-muted">${timeAgo}</span></div>
+            <div class="repo-desc">${cleanRepoName} • <span class="text-muted">${timeAgo}</span></div>
           </div>
         </div>
-        <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')" title="Yêu thích">
+        <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')" title="Favorite">
           <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
             <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
           </svg>
@@ -1071,24 +1110,24 @@ function renderHistoryList() {
 }
 
 function clearHistory() {
-  if (confirm('Bạn có chắc muốn xóa toàn bộ lịch sử đọc?')) {
+  if (confirm('Are you sure you want to clear reading history?')) {
     appState.readingHistory = [];
     localStorage.removeItem('gh_reading_history');
     renderHistoryList();
-    showFlash('Đã xóa lịch sử đọc.', 'info');
+    showFlash('Reading history cleared.', 'info');
   }
 }
 
 function formatTimeAgo(timestamp) {
   if (!timestamp) return '';
   const diffSec = Math.floor((Date.now() - timestamp) / 1000);
-  if (diffSec < 60) return 'Vừa xong';
+  if (diffSec < 60) return 'Just now';
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin} phút trước`;
+  if (diffMin < 60) return `${diffMin}m ago`;
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour} giờ trước`;
+  if (diffHour < 24) return `${diffHour}h ago`;
   const diffDay = Math.floor(diffHour / 24);
-  return `${diffDay} ngày trước`;
+  return `${diffDay}d ago`;
 }
 
 // --- LOGIC 10: Filtering ---
