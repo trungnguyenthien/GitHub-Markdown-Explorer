@@ -573,13 +573,22 @@ body.mobile-app {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
+  padding: 2px;
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.6);
   font-size: 10px;
   font-weight: 500;
   cursor: pointer;
+  min-width: 0;
+}
+
+.nav-item span {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .nav-item:active,

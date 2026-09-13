@@ -88,7 +88,8 @@ const appState = {
   currentFileContent: null, // Raw markdown string
   favoriteRepos: JSON.parse(localStorage.getItem('gh_favorite_repos') || '[]'),
   favoriteFiles: JSON.parse(localStorage.getItem('gh_favorite_files') || '[]'),
-  mobileView: 'favPages', // 'favPages' | 'favRepos' | 'allRepos' | 'tree' | 'viewer'
+  readingHistory: JSON.parse(localStorage.getItem('gh_reading_history') || '[]'),
+  mobileView: 'favPages', // 'favPages' | 'favRepos' | 'allRepos' | 'history' | 'reader' | 'tree' | 'viewer'
   previousView: 'favPages',
   isOffline: !navigator.onLine,
   fontScale: parseInt(localStorage.getItem('gh_font_scale') || '100', 10),
@@ -164,6 +165,7 @@ function switchMobileView(targetView) {
   // Alias mapping for backward compatibility
   if (targetView === 'favorites') targetView = 'favPages';
   if (targetView === 'repos') targetView = 'allRepos';
+  if (targetView === 'reader') targetView = 'viewer';
 
   if (appState.mobileView !== targetView) {
     appState.previousView = appState.mobileView;
@@ -173,17 +175,21 @@ function switchMobileView(targetView) {
   const viewFavPages = document.getElementById('viewFavPages');
   const viewFavRepos = document.getElementById('viewFavRepos');
   const viewAllRepos = document.getElementById('viewAllRepos');
+  const viewHistory = document.getElementById('viewHistory');
   const viewTree = document.getElementById('viewTree');
   const viewViewer = document.getElementById('viewViewer');
 
   const navFavPages = document.getElementById('navBtnFavPages');
   const navFavRepos = document.getElementById('navBtnFavRepos');
   const navAllRepos = document.getElementById('navBtnAllRepos');
+  const navHistory = document.getElementById('navBtnHistory');
+  const navReader = document.getElementById('navBtnReader');
 
   // Hide all view panels
   if (viewFavPages) viewFavPages.classList.add('hidden');
   if (viewFavRepos) viewFavRepos.classList.add('hidden');
   if (viewAllRepos) viewAllRepos.classList.add('hidden');
+  if (viewHistory) viewHistory.classList.add('hidden');
   if (viewTree) viewTree.classList.add('hidden');
   if (viewViewer) viewViewer.classList.add('hidden');
 
@@ -191,6 +197,8 @@ function switchMobileView(targetView) {
   if (navFavPages) navFavPages.classList.remove('active');
   if (navFavRepos) navFavRepos.classList.remove('active');
   if (navAllRepos) navAllRepos.classList.remove('active');
+  if (navHistory) navHistory.classList.remove('active');
+  if (navReader) navReader.classList.remove('active');
 
   // Activate target panel & bottom nav tab
   if (targetView === 'favPages') {
@@ -205,10 +213,15 @@ function switchMobileView(targetView) {
     if (viewAllRepos) viewAllRepos.classList.remove('hidden');
     if (navAllRepos) navAllRepos.classList.add('active');
     renderRepoList();
-  } else if (targetView === 'tree') {
-    if (viewTree) viewTree.classList.remove('hidden');
+  } else if (targetView === 'history') {
+    if (viewHistory) viewHistory.classList.remove('hidden');
+    if (navHistory) navHistory.classList.add('active');
+    renderHistoryList();
   } else if (targetView === 'viewer') {
     if (viewViewer) viewViewer.classList.remove('hidden');
+    if (navReader) navReader.classList.add('active');
+  } else if (targetView === 'tree') {
+    if (viewTree) viewTree.classList.remove('hidden');
   }
 
   updateHeaderBackButton();
@@ -368,12 +381,19 @@ async function loadRepos() {
 
 function renderRepoList(filteredList = null) {
   const container = document.getElementById('repoListContainer');
-  const list = filteredList || appState.repos;
+  let list = filteredList || appState.repos;
 
   if (list.length === 0) {
     container.innerHTML = '<div class="blankslate"><p>Không tìm thấy kho lưu trữ nào.</p></div>';
     return;
   }
+
+  // Sort: Favorited repos on top
+  list = [...list].sort((a, b) => {
+    const aFav = isRepoFavorited(a.owner, a.name) ? 1 : 0;
+    const bFav = isRepoFavorited(b.owner, b.name) ? 1 : 0;
+    return bFav - aFav;
+  });
 
   container.innerHTML = list.map(repo => {
     const isFav = isRepoFavorited(repo.owner, repo.name);
@@ -550,6 +570,7 @@ async function openMarkdownFile(owner, name, path) {
   appState.currentFile = { owner, name, path };
   const fileKey = `${owner}/${name}/${path}`;
 
+  addToHistory(owner, name, path);
   switchMobileView('viewer');
 
   document.getElementById('viewerFileName').textContent = path.split('/').pop();
@@ -967,6 +988,79 @@ async function syncAllFavorites() {
   showFlash('Hoàn tất đồng bộ tất cả file yêu thích!', 'success');
 }
 
+// --- LOGIC: Reading History ---
+function addToHistory(owner, name, path) {
+  appState.readingHistory = appState.readingHistory.filter(
+    h => !(h.owner === owner && h.name === name && h.path === path)
+  );
+  appState.readingHistory.unshift({
+    owner,
+    name,
+    path,
+    readAt: Date.now()
+  });
+  if (appState.readingHistory.length > 100) {
+    appState.readingHistory = appState.readingHistory.slice(0, 100);
+  }
+  localStorage.setItem('gh_reading_history', JSON.stringify(appState.readingHistory));
+  renderHistoryList();
+}
+
+function renderHistoryList() {
+  const container = document.getElementById('historyFilesContainer');
+  if (!container) return;
+
+  if (appState.readingHistory.length === 0) {
+    container.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>Chưa có lịch sử đọc.</p></div>';
+    return;
+  }
+
+  container.innerHTML = appState.readingHistory.map(file => {
+    const timeAgo = formatTimeAgo(file.readAt);
+    const isFav = isFileFavorited(file.owner, file.name, file.path);
+
+    return `
+      <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
+        <div class="repo-item-main">
+          <svg class="octicon octicon-history text-muted" viewBox="0 0 16 16" width="18" height="18" fill="#0969da">
+            <path d="m.427 1.927 1.215 1.215a8.002 8.002 0 1 1-1.6 5.685.75.75 0 1 1 1.493-.154 6.5 6.5 0 1 0 1.3-4.623l1.393 1.393a.75.75 0 0 1-.53 1.284H.75A.75.75 0 0 1 0 5.927V3.18a.75.75 0 0 1 1.28-.53l-.853-.723ZM8 4.5a.75.75 0 0 1 .75.75v3.19l2.22 2.22a.75.75 0 0 1-1.06 1.06l-2.5-2.5A.75.75 0 0 1 7.25 8.5V5.25A.75.75 0 0 1 8 4.5Z"></path>
+          </svg>
+          <div>
+            <div class="repo-name">${file.path.split('/').pop()}</div>
+            <div class="repo-desc">${file.owner}/${file.name} • <span class="text-muted">${timeAgo}</span></div>
+          </div>
+        </div>
+        <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')" title="Yêu thích">
+          <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+            <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function clearHistory() {
+  if (confirm('Bạn có chắc muốn xóa toàn bộ lịch sử đọc?')) {
+    appState.readingHistory = [];
+    localStorage.removeItem('gh_reading_history');
+    renderHistoryList();
+    showFlash('Đã xóa lịch sử đọc.', 'info');
+  }
+}
+
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return '';
+  const diffSec = Math.floor((Date.now() - timestamp) / 1000);
+  if (diffSec < 60) return 'Vừa xong';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} giờ trước`;
+  const diffDay = Math.floor(diffHour / 24);
+  return `${diffDay} ngày trước`;
+}
+
 // --- LOGIC 10: Filtering ---
 function filterList(query) {
   const q = query.toLowerCase().trim();
@@ -987,6 +1081,15 @@ function filterList(query) {
     }
   } else if (appState.mobileView === 'favRepos') {
     const container = document.getElementById('favReposContainer');
+    if (container) {
+      const items = container.querySelectorAll('.gh-action-item');
+      items.forEach(item => {
+        if (item.textContent.toLowerCase().includes(q)) item.classList.remove('hidden');
+        else item.classList.add('hidden');
+      });
+    }
+  } else if (appState.mobileView === 'history') {
+    const container = document.getElementById('historyFilesContainer');
     if (container) {
       const items = container.querySelectorAll('.gh-action-item');
       items.forEach(item => {
