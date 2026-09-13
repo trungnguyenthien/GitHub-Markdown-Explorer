@@ -723,3 +723,14 @@ body.mobile-app {
   color: var(--color-accent-fg);
   font-size: 12px;
 }
+
+/* Spinning Animation for Sync Icons */
+@keyframes octicon-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.is-spinning {
+  animation: octicon-spin 1s linear infinite;
+  transform-origin: center center;
+}

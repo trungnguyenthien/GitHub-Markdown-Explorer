@@ -927,6 +927,23 @@ function renderFavoritesList() {
 }
 
 // --- LOGIC 13: Sync Favorites ---
+function setSyncSpinning(isSpinning) {
+  const btnSyncAll = document.getElementById('btnSyncAll');
+  const btnSyncCurrent = document.getElementById('btnSyncCurrentFile');
+
+  [btnSyncAll, btnSyncCurrent].forEach(btn => {
+    if (!btn) return;
+    const icon = btn.querySelector('.octicon-sync');
+    if (isSpinning) {
+      if (icon) icon.classList.add('is-spinning');
+      btn.disabled = true;
+    } else {
+      if (icon) icon.classList.remove('is-spinning');
+      btn.disabled = false;
+    }
+  });
+}
+
 async function syncCurrentFile() {
   if (!appState.currentFile) return;
   const { owner, name, path } = appState.currentFile;
@@ -939,7 +956,7 @@ async function syncFavoriteFile(owner, name, path) {
     return;
   }
 
-  showFlash(`Đang đồng bộ ${path.split('/').pop()}...`, 'info');
+  setSyncSpinning(true);
   updateFileSyncBadge('syncing');
 
   try {
@@ -961,31 +978,35 @@ async function syncFavoriteFile(owner, name, path) {
       }
       
       updateFileSyncBadge('synced', Date.now());
-      showFlash(`Đã đồng bộ ${path.split('/').pop()}!`, 'success');
+    } else {
+      updateFileSyncBadge('cached');
     }
   } catch (err) {
     console.error('Sync file error:', err);
-    showFlash('Đồng bộ thất bại, thử lại.', 'error');
+    updateFileSyncBadge('cached');
+  } finally {
+    setSyncSpinning(false);
   }
 }
 
 async function syncAllFavorites() {
   if (appState.isOffline) {
-    showFlash('Không thể đồng bộ khi ngoại tuyến.', 'info');
+    showFlash('Không thể đồng bộ khi đang ngoại tuyến.', 'info');
     return;
   }
 
   if (appState.favoriteFiles.length === 0) {
-    showFlash('Chưa có file yêu thích nào.', 'info');
     return;
   }
 
-  showFlash(`Đang đồng bộ ${appState.favoriteFiles.length} file...`, 'info');
+  setSyncSpinning(true);
 
-  const promises = appState.favoriteFiles.map(f => syncFavoriteFile(f.owner, f.name, f.path));
-  await Promise.allSettled(promises);
-
-  showFlash('Hoàn tất đồng bộ tất cả file yêu thích!', 'success');
+  try {
+    const promises = appState.favoriteFiles.map(f => syncFavoriteFile(f.owner, f.name, f.path));
+    await Promise.allSettled(promises);
+  } finally {
+    setSyncSpinning(false);
+  }
 }
 
 // --- LOGIC: Reading History ---
