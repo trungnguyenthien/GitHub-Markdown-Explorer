@@ -70,6 +70,17 @@ const miniIdb = {
         tx.onerror = () => resolve();
       });
     } catch (e) {}
+  },
+  async getAll() {
+    try {
+      const db = await this.getDb();
+      return new Promise((resolve) => {
+        const tx = db.transaction('cache', 'readonly');
+        const req = tx.objectStore('cache').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      });
+    } catch (e) { return []; }
   }
 };
 
@@ -104,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('online', handleNetworkChange);
   window.addEventListener('offline', handleNetworkChange);
   handleNetworkChange();
+  requestPersistentStorage();
 
   // Handle Browser Back Button & Swipe-Back Gestures
   window.addEventListener('popstate', (event) => {
@@ -1294,18 +1306,291 @@ function switchGuideTab(tabName) {
 
   const tabPat = document.getElementById('tabGuidePat');
   const tabFeatures = document.getElementById('tabGuideFeatures');
+  const tabBackup = document.getElementById('tabGuideBackup');
+
   const contentPat = document.getElementById('guidePatContent');
   const contentFeatures = document.getElementById('guideFeaturesContent');
+  const contentBackup = document.getElementById('guideBackupContent');
+
+  [tabPat, tabFeatures, tabBackup].forEach(t => t && t.classList.remove('active'));
+  [contentPat, contentFeatures, contentBackup].forEach(c => c && c.classList.add('hidden'));
 
   if (tabName === 'pat') {
     if (tabPat) tabPat.classList.add('active');
-    if (tabFeatures) tabFeatures.classList.remove('active');
     if (contentPat) contentPat.classList.remove('hidden');
-    if (contentFeatures) contentFeatures.classList.add('hidden');
-  } else {
+  } else if (tabName === 'features') {
     if (tabFeatures) tabFeatures.classList.add('active');
-    if (tabPat) tabPat.classList.remove('active');
     if (contentFeatures) contentFeatures.classList.remove('hidden');
-    if (contentPat) contentPat.classList.add('hidden');
+  } else if (tabName === 'backup') {
+    if (tabBackup) tabBackup.classList.add('active');
+    if (contentBackup) contentBackup.classList.remove('hidden');
+    updateStorageStatusUI();
+  }
+}
+
+// --- LOGIC 17: Storage Protection & Data Backup/Restore ---
+async function requestPersistentStorage() {
+  if (navigator.storage && navigator.storage.persist) {
+    const isPersisted = await navigator.storage.persist();
+    updateStorageStatusUI(isPersisted);
+    if (isPersisted) {
+      console.log('[Storage] Persistent storage granted.');
+    }
+    return isPersisted;
+  }
+  return false;
+}
+
+async function updateStorageStatusUI(isPersisted = null) {
+  const statusEl = document.getElementById('storageProtectionStatus');
+  if (!statusEl) return;
+
+  if (isPersisted === null && navigator.storage && navigator.storage.persisted) {
+    isPersisted = await navigator.storage.persisted();
+  }
+
+  if (isPersisted) {
+    statusEl.innerHTML = '🟢 <strong style="color:#1a7f37;">Protected (Persistent)</strong> - Browser will never auto-delete your cache.';
+  } else {
+    statusEl.innerHTML = '🟡 <strong style="color:#9a6700;">Best-Effort Storage</strong> - May be evicted if disk is full. Click below to request lifetime persistence.';
+  }
+}
+
+async function exportAppData() {
+  try {
+    const cachedFiles = await miniIdb.getAll();
+    const backupData = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      token: appState.token,
+      favoriteRepos: appState.favoriteRepos,
+      favoriteFiles: appState.favoriteFiles,
+      readingHistory: appState.readingHistory,
+      fontScale: appState.fontScale,
+      cachedFiles: cachedFiles
+    };
+
+    const jsonStr = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gh_explorer_backup_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showFlash('Backup JSON file exported successfully!', 'success');
+  } catch (err) {
+    console.error('Export error:', err);
+    showFlash('Failed to export backup data.', 'info');
+  }
+}
+
+async function importAppData(jsonStr) {
+  try {
+    const data = JSON.parse(jsonStr);
+    if (!data || (!data.favoriteRepos && !data.favoriteFiles && !data.token && !data.cachedFiles)) {
+      throw new Error('Invalid backup file format.');
+    }
+
+    if (data.token) {
+      appState.token = data.token;
+      localStorage.setItem('gh_pat_token', data.token);
+    }
+
+    // 1. Smart Merge Favorite Repositories (Deduplicate)
+    if (Array.isArray(data.favoriteRepos)) {
+      const mergedReposMap = new Map();
+      appState.favoriteRepos.concat(data.favoriteRepos).forEach(r => {
+        if (r && r.owner && r.name) {
+          const key = `${r.owner}/${r.name}`;
+          mergedReposMap.set(key, r);
+        }
+      });
+      appState.favoriteRepos = Array.from(mergedReposMap.values());
+      localStorage.setItem('gh_favorite_repos', JSON.stringify(appState.favoriteRepos));
+    }
+
+    // 2. Smart Merge Favorite Files (Deduplicate)
+    if (Array.isArray(data.favoriteFiles)) {
+      const mergedFilesMap = new Map();
+      appState.favoriteFiles.concat(data.favoriteFiles).forEach(f => {
+        if (f && f.owner && f.name && f.path) {
+          const key = `${f.owner}/${f.name}/${f.path}`;
+          mergedFilesMap.set(key, f);
+        }
+      });
+      appState.favoriteFiles = Array.from(mergedFilesMap.values());
+      localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    }
+
+    // 3. Smart Merge Reading History (Deduplicate & keep newest timestamp)
+    if (Array.isArray(data.readingHistory)) {
+      const mergedHistMap = new Map();
+      appState.readingHistory.concat(data.readingHistory).forEach(h => {
+        if (h && h.owner && h.name && h.path) {
+          const key = `${h.owner}/${h.name}/${h.path}`;
+          const existing = mergedHistMap.get(key);
+          if (!existing || (h.readAt || 0) > (existing.readAt || 0)) {
+            mergedHistMap.set(key, h);
+          }
+        }
+      });
+      appState.readingHistory = Array.from(mergedHistMap.values())
+        .sort((a, b) => (b.readAt || 0) - (a.readAt || 0))
+        .slice(0, 100);
+      localStorage.setItem('gh_reading_history', JSON.stringify(appState.readingHistory));
+    }
+
+    if (data.fontScale) {
+      appState.fontScale = data.fontScale;
+      localStorage.setItem('gh_font_scale', data.fontScale.toString());
+      applyFontScale(data.fontScale);
+    }
+
+    // 4. Smart Merge Cached Files in IndexedDB (keep newest content version)
+    if (Array.isArray(data.cachedFiles)) {
+      for (const item of data.cachedFiles) {
+        if (item && item.fileKey) {
+          const existing = await getIdb().get(item.fileKey);
+          if (!existing || (item.lastSyncedAt || 0) >= (existing.lastSyncedAt || 0)) {
+            await getIdb().set(item.fileKey, item);
+          }
+        }
+      }
+    }
+
+    renderRepoList();
+    renderFavoritesList();
+    renderHistoryList();
+    showFlash('Backup merged & data restored successfully!', 'success');
+  } catch (err) {
+    console.error('Import error:', err);
+    showFlash(`Import failed: ${err.message || 'Invalid file'}`, 'info');
+  }
+}
+
+function handleImportBackupFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    importAppData(e.target.result);
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+async function backupToGist() {
+  if (!appState.token) {
+    showFlash('Personal Access Token required for Gist cloud sync.', 'info');
+    return;
+  }
+  showFlash('Syncing backup to GitHub Private Gist...', 'info');
+
+  try {
+    const cachedFiles = await miniIdb.getAll();
+    const backupData = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      favoriteRepos: appState.favoriteRepos,
+      favoriteFiles: appState.favoriteFiles,
+      readingHistory: appState.readingHistory,
+      fontScale: appState.fontScale,
+      cachedFiles: cachedFiles
+    };
+
+    const gistsRes = await fetch('https://api.github.com/gists', {
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!gistsRes.ok) throw new Error(`HTTP ${gistsRes.status}`);
+    const gists = await gistsRes.json();
+    const existingGist = gists.find(g => g.description === 'GH Markdown Explorer Backup Data');
+
+    const gistPayload = {
+      description: 'GH Markdown Explorer Backup Data',
+      public: false,
+      files: {
+        'gh_explorer_backup.json': {
+          content: JSON.stringify(backupData, null, 2)
+        }
+      }
+    };
+
+    let saveRes;
+    if (existingGist) {
+      saveRes = await fetch(`https://api.github.com/gists/${existingGist.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${appState.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(gistPayload)
+      });
+    } else {
+      saveRes = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${appState.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(gistPayload)
+      });
+    }
+
+    if (saveRes.ok) {
+      showFlash('Backed up to GitHub Private Gist successfully!', 'success');
+    } else {
+      const errTxt = await saveRes.text();
+      throw new Error(`HTTP ${saveRes.status} ${errTxt}`);
+    }
+  } catch (err) {
+    console.error('Gist backup error:', err);
+    showFlash(`Cloud backup failed: Ensure PAT has 'gist' scope.`, 'info');
+  }
+}
+
+async function restoreFromGist() {
+  if (!appState.token) {
+    showFlash('Personal Access Token required.', 'info');
+    return;
+  }
+  showFlash('Fetching cloud backup from GitHub Gist...', 'info');
+
+  try {
+    const gistsRes = await fetch('https://api.github.com/gists', {
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!gistsRes.ok) throw new Error(`HTTP ${gistsRes.status}`);
+    const gists = await gistsRes.json();
+    const backupGist = gists.find(g => g.description === 'GH Markdown Explorer Backup Data');
+
+    if (!backupGist || !backupGist.files['gh_explorer_backup.json']) {
+      showFlash('No GitHub Gist backup found for this account.', 'info');
+      return;
+    }
+
+    const rawUrl = backupGist.files['gh_explorer_backup.json'].raw_url;
+    const contentRes = await fetch(rawUrl);
+    if (!contentRes.ok) throw new Error('Failed to download Gist content.');
+    const jsonStr = await contentRes.text();
+
+    await importAppData(jsonStr);
+    showFlash('Restored from GitHub Private Gist successfully!', 'success');
+  } catch (err) {
+    console.error('Gist restore error:', err);
+    showFlash(`Cloud restore failed: ${err.message}`, 'info');
   }
 }

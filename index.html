@@ -279,6 +279,7 @@
       <nav class="gh-modal-tabs">
         <button id="tabGuidePat" class="gh-modal-tab active" onclick="switchGuideTab('pat')">Create PAT</button>
         <button id="tabGuideFeatures" class="gh-modal-tab" onclick="switchGuideTab('features')">Features</button>
+        <button id="tabGuideBackup" class="gh-modal-tab" onclick="switchGuideTab('backup')">Backup & Protection</button>
       </nav>
 
       <div class="gh-modal-body">
@@ -292,7 +293,7 @@
             <div class="step-details">
               <strong>Create Token on GitHub:</strong>
               <p>Click below to open the token creation page with pre-filled scopes:</p>
-              <a href="https://github.com/settings/tokens/new?scopes=repo&description=GitHub-Markdown-Explorer" target="_blank" rel="noopener noreferrer" class="gh-btn gh-btn-primary" style="margin-top: 8px; display: inline-flex; align-items: center; gap: 6px;">
+              <a href="https://github.com/settings/tokens/new?scopes=repo,gist&description=GitHub-Markdown-Explorer" target="_blank" rel="noopener noreferrer" class="gh-btn gh-btn-primary" style="margin-top: 8px; display: inline-flex; align-items: center; gap: 6px;">
                 <svg class="octicon octicon-link-external" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
                   <path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.75.75 0 0 1 .75.75v4.146a.75.75 0 0 1-1.5 0V3.56L8.28 9.28a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l5.72-5.72h-2.29a.75.75 0 0 1 0-1.5Z"></path>
                 </svg>
@@ -305,7 +306,7 @@
             <div class="step-number">2</div>
             <div class="step-details">
               <strong>Select Permissions (Scopes):</strong>
-              <p>Check the <code>repo</code> scope (for private repos) or <code>public_repo</code> scope.</p>
+              <p>Check the <code>repo</code> scope (for private repos) and <code>gist</code> scope (for cloud backups).</p>
             </div>
           </div>
 
@@ -332,6 +333,37 @@
           <div class="feature-item">
             <h5>📁 All Repos</h5>
             <p>Explore all your GitHub repositories with favorite repos pinned on top.</p>
+          </div>
+        </div>
+
+        <!-- Tab Content 3: Data Protection & Anti-Clear Solutions -->
+        <div id="guideBackupContent" class="guide-tab-content hidden">
+          <h4>Data Protection & Anti-Clear Solutions</h4>
+          <p>Prevent data loss from browser cache clearing with 3 protection layers:</p>
+          
+          <div class="step-card" style="flex-direction: column; gap: 8px; align-items: flex-start;">
+            <strong>1. Browser Persistent Storage API</strong>
+            <p id="storageProtectionStatus">Checking storage status...</p>
+            <button class="gh-btn gh-btn-sm" onclick="requestPersistentStorage()">Enable Persistent Storage</button>
+          </div>
+
+          <div class="step-card" style="flex-direction: column; gap: 8px; align-items: flex-start;">
+            <strong>2. Offline Backup File (JSON Export & Import)</strong>
+            <p>Save all favorites, history, and offline cached pages into a <code>.json</code> file on your device.</p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="gh-btn gh-btn-primary gh-btn-sm" onclick="exportAppData()">Export Backup (.json)</button>
+              <button class="gh-btn gh-btn-sm" onclick="document.getElementById('importBackupInput').click()">Import Backup (.json)</button>
+              <input type="file" id="importBackupInput" accept=".json" class="hidden" onchange="handleImportBackupFile(event)">
+            </div>
+          </div>
+
+          <div class="step-card" style="flex-direction: column; gap: 8px; align-items: flex-start;">
+            <strong>3. GitHub Private Gist Cloud Backup</strong>
+            <p>Sync all favorites and cached pages directly to a private Gist on your GitHub account.</p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="gh-btn gh-btn-sm" onclick="backupToGist()">Backup to GitHub Gist</button>
+              <button class="gh-btn gh-btn-sm" onclick="restoreFromGist()">Restore from GitHub Gist</button>
+            </div>
           </div>
         </div>
       </div>
