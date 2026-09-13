@@ -1,0 +1,18 @@
+{
+  "name": "GitHub Markdown Explorer",
+  "short_name": "GH Explorer",
+  "description": "Mobile-First GitHub Markdown Explorer & Offline Reader",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#24292f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.jpeg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

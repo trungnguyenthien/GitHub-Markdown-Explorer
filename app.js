@@ -105,6 +105,15 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('offline', handleNetworkChange);
   handleNetworkChange();
 
+  // Register PWA Service Worker for 100% full offline mode
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      console.log('[PWA] Service Worker registered:', reg.scope);
+    }).catch((err) => {
+      console.warn('[PWA] Service Worker registration failed:', err);
+    });
+  }
+
   applyFontScale(appState.fontScale);
 
   if (window.mermaid) {
