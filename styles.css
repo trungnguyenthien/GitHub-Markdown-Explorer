@@ -545,30 +545,35 @@ body.mobile-app {
   color: #1f2328 !important;
 }
 
-.markdown-body img {
-  transform-origin: top left;
-  scale: var(--md-content-scale, 1);
+.markdown-body img:not(.plantuml-diagram img) {
   max-width: 100%;
+  height: auto;
+  width: calc(100% * var(--md-content-scale, 1));
 }
 
 .markdown-body .mermaid,
-.plantuml-diagram {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.markdown-body .plantuml-diagram {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
   margin: 16px 0;
-  padding: 12px;
+  padding: 16px;
   background-color: #f6f8fa !important;
   border: 1px solid #d0d7de;
   border-radius: 6px;
-  overflow-x: auto;
+  box-sizing: border-box;
+  text-align: center;
 }
 
-.markdown-body .mermaid svg {
-  max-width: 100% !important;
+.markdown-body .mermaid svg,
+.markdown-body .plantuml-diagram img,
+.markdown-body .plantuml-diagram svg {
+  display: inline-block !important;
+  width: calc(100% * var(--md-content-scale, 1)) !important;
+  min-width: calc(100% * var(--md-content-scale, 1)) !important;
+  max-width: none !important;
   height: auto !important;
-  transform-origin: center center;
-  scale: var(--md-content-scale, 1);
+  transform-origin: center top;
 }
 
 .raw-content-panel {
