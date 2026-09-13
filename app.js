@@ -197,7 +197,10 @@ document.addEventListener('DOMContentLoaded', () => {
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: 'loose',
-        theme: 'default'
+        theme: 'default',
+        fontSize: 14,
+        flowchart: { htmlLabels: true },
+        sequence: { showSequenceNumbers: false }
       });
     } catch (e) {
       console.warn('Mermaid init error:', e);

@@ -548,7 +548,6 @@ body.mobile-app {
 .markdown-body img:not(.plantuml-diagram img) {
   max-width: 100%;
   height: auto;
-  width: calc(100% * var(--md-content-scale, 1));
 }
 
 .markdown-body .mermaid,
@@ -569,11 +568,25 @@ body.mobile-app {
 .markdown-body .plantuml-diagram img,
 .markdown-body .plantuml-diagram svg {
   display: inline-block !important;
-  width: calc(100% * var(--md-content-scale, 1)) !important;
-  min-width: calc(100% * var(--md-content-scale, 1)) !important;
-  max-width: none !important;
+  max-width: 100% !important;
   height: auto !important;
+  zoom: var(--md-content-scale, 1);
   transform-origin: center top;
+}
+
+/* Ensure uniform font size across all diagram text labels */
+.markdown-body .mermaid text,
+.markdown-body .mermaid tspan,
+.markdown-body .mermaid span,
+.markdown-body .mermaid div,
+.markdown-body .mermaid label,
+.markdown-body .mermaid .nodeLabel,
+.markdown-body .mermaid .edgeLabel,
+.markdown-body .mermaid .label,
+.markdown-body .mermaid .actor,
+.markdown-body .mermaid .messageText {
+  font-size: calc(14px * var(--md-content-scale, 1)) !important;
+  font-family: var(--font-family-sans) !important;
 }
 
 .raw-content-panel {
