@@ -1,48 +1,51 @@
 # 📱 GitHub Markdown Explorer
 
-**GitHub Markdown Explorer** là ứng dụng Web Mobile-First tối ưu trải nghiệm duyệt, quản lý và đọc các tài liệu Markdown (`.md`) từ GitHub Repositories trực tiếp trên trình duyệt thiết bị di động và máy tính.
+**GitHub Markdown Explorer** là ứng dụng web di động giúp bạn duyệt, quản lý và đọc các tài liệu Markdown (`.md`) từ các kho lưu trữ GitHub một cách dễ dàng, mượt mà và hỗ trợ đọc ngoại tuyến không cần mạng.
 
-🌐 **Trải nghiệm ứng dụng ngay tại GitHub Pages**:  
+🌐 **Trải nghiệm ứng dụng ngay tại**:  
 👉 **[https://trungnguyenthien.github.io/GitHub-Markdown-Explorer/](https://trungnguyenthien.github.io/GitHub-Markdown-Explorer/)**
 
 ---
 
-## 🌟 Tính Năng Nổi Bật
+## 🌟 Chức Năng Nổi Bật
 
-### 1. 📱 Thiết Kế Chuyên Biệt Cho Di Động (Mobile-First UI)
-- Giao diện chuẩn **GitHub Primer Design System** sang trọng, mượt mà.
-- Thanh điều hướng đáy cố định (**Fixed Bottom Navigation Bar**) với 5 Tab truy cập 1 chạm:
-  - 📄 **Fav Page**: Danh sách các trang Markdown yêu thích & nút **Sync All** làm mới tất cả dữ liệu.
-  - ⭐ **Fav Repo**: Truy cập nhanh các kho lưu trữ quan trọng đã đánh dấu sao.
-  - 📁 **All Repo**: Khám phá toàn bộ repository với tính năng tự động ghim repo yêu thích lên đầu danh sách và ô tìm kiếm tức thì.
-  - 🕒 **History**: Nhật ký lưu lại lịch sử các trang đã đọc (trang vừa đọc gần nhất nằm ở vị trí top).
-  - 📖 **Reader**: Trình xem tài liệu Markdown toàn màn hình hỗ trợ chế độ xem Raw / Preview.
+- 📱 **Giao diện di động tiện lợi**: Thanh 5 Tab điều hướng cố định dưới đáy màn hình giúp thao tác bằng 1 tay:
+  - 📄 **Fav Page**: Quản lý bài viết yêu thích & nút đồng bộ làm mới dữ liệu.
+  - ⭐ **Fav Repo**: Truy cập nhanh các kho lưu trữ đã đánh dấu sao.
+  - 📁 **All Repo**: Tìm kiếm & xem tất cả các kho lưu trữ (tự động ghim các kho yêu thích lên đầu).
+  - 🕒 **History**: Xem lại lịch sử các bài đã đọc (bài đọc gần nhất tự động ở trên cùng).
+  - 📖 **Reader**: Trình đọc bài viết hỗ trợ chuyển đổi giữa chế độ văn bản và mã nguồn (Raw).
+- ⚡ **Đọc ngoại tuyến (Offline)**: Đọc lại toàn bộ nội dung các bài viết đã yêu thích ngay cả khi không có kết nối mạng Internet hoặc đang bật Chế độ máy bay.
+- ☀️ **Giao diện sáng dễ đọc**: Màn hình luôn hiển thị màu sáng đồng nhất cho văn bản, bảng biểu, sơ đồ và mã nguồn, giúp đọc tài liệu rõ ràng và không mỏi mắt.
+- 📐 **Hỗ trợ sơ đồ & mã nguồn**: Tự động hiển thị các sơ đồ vẽ bằng Mermaid, PlantUML và làm nổi bật cú pháp mã lập trình.
+- 🔍 **Tùy chỉnh cỡ chữ**: Nút phóng to/thu nhỏ nội dung văn bản (+ / -) giúp điều chỉnh kích thước chữ vừa mắt nhất.
 
-### 2. ⚡ Chế Độ Ngoại Tuyến & Lưu Cache (Offline Mode)
-- Tự động lưu bản sao tài liệu yêu thích vào bộ nhớ local **IndexedDB** (`miniIdb`).
-- Đọc tài liệu Markdown bình thường ngay cả khi không có kết nối Internet.
+---
 
-### 3. 📐 Hỗ Trợ Render Sơ Đồ Diagram Sinh Động
-- Tự động nhận diện và render sơ đồ **Mermaid.js** (flowchart, sequence diagram, class diagram...).
-- Render sơ đồ **PlantUML** dạng SVG mượt mà.
-- Highlight cú pháp code block với **Highlight.js**.
+## 📲 Hướng Dẫn Cài Đặt Ứng Dụng Offline Trên Điện Thoại
 
-### 4. 🔍 Tùy Chỉnh Phóng To / Thu Nhỏ Văn Bản (Zoom Scaling)
-- Nút điều chỉnh kích thước chữ (**- / 100% / +**) áp dụng đồng bộ toàn bộ tài liệu Markdown (từ 75% đến 200%).
+Bạn có thể cài ứng dụng trực tiếp lên màn hình chính điện thoại để sử dụng như một ứng dụng độc lập ngay cả khi không có mạng:
 
-### 5. 🔒 An Toàn & Bảo Mật Tuyệt Đối (Zero-Backend)
-- Chạy 100% Client-Side trực tiếp trên trình duyệt, không thông qua bất kỳ server trung gian nào.
-- Sử dụng **GitHub Personal Access Token (PAT)** được lưu bảo mật trong `localStorage` trình duyệt của bạn.
+### 🍎 Trên iPhone / iPad (Trình duyệt Safari)
+1. Mở liên kết trang web bằng trình duyệt **Safari**.
+2. Nhấp vào nút **Chia sẻ** (biểu tượng hình vuông có mũi tên hướng lên ở thanh dưới cùng).
+3. Cuộn xuống và chọn **Thêm vào Màn hình chính** (*Add to Home Screen*).
+4. Bấm **Thêm** (*Add*) ở góc trên bên phải. 
+
+### 🤖 Trên Android (Trình duyệt Chrome)
+1. Mở liên kết trang web bằng trình duyệt **Chrome**.
+2. Nhấp vào biểu tượng **Tùy chọn** (dấu 3 chấm góc trên bên phải).
+3. Chọn **Thêm vào Màn hình chính** (*Add to Home screen*) hoặc **Cài đặt ứng dụng** (*Install app*).
+4. Xác nhận **Thêm** (*Add*) để hoàn tất.
 
 ---
 
 ## 🚀 Hướng Dẫn Sử Dụng Nhanh
 
-1. Truy cập liên kết: **[https://trungnguyenthien.github.io/GitHub-Markdown-Explorer/](https://trungnguyenthien.github.io/GitHub-Markdown-Explorer/)**
-2. Nhập mã **Personal Access Token (PAT)** cá nhân (cần quyền `repo` hoặc `public_repo`).
-   - *Ứng dụng có sẵn nút Hướng dẫn từng bước cách tạo PAT GitHub.*
-3. Chọn một kho lưu trữ để bắt đầu duyệt cây thư mục và đọc các tài liệu Markdown.
-4. Bấm biểu tượng ngôi sao ⭐ trên tài liệu để đưa vào danh sách **Fav Page** & lưu cache đọc ngoại tuyến.
+1. Mở ứng dụng và nhập mã **Personal Access Token (PAT)** từ GitHub (có sẵn hướng dẫn tạo PAT đơn giản trong app).
+2. Chọn kho lưu trữ và thư mục chứa tài liệu Markdown bạn muốn đọc.
+3. Nhấp biểu tượng **Ngôi sao ⭐** trên bài viết để thêm vào danh sách **Fav Page**.
+4. Bài viết yêu thích sẽ tự động được lưu trữ trên thiết bị. Bạn có thể mở lại ứng dụng và đọc lại các bài viết này bất kỳ lúc nào kể cả khi không có kết nối mạng.
 
 ---
 
@@ -52,4 +55,4 @@
 - **Live Demo**: [https://trungnguyenthien.github.io/GitHub-Markdown-Explorer/](https://trungnguyenthien.github.io/GitHub-Markdown-Explorer/)
 
 ---
-*Phát triển với ❤️ cho cộng đồng lập trình viên yêu thích Markdown trên di động.*
+*Phát triển với ❤️ cho trải nghiệm đọc tài liệu Markdown trên di động.*
