@@ -359,9 +359,12 @@
 
           <div class="step-card" style="flex-direction: column; gap: 8px; align-items: flex-start;">
             <strong>3. GitHub Private Gist Cloud Backup</strong>
-            <p>Sync all favorites and cached pages directly to a private Gist on your GitHub account.</p>
+            <p>Sync all favorites and cached pages directly to a private Gist on your GitHub account (Auto-syncs every 1 minute).</p>
+            <div id="gistAutoSyncStatus" style="font-size: 13px; color: var(--gh-text-secondary); background: var(--gh-bg-secondary, #f6f8fa); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--gh-border-color); width: 100%; box-sizing: border-box;">
+              Checking auto-sync status...
+            </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button class="gh-btn gh-btn-sm" onclick="backupToGist()">Backup to GitHub Gist</button>
+              <button class="gh-btn gh-btn-sm" onclick="backupToGist()">Backup to GitHub Gist Now</button>
               <button class="gh-btn gh-btn-sm" onclick="restoreFromGist()">Restore from GitHub Gist</button>
             </div>
           </div>

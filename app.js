@@ -107,8 +107,63 @@ const appState = {
   isGuideOpen: false,
   activeGuideTab: 'pat',
   isRawView: false,
-  syncStatus: {}
+  syncStatus: {},
+  hasUnsavedChanges: false,
+  lastGistBackupTime: localStorage.getItem('gh_last_gist_backup_time') || null,
+  autoGistBackupTimer: null
 };
+
+function markStateDirty() {
+  appState.hasUnsavedChanges = true;
+  updateGistAutoSyncStatus();
+}
+
+function updateGistAutoSyncStatus(statusMsg = null) {
+  const el = document.getElementById('gistAutoSyncStatus');
+  if (!el) return;
+
+  if (!appState.token) {
+    el.innerHTML = '<span style="color: var(--gh-text-muted);">Auto Sync: Disabled (PAT required)</span>';
+    return;
+  }
+
+  let timeStr = 'Never';
+  if (appState.lastGistBackupTime) {
+    try {
+      const date = new Date(appState.lastGistBackupTime);
+      timeStr = date.toLocaleTimeString();
+    } catch (e) {}
+  }
+
+  let statusBadge = '<span style="color: #2da44e; font-weight: 600;">Active (Every 1 min)</span>';
+  if (statusMsg === 'Syncing...') {
+    statusBadge = '<span style="color: #0969da; font-weight: 600;">Syncing...</span>';
+  } else if (statusMsg === 'Failed') {
+    statusBadge = '<span style="color: #cf222e; font-weight: 600;">Failed (Check PAT gist scope)</span>';
+  } else if (statusMsg === 'Offline') {
+    statusBadge = '<span style="color: #9a6700; font-weight: 600;">Paused (Offline)</span>';
+  }
+
+  let dirtyBadge = appState.hasUnsavedChanges
+    ? ' <span style="color: #9a6700; font-size: 11px; font-weight: 600;">(Unsaved Changes)</span>'
+    : ' <span style="color: #2da44e; font-size: 11px; font-weight: 600;">(Synced)</span>';
+
+  el.innerHTML = `Auto Cloud Sync (Gist): ${statusBadge} | Last synced: <strong>${timeStr}</strong> ${dirtyBadge}`;
+}
+
+function initAutoGistBackup() {
+  if (appState.autoGistBackupTimer) return;
+  // Trigger initial backup check if token present
+  if (appState.token && !appState.isOffline) {
+    backupToGist(true);
+  }
+  // Schedule auto sync every 60 seconds (1 minute)
+  appState.autoGistBackupTimer = setInterval(() => {
+    if (appState.token && !appState.isOffline) {
+      backupToGist(true);
+    }
+  }, 60000);
+}
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -152,6 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (appState.token) {
     showAppShell();
     loadRepos();
+    initAutoGistBackup();
   } else {
     showPatCard();
   }
@@ -377,6 +433,7 @@ async function connectWithToken() {
       showFlash(`Welcome ${userData.login}! Connected successfully.`, 'success');
       showAppShell();
       loadRepos();
+      initAutoGistBackup();
     } else if (res.status === 401) {
       errorDiv.textContent = 'Invalid or expired Personal Access Token.';
       errorDiv.classList.remove('hidden');
@@ -517,6 +574,7 @@ function toggleFavoriteRepo(owner, name) {
   }
 
   localStorage.setItem('gh_favorite_repos', JSON.stringify(appState.favoriteRepos));
+  markStateDirty();
   renderRepoList();
   renderFavoritesList();
   updateRepoFavoriteStar();
@@ -962,6 +1020,7 @@ async function toggleFavoriteFile(owner, name, path) {
   }
 
   localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+  markStateDirty();
   updateViewerFavoriteStar();
   renderFavoritesList();
   if (appState.mobileView === 'tree') renderFileTree();
@@ -974,6 +1033,7 @@ async function cacheFavoriteFile(owner, name, path, content = null, sha = '') {
   if (content) {
     const data = { fileKey, owner, name, path, content, sha, lastSyncedAt: Date.now() };
     await getIdb().set(fileKey, data);
+    markStateDirty();
     return;
   }
 
@@ -1172,6 +1232,7 @@ function addToHistory(owner, name, path) {
     appState.readingHistory = appState.readingHistory.slice(0, 100);
   }
   localStorage.setItem('gh_reading_history', JSON.stringify(appState.readingHistory));
+  markStateDirty();
   renderHistoryList();
 }
 
@@ -1325,6 +1386,7 @@ function switchGuideTab(tabName) {
     if (tabBackup) tabBackup.classList.add('active');
     if (contentBackup) contentBackup.classList.remove('hidden');
     updateStorageStatusUI();
+    updateGistAutoSyncStatus();
   }
 }
 
@@ -1483,12 +1545,27 @@ function handleImportBackupFile(event) {
   reader.readAsText(file);
 }
 
-async function backupToGist() {
+async function backupToGist(isSilent = false) {
   if (!appState.token) {
-    showFlash('Personal Access Token required for Gist cloud sync.', 'info');
+    if (!isSilent) showFlash('Personal Access Token required for Gist cloud sync.', 'info');
+    updateGistAutoSyncStatus();
     return;
   }
-  showFlash('Syncing backup to GitHub Private Gist...', 'info');
+
+  if (appState.isOffline) {
+    if (!isSilent) showFlash('Cannot sync Gist while offline.', 'info');
+    updateGistAutoSyncStatus('Offline');
+    return;
+  }
+
+  if (isSilent && !appState.hasUnsavedChanges) {
+    return;
+  }
+
+  if (!isSilent) {
+    showFlash('Syncing backup to GitHub Private Gist...', 'info');
+  }
+  updateGistAutoSyncStatus('Syncing...');
 
   try {
     const cachedFiles = await miniIdb.getAll();
@@ -1547,14 +1624,23 @@ async function backupToGist() {
     }
 
     if (saveRes.ok) {
-      showFlash('Backed up to GitHub Private Gist successfully!', 'success');
+      appState.hasUnsavedChanges = false;
+      appState.lastGistBackupTime = new Date().toISOString();
+      localStorage.setItem('gh_last_gist_backup_time', appState.lastGistBackupTime);
+      updateGistAutoSyncStatus();
+      if (!isSilent) {
+        showFlash('Backed up to GitHub Private Gist successfully!', 'success');
+      }
     } else {
       const errTxt = await saveRes.text();
       throw new Error(`HTTP ${saveRes.status} ${errTxt}`);
     }
   } catch (err) {
     console.error('Gist backup error:', err);
-    showFlash(`Cloud backup failed: Ensure PAT has 'gist' scope.`, 'info');
+    updateGistAutoSyncStatus('Failed');
+    if (!isSilent) {
+      showFlash(`Cloud backup failed: Ensure PAT has 'gist' scope.`, 'info');
+    }
   }
 }
 
