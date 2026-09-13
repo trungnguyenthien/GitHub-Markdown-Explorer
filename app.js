@@ -249,6 +249,7 @@ function switchMobileView(targetView, skipPushState = false) {
   }
 
   updateHeaderBackButton();
+  saveCurrentLocationState();
 }
 
 function updateHeaderBackButton() {
@@ -282,6 +283,51 @@ function handleHeaderBack(isPopState = false) {
     }
   } else {
     switchMobileView('favPages', true);
+  }
+}
+
+function saveCurrentLocationState() {
+  try {
+    const state = {
+      view: appState.mobileView,
+      currentRepo: appState.currentRepo,
+      currentPath: appState.currentPath,
+      currentFile: appState.currentFile
+    };
+    localStorage.setItem('gh_last_location_state', JSON.stringify(state));
+  } catch (e) {}
+}
+
+async function restoreAppLocation() {
+  let saved = null;
+  try {
+    const str = localStorage.getItem('gh_last_location_state');
+    if (str) saved = JSON.parse(str);
+  } catch (e) {}
+
+  let hashView = window.location.hash ? window.location.hash.replace('#/', '') : null;
+  if (hashView === 'favorites') hashView = 'favPages';
+  if (hashView === 'repos') hashView = 'allRepos';
+  if (hashView === 'reader') hashView = 'viewer';
+
+  const targetView = (hashView && ['favPages', 'favRepos', 'allRepos', 'history', 'tree', 'viewer'].includes(hashView))
+    ? hashView
+    : (saved ? saved.view : 'favPages');
+
+  if (saved) {
+    if (saved.currentRepo) appState.currentRepo = saved.currentRepo;
+    if (saved.currentPath) appState.currentPath = saved.currentPath;
+    if (saved.currentFile) appState.currentFile = saved.currentFile;
+  }
+
+  if (targetView === 'viewer' && appState.currentFile) {
+    switchMobileView('viewer', true);
+    openMarkdownFile(appState.currentFile.owner, appState.currentFile.name, appState.currentFile.path);
+  } else if (targetView === 'tree' && appState.currentRepo) {
+    switchMobileView('tree', true);
+    openRepo(appState.currentRepo.owner, appState.currentRepo.name, true);
+  } else {
+    switchMobileView(targetView || 'favPages', true);
   }
 }
 
@@ -349,7 +395,7 @@ function showAppShell() {
   document.getElementById('btnSettings').classList.remove('hidden');
   document.getElementById('btnSettings').onclick = disconnectToken;
 
-  switchMobileView('favPages');
+  restoreAppLocation();
 }
 
 // --- LOGIC 11: Disconnect PAT ---
@@ -357,6 +403,7 @@ function disconnectToken() {
   if (confirm('Are you sure you want to disconnect PAT? Favorites and Cache will be preserved.')) {
     appState.token = null;
     localStorage.removeItem('gh_pat_token');
+    localStorage.removeItem('gh_last_location_state');
     appState.repos = [];
     appState.currentRepo = null;
     appState.currentFile = null;
@@ -462,9 +509,11 @@ function toggleFavoriteRepo(owner, name) {
 }
 
 // --- LOGIC 4: Open Repo & Fetch Tree ---
-async function openRepo(owner, name) {
+async function openRepo(owner, name, keepPath = false) {
   appState.currentRepo = { owner, name };
-  appState.currentPath = [];
+  if (!keepPath) {
+    appState.currentPath = [];
+  }
   renderRepoList();
   
   switchMobileView('tree');
@@ -533,23 +582,35 @@ function renderFileTree() {
     const isFolder = entry.type === 'tree';
     const isMd = entry.path.endsWith('.md');
     const name = entry.path.split('/').pop();
+    const isFav = isMd && appState.currentRepo ? isFileFavorited(appState.currentRepo.owner, appState.currentRepo.name, entry.path) : false;
 
     if (isFolder) {
       return `
         <div class="tree-row" onclick="navigateFolder('${name}')">
-          <svg class="octicon octicon-file-directory" viewBox="0 0 16 16" width="18" height="18" fill="#54a3ff">
-            <path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z"></path>
-          </svg>
-          <span class="tree-name">${name}</span>
+          <div class="tree-row-left">
+            <svg class="octicon octicon-file-directory" viewBox="0 0 16 16" width="18" height="18" fill="#54a3ff">
+              <path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z"></path>
+            </svg>
+            <span class="tree-name">${name}</span>
+          </div>
         </div>
       `;
     } else {
       return `
         <div class="tree-row ${isMd ? 'is-md' : ''}" onclick="${isMd ? `openMarkdownFile('${appState.currentRepo.owner}', '${appState.currentRepo.name}', '${entry.path}')` : ''}">
-          <svg class="octicon ${isMd ? 'octicon-file-code' : 'octicon-file'}" viewBox="0 0 16 16" width="18" height="18" fill="${isMd ? '#0969da' : '#656d76'}">
-            <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
-          </svg>
-          <span class="tree-name">${name}</span>
+          <div class="tree-row-left">
+            <svg class="octicon ${isMd ? 'octicon-file-code' : 'octicon-file'}" viewBox="0 0 16 16" width="18" height="18" fill="${isMd ? '#0969da' : '#656d76'}">
+              <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
+            </svg>
+            <span class="tree-name">${name}</span>
+          </div>
+          ${isMd ? `
+            <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteFile('${appState.currentRepo.owner}', '${appState.currentRepo.name}', '${entry.path}')" title="Favorite">
+              <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+                <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
+              </svg>
+            </button>
+          ` : ''}
         </div>
       `;
     }
@@ -570,6 +631,7 @@ function navigateFolder(folderName, skipPushState = false) {
   updateBreadcrumb();
   renderFileTree();
   updateHeaderBackButton();
+  saveCurrentLocationState();
 }
 
 function updateBreadcrumb() {
@@ -594,6 +656,7 @@ function updateBreadcrumb() {
 // --- LOGIC 6: Open Markdown File ---
 async function openMarkdownFile(owner, name, path) {
   appState.currentFile = { owner, name, path };
+  saveCurrentLocationState();
   const fileKey = `${owner}/${name}/${path}`;
 
   addToHistory(owner, name, path);
@@ -865,6 +928,8 @@ async function toggleFavoriteFile(owner, name, path) {
   localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
   updateViewerFavoriteStar();
   renderFavoritesList();
+  if (appState.mobileView === 'tree') renderFileTree();
+  if (appState.mobileView === 'history') renderHistoryList();
 }
 
 async function cacheFavoriteFile(owner, name, path, content = null, sha = '') {

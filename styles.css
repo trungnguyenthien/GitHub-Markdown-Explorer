@@ -393,11 +393,19 @@ body.mobile-app {
   min-height: 48px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--color-border-default);
   cursor: pointer;
   font-size: 14px;
+}
+.tree-row-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 .tree-row:last-child {
   border-bottom: none;
