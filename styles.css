@@ -488,22 +488,53 @@ body.mobile-app {
   min-height: 300px;
 }
 
-/* GitHub Markdown Body Custom Font Scale */
+/* GitHub Markdown Body Custom Font Scale & Strict Light Mode Overrides */
 .markdown-body {
+  color-scheme: light !important;
   font-size: calc(15px * var(--md-content-scale, 1)) !important;
-  color: var(--color-fg-default) !important;
+  color: #1f2328 !important;
   background-color: transparent !important;
 }
 
-.markdown-body h1 { font-size: calc(1.75em * var(--md-content-scale, 1)) !important; }
-.markdown-body h2 { font-size: calc(1.4em * var(--md-content-scale, 1)) !important; }
-.markdown-body h3 { font-size: calc(1.2em * var(--md-content-scale, 1)) !important; }
+.markdown-body h1 { font-size: calc(1.75em * var(--md-content-scale, 1)) !important; color: #1f2328 !important; }
+.markdown-body h2 { font-size: calc(1.4em * var(--md-content-scale, 1)) !important; color: #1f2328 !important; }
+.markdown-body h3 { font-size: calc(1.2em * var(--md-content-scale, 1)) !important; color: #1f2328 !important; }
 .markdown-body pre, .markdown-body code { font-size: calc(85% * var(--md-content-scale, 1)) !important; }
+
+/* Force Light Mode Overrides for Code Blocks, Tables & Syntax Highlighting */
+.markdown-body pre,
+.markdown-body pre code,
+.markdown-body code.hljs,
+.hljs {
+  background-color: #f6f8fa !important;
+  color: #1f2328 !important;
+  border: 1px solid #d0d7de !important;
+}
+
+.markdown-body code:not(pre code) {
+  background-color: rgba(175, 184, 193, 0.2) !important;
+  color: #1f2328 !important;
+}
 
 .markdown-body table {
   display: block;
   width: 100%;
   overflow-x: auto;
+  background-color: #ffffff !important;
+}
+
+.markdown-body table tr {
+  background-color: #ffffff !important;
+}
+
+.markdown-body table tr:nth-child(2n) {
+  background-color: #f6f8fa !important;
+}
+
+.markdown-body table th,
+.markdown-body table td {
+  border: 1px solid #d0d7de !important;
+  color: #1f2328 !important;
 }
 
 .markdown-body img {
@@ -512,12 +543,16 @@ body.mobile-app {
   max-width: 100%;
 }
 
-.markdown-body .mermaid {
+.markdown-body .mermaid,
+.plantuml-diagram {
   display: flex;
   justify-content: center;
   align-items: center;
   margin: 16px 0;
-  background-color: transparent;
+  padding: 12px;
+  background-color: #f6f8fa !important;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
   overflow-x: auto;
 }
 
@@ -534,7 +569,9 @@ body.mobile-app {
   white-space: pre-wrap;
   word-break: break-all;
   padding: 12px;
-  background-color: var(--color-canvas-subtle);
+  background-color: #f6f8fa !important;
+  color: #1f2328 !important;
+  border: 1px solid #d0d7de !important;
   border-radius: 6px;
 }
 
