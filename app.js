@@ -24,6 +24,14 @@ function base64ToUtf8(base64Str) {
   }
 }
 
+function getParentDirPath(filePath) {
+  if (!filePath) return '/';
+  const parts = filePath.split('/');
+  if (parts.length <= 1) return '/';
+  parts.pop();
+  return parts.join('/');
+}
+
 // --- HELPER: Self-Contained Vanilla IndexedDB Helper ---
 const miniIdb = {
   dbPromise: null,
@@ -693,13 +701,17 @@ function renderFileTree() {
         </div>
       `;
     } else {
+      const cleanRepoName = appState.currentRepo ? ((appState.currentRepo.name || '').includes('/') ? appState.currentRepo.name.split('/').pop() : appState.currentRepo.name) : '';
       return `
         <div class="tree-row ${isMd ? 'is-md' : ''}" onclick="${isMd ? `openMarkdownFile('${appState.currentRepo.owner}', '${appState.currentRepo.name}', '${entry.path}')` : ''}">
           <div class="tree-row-left">
             <svg class="octicon ${isMd ? 'octicon-file-code' : 'octicon-file'}" viewBox="0 0 16 16" width="18" height="18" fill="${isMd ? '#0969da' : '#656d76'}">
               <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
             </svg>
-            <span class="tree-name">${name}</span>
+            <div>
+              ${isMd ? `<div class="repo-desc" style="font-size: 11px; color: var(--color-fg-muted); margin-bottom: 1px;">[${cleanRepoName}]:[${getParentDirPath(entry.path)}]</div>` : ''}
+              <span class="tree-name">${name}</span>
+            </div>
           </div>
           ${isMd ? `
             <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteFile('${appState.currentRepo.owner}', '${appState.currentRepo.name}', '${entry.path}')" title="Favorite">
@@ -759,7 +771,12 @@ async function openMarkdownFile(owner, name, path) {
   addToHistory(owner, name, path);
   switchMobileView('viewer');
 
-  document.getElementById('viewerFileName').textContent = path.split('/').pop();
+  const cleanRepoName = (name || '').includes('/') ? name.split('/').pop() : name;
+  const fileName = path.split('/').pop();
+  const viewerTitleEl = document.getElementById('viewerFileName');
+  if (viewerTitleEl) {
+    viewerTitleEl.innerHTML = `<div class="repo-desc" style="font-size: 11px; color: var(--color-fg-muted); line-height: 1.2;">[${cleanRepoName}]:[${getParentDirPath(path)}]</div><div style="font-weight: 600; font-size: 14px; color: var(--gh-text-primary); line-height: 1.3;">${fileName}</div>`;
+  }
   document.getElementById('linkOpenGithub').href = `https://github.com/${owner}/${name}/blob/${appState.currentRepo ? appState.currentRepo.defaultBranch || 'main' : 'main'}/${path}`;
 
   updateViewerFavoriteStar();
@@ -1096,8 +1113,8 @@ async function renderFavoritesList() {
               <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
             </svg>
             <div>
+              <div class="repo-desc">[${cleanRepoName}]:[${getParentDirPath(file.path)}]${syncText}</div>
               <div class="repo-name">${file.path.split('/').pop()}</div>
-              <div class="repo-desc">${cleanRepoName}${syncText}</div>
             </div>
           </div>
           <button class="btn-star-icon favorited" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')" title="Favorite">
@@ -1260,8 +1277,8 @@ function renderHistoryList() {
             <path d="m.427 1.927 1.215 1.215a8.002 8.002 0 1 1-1.6 5.685.75.75 0 1 1 1.493-.154 6.5 6.5 0 1 0 1.3-4.623l1.393 1.393a.75.75 0 0 1-.53 1.284H.75A.75.75 0 0 1 0 5.927V3.18a.75.75 0 0 1 1.28-.53l-.853-.723ZM8 4.5a.75.75 0 0 1 .75.75v3.19l2.22 2.22a.75.75 0 0 1-1.06 1.06l-2.5-2.5A.75.75 0 0 1 7.25 8.5V5.25A.75.75 0 0 1 8 4.5Z"></path>
           </svg>
           <div>
+            <div class="repo-desc">[${cleanRepoName}]:[${getParentDirPath(file.path)}] • <span class="text-muted">${timeAgo}</span></div>
             <div class="repo-name">${file.path.split('/').pop()}</div>
-            <div class="repo-desc">${cleanRepoName} • <span class="text-muted">${timeAgo}</span></div>
           </div>
         </div>
         <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')" title="Favorite">
