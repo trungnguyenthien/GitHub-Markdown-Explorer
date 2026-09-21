@@ -510,18 +510,30 @@ body.mobile-app {
 .markdown-body pre, .markdown-body code { font-size: calc(85% * var(--md-content-scale, 1)) !important; }
 
 /* Force Light Mode Overrides for Code Blocks, Tables & Syntax Highlighting */
-.markdown-body pre,
-.markdown-body pre code,
-.markdown-body code.hljs,
-.hljs {
+.markdown-body pre {
   background-color: #f6f8fa !important;
   color: #1f2328 !important;
   border: 1px solid #d0d7de !important;
+  border-radius: 6px !important;
+  padding: 16px !important;
+}
+
+.markdown-body pre code,
+.markdown-body pre code.hljs,
+.markdown-body pre .hljs {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
 }
 
 .markdown-body code:not(pre code) {
   background-color: rgba(175, 184, 193, 0.2) !important;
   color: #1f2328 !important;
+  border-radius: 6px !important;
+  padding: 0.2em 0.4em !important;
 }
 
 .markdown-body table {
