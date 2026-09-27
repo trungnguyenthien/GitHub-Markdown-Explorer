@@ -537,11 +537,15 @@ function renderRepoList(filteredList = null) {
     return;
   }
 
-  // Sort: Favorited repos on top
+  // Sort: Favorited repos on top, then by most recently updated/modified first
   list = [...list].sort((a, b) => {
     const aFav = isRepoFavorited(a.owner, a.name) ? 1 : 0;
     const bFav = isRepoFavorited(b.owner, b.name) ? 1 : 0;
-    return bFav - aFav;
+    if (bFav !== aFav) return bFav - aFav;
+
+    const aTime = a.lastModified || (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
+    const bTime = b.lastModified || (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
+    return bTime - aTime;
   });
 
   container.innerHTML = list.map(repo => {
@@ -580,7 +584,9 @@ function toggleFavoriteRepo(owner, name) {
     appState.favoriteRepos.splice(index, 1);
     showFlash(`Removed ${owner}/${name} from Favorites.`, 'info');
   } else {
-    appState.favoriteRepos.push({ owner, name });
+    const repoObj = appState.repos.find(r => r.owner === owner && r.name === name);
+    const updatedAt = repoObj && repoObj.updatedAt ? new Date(repoObj.updatedAt).getTime() : Date.now();
+    appState.favoriteRepos.unshift({ owner, name, updatedAt, lastModified: Date.now(), addedAt: Date.now() });
     showFlash(`Added ${owner}/${name} to Favorites!`, 'success');
   }
 
@@ -614,6 +620,12 @@ function updateRepoFavoriteStar() {
 
 // --- LOGIC 4: Open Repo & Fetch Tree ---
 async function openRepo(owner, name, keepPath = false) {
+  const favRepo = appState.favoriteRepos.find(r => r.owner === owner && r.name === name);
+  if (favRepo) {
+    favRepo.lastModified = Date.now();
+    localStorage.setItem('gh_favorite_repos', JSON.stringify(appState.favoriteRepos));
+  }
+
   appState.currentRepo = { owner, name };
   if (!keepPath) {
     appState.currentPath = [];
@@ -767,6 +779,12 @@ async function openMarkdownFile(owner, name, path) {
   appState.currentFile = { owner, name, path };
   saveCurrentLocationState();
   const fileKey = `${owner}/${name}/${path}`;
+
+  const favFile = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+  if (favFile) {
+    favFile.lastModified = Date.now();
+    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+  }
 
   addToHistory(owner, name, path);
   switchMobileView('viewer');
@@ -1029,7 +1047,7 @@ async function toggleFavoriteFile(owner, name, path) {
     try { await getIdb().del(fileKey); } catch (err) {}
     showFlash('Removed file from Favorites.', 'info');
   } else {
-    appState.favoriteFiles.push({ owner, name, path });
+    appState.favoriteFiles.unshift({ owner, name, path, lastModified: Date.now(), addedAt: Date.now() });
     showFlash('Added file to Favorites & Cached offline!', 'success');
     
     if (appState.currentFileContent && appState.currentFile && appState.currentFile.path === path) {
@@ -1049,6 +1067,12 @@ async function toggleFavoriteFile(owner, name, path) {
 
 async function cacheFavoriteFile(owner, name, path, content = null, sha = '') {
   const fileKey = `${owner}/${name}/${path}`;
+
+  const favFile = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+  if (favFile) {
+    favFile.lastModified = Date.now();
+    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+  }
   
   if (content) {
     const data = { fileKey, owner, name, path, content, sha, lastSyncedAt: Date.now() };
@@ -1094,18 +1118,28 @@ async function renderFavoritesList() {
   if (appState.favoriteFiles.length === 0) {
     favFilesContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No favorite pages yet.</p></div>';
   } else {
-    const fileItemsHtml = await Promise.all(appState.favoriteFiles.map(async file => {
+    const fileItems = await Promise.all(appState.favoriteFiles.map(async file => {
       const cleanRepoName = (file.name || '').includes('/') ? file.name.split('/').pop() : file.name;
       const fileKey = `${file.owner}/${cleanRepoName}/${file.path}`;
+      let syncTime = 0;
       let syncText = '';
       try {
         const cached = await getIdb().get(fileKey);
         if (cached && cached.lastSyncedAt) {
+          syncTime = cached.lastSyncedAt;
           syncText = ` • <span class="text-muted">Synced ${formatTimeAgo(cached.lastSyncedAt)}</span>`;
         }
       } catch (e) {}
 
-      const isFav = isFileFavorited(file.owner, file.name, file.path);
+      const lastModifiedTime = file.lastModified || file.updatedAt || syncTime || file.addedAt || 0;
+      return { file, cleanRepoName, syncText, lastModifiedTime };
+    }));
+
+    // Sort favorite pages by most recently modified / accessed / synced first
+    fileItems.sort((a, b) => b.lastModifiedTime - a.lastModifiedTime);
+
+    const fileItemsHtml = fileItems.map(item => {
+      const { file, cleanRepoName, syncText } = item;
       return `
         <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
           <div class="repo-item-main">
@@ -1124,14 +1158,23 @@ async function renderFavoritesList() {
           </button>
         </div>
       `;
-    }));
+    });
     favFilesContainer.innerHTML = fileItemsHtml.join('');
   }
 
   if (appState.favoriteRepos.length === 0) {
     favReposContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No favorite repositories yet.</p></div>';
   } else {
-    favReposContainer.innerHTML = appState.favoriteRepos.map(repo => {
+    // Sort favorite repos by most recently modified / accessed / added first
+    const sortedFavRepos = [...appState.favoriteRepos].sort((a, b) => {
+      const repoA = appState.repos.find(r => r.owner === a.owner && r.name === a.name);
+      const repoB = appState.repos.find(r => r.owner === b.owner && r.name === b.name);
+      const timeA = a.lastModified || a.updatedAt || (repoA && repoA.updatedAt ? new Date(repoA.updatedAt).getTime() : 0) || a.addedAt || 0;
+      const timeB = b.lastModified || b.updatedAt || (repoB && repoB.updatedAt ? new Date(repoB.updatedAt).getTime() : 0) || b.addedAt || 0;
+      return timeB - timeA;
+    });
+
+    favReposContainer.innerHTML = sortedFavRepos.map(repo => {
       const cleanRepoName = (repo.name || '').includes('/') ? repo.name.split('/').pop() : repo.name;
       return `
         <div class="gh-action-item" onclick="openRepo('${repo.owner}', '${repo.name}')">
@@ -1265,7 +1308,9 @@ function renderHistoryList() {
     return;
   }
 
-  container.innerHTML = appState.readingHistory.map(file => {
+  const sortedHistory = [...appState.readingHistory].sort((a, b) => (b.readAt || 0) - (a.readAt || 0));
+
+  container.innerHTML = sortedHistory.map(file => {
     const timeAgo = formatTimeAgo(file.readAt);
     const isFav = isFileFavorited(file.owner, file.name, file.path);
     const cleanRepoName = (file.name || '').includes('/') ? file.name.split('/').pop() : file.name;
