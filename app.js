@@ -774,6 +774,143 @@ function updateBreadcrumb() {
   container.innerHTML = html;
 }
 
+function formatCommitTime(dateInput) {
+  if (!dateInput) return 'vừa xong';
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return String(dateInput);
+    const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const ago = formatTimeAgo(d.getTime());
+    return `${dateStr} ${timeStr} (${ago})`;
+  } catch (e) {
+    return String(dateInput);
+  }
+}
+
+async function fetchLatestCommitInfo(owner, name, path) {
+  if (!appState.token) return null;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/commits?path=${encodeURIComponent(path)}&page=1&per_page=1`, {
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const item = data[0];
+        return {
+          sha: item.sha,
+          date: item.commit ? (item.commit.committer?.date || item.commit.author?.date) : null
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Fetch commit info error:', e);
+  }
+  return null;
+}
+
+async function checkAndUpdatePageIfModified(owner, name, path, cached) {
+  updateFileSyncBadge('syncing');
+
+  try {
+    // 1. Fast API check: fetch latest commit info (~400 bytes)
+    const commitInfo = await fetchLatestCommitInfo(owner, name, path);
+    const latestCommitSha = commitInfo ? commitInfo.sha : null;
+    const lastCommitDate = commitInfo ? commitInfo.date : null;
+
+    // 2. Check if file has changed remote
+    let hasChanged = false;
+    if (cached.lastCommitSha && latestCommitSha) {
+      hasChanged = (cached.lastCommitSha !== latestCommitSha);
+    } else {
+      // Fallback for legacy cache: check If-None-Match header against GitHub
+      const metaRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeURIComponent(path)}`, {
+        headers: {
+          'Authorization': `Bearer ${appState.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'If-None-Match': cached.sha ? `"${cached.sha}"` : ''
+        }
+      });
+      if (metaRes.status === 304) {
+        hasChanged = false;
+      } else if (metaRes.ok) {
+        const metaData = await metaRes.json();
+        hasChanged = (cached.sha !== metaData.sha);
+      }
+    }
+
+    if (!hasChanged) {
+      // File has NOT changed remote! Avoid downloading content again.
+      cached.lastSyncedAt = Date.now();
+      if (latestCommitSha) cached.lastCommitSha = latestCommitSha;
+      if (lastCommitDate) cached.lastCommitDate = lastCommitDate;
+      await getIdb().set(cached.fileKey, cached);
+      updateFileSyncBadge('synced', cached.lastSyncedAt);
+      return;
+    }
+
+    // File HAS CHANGED remote! Download new content
+    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeURIComponent(path)}`, {
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      let rawContent = '';
+      if (data.content) {
+        rawContent = base64ToUtf8(data.content);
+      }
+      if (!rawContent && (data.download_url || data.sha)) {
+        try {
+          const rawRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeURIComponent(path)}`, {
+            headers: {
+              'Authorization': `Bearer ${appState.token}`,
+              'Accept': 'application/vnd.github.v3.raw'
+            }
+          });
+          if (rawRes.ok) rawContent = await rawRes.text();
+        } catch (rawErr) {}
+      }
+
+      const updatedCache = {
+        fileKey: cached.fileKey,
+        owner,
+        name,
+        path,
+        content: rawContent,
+        sha: data.sha,
+        lastCommitSha: latestCommitSha || cached.lastCommitSha || data.sha,
+        lastCommitDate: lastCommitDate || cached.lastCommitDate || null,
+        lastSyncedAt: Date.now()
+      };
+
+      await getIdb().set(cached.fileKey, updatedCache);
+      markStateDirty();
+
+      if (appState.currentFile && appState.currentFile.owner === owner && appState.currentFile.name === name && appState.currentFile.path === path) {
+        appState.currentFileContent = rawContent;
+        renderMarkdown(rawContent);
+        updateFileSyncBadge('synced', Date.now());
+
+        const commitTimeStr = formatCommitTime(updatedCache.lastCommitDate);
+        showFlash(`Trang đã được cập nhật mới (Commit gần nhất: ${commitTimeStr})`, 'success', 500);
+      }
+    } else {
+      updateFileSyncBadge('cached', cached.lastSyncedAt);
+    }
+  } catch (err) {
+    console.warn('Check & update page error:', err);
+    updateFileSyncBadge('cached', cached.lastSyncedAt);
+  }
+}
+
 // --- LOGIC 6: Open Markdown File ---
 async function openMarkdownFile(owner, name, path) {
   appState.currentFile = { owner, name, path };
@@ -810,19 +947,25 @@ async function openMarkdownFile(owner, name, path) {
   if (cached && cached.content) {
     renderMarkdown(cached.content);
     updateFileSyncBadge('cached', cached.lastSyncedAt);
-  }
 
-  // Step 2: If Offline
-  if (appState.isOffline) {
-    if (!cached) {
-      viewerPanel.innerHTML = '<div class="blankslate"><p class="text-danger">No network connection and no offline cached version available for this file.</p></div>';
-    } else {
+    if (appState.isOffline) {
       showFlash('Viewing offline cached version.', 'info');
+      return;
+    }
+
+    if (appState.token) {
+      checkAndUpdatePageIfModified(owner, name, path, cached);
     }
     return;
   }
 
-  // Step 3: Fetch GitHub API
+  // Step 2: If Offline (and no cache)
+  if (appState.isOffline) {
+    viewerPanel.innerHTML = '<div class="blankslate"><p class="text-danger">No network connection and no offline cached version available for this file.</p></div>';
+    return;
+  }
+
+  // Step 3: Fetch GitHub API (Initial load, no cache yet)
   updateFileSyncBadge('syncing');
 
   try {
@@ -854,26 +997,30 @@ async function openMarkdownFile(owner, name, path) {
       }
 
       appState.currentFileContent = rawContent;
+      renderMarkdown(rawContent);
 
-      if (!cached || cached.sha !== data.sha) {
-        renderMarkdown(rawContent);
-        if (isFileFavorited(owner, name, path)) {
-          cacheFavoriteFile(owner, name, path, rawContent, data.sha);
-        }
-      }
+      const commitInfo = await fetchLatestCommitInfo(owner, name, path);
+      const newCache = {
+        fileKey,
+        owner,
+        name,
+        path,
+        content: rawContent,
+        sha: data.sha,
+        lastCommitSha: commitInfo ? commitInfo.sha : data.sha,
+        lastCommitDate: commitInfo ? commitInfo.date : null,
+        lastSyncedAt: Date.now()
+      };
+      await getIdb().set(fileKey, newCache);
 
       updateFileSyncBadge('synced', Date.now());
     } else {
-      if (!cached) {
-        const errorText = await res.text().catch(() => '');
-        viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Unable to load file from GitHub (HTTP ${res.status}). ${errorText ? `<br><small>${errorText}</small>` : ''}</p></div>`;
-      }
+      const errorText = await res.text().catch(() => '');
+      viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Unable to load file from GitHub (HTTP ${res.status}). ${errorText ? `<br><small>${errorText}</small>` : ''}</p></div>`;
     }
   } catch (err) {
     console.error('Fetch markdown error:', err);
-    if (!cached) {
-      viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Connection error loading file: ${err.message || err}</p></div>`;
-    }
+    viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Connection error loading file: ${err.message || err}</p></div>`;
   }
 }
 
