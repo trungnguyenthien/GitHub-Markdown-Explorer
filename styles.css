@@ -837,51 +837,66 @@ body.mobile-app {
   border: 1px solid var(--color-border-default);
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
 .fav-group-chip:hover {
   background-color: var(--color-canvas-muted);
+  border-color: var(--color-border-muted);
 }
 .fav-group-chip.active {
   background-color: #0969da;
   color: #ffffff;
   border-color: #0969da;
   font-weight: 600;
+  box-shadow: 0 2px 6px rgba(9, 105, 218, 0.25);
 }
 
-.fav-group-chip .chip-count {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.08);
-}
-.fav-group-chip.active .chip-count {
-  background: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
-}
-
-.fav-group-chip .chip-delete {
+.fav-group-delete-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  font-size: 11px;
-  line-height: 1;
+  border: none;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--color-fg-muted);
+  padding: 0;
   margin-left: 2px;
-  opacity: 0.7;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
-.fav-group-chip .chip-delete:hover {
-  opacity: 1;
-  background-color: rgba(255, 255, 255, 0.3);
+.fav-group-chip.active .fav-group-delete-btn {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+.fav-group-delete-btn:hover {
+  background: #cf222e !important;
+  color: #ffffff !important;
+  transform: scale(1.15);
 }
 
 .fav-group-chip-add {
-  border-style: dashed;
-  color: var(--color-accent-fg);
-  border-color: var(--color-accent-fg);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: transparent;
+  color: #0969da;
+  border: 1px dashed #0969da;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.fav-group-chip-add:hover {
+  background-color: rgba(9, 105, 218, 0.08);
+  border-style: solid;
+  transform: translateY(-1px);
 }
 
 /* Page Group Badges */

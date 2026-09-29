@@ -1323,12 +1323,23 @@ function renderFavGroupsBar() {
     return `
       <div class="fav-group-chip ${activeClass}" onclick="setActiveFavGroup('${escapeHtml(group)}')">
         <span>${escapeHtml(group)}</span>
-        <button class="fav-group-delete-btn" onclick="event.stopPropagation(); deleteFavGroup('${escapeHtml(group)}')" title="Delete group">&times;</button>
+        <button class="fav-group-delete-btn" onclick="event.stopPropagation(); deleteFavGroup('${escapeHtml(group)}')" title="Delete group">
+          <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+            <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path>
+          </svg>
+        </button>
       </div>
     `;
   }).join('');
 
-  const addBtnHtml = `<button class="fav-group-chip-add" onclick="promptCreateGroup()">+ Group</button>`;
+  const addBtnHtml = `
+    <button class="fav-group-chip-add" onclick="promptCreateGroup()">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+        <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path>
+      </svg>
+      <span>Group</span>
+    </button>
+  `;
 
   container.innerHTML = chipsHtml + addBtnHtml;
 }
