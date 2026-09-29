@@ -1478,7 +1478,7 @@ function renderManageGroupsModalContent() {
   if (!file) return;
 
   const fileGroups = file.groups || ['All'];
-  const listEl = document.getElementById('manageGroupsModalList');
+  const listEl = document.getElementById('manageGroupsModalList') || document.getElementById('manageGroupsModalBody');
   if (!listEl) return;
 
   sanitizeFavGroups();

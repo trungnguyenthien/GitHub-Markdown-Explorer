@@ -389,8 +389,12 @@
         <h4 class="modal-title" id="manageGroupsModalTitle">Manage Groups</h4>
         <button class="modal-close-btn" onclick="closeManagePageGroupsModal()">&times;</button>
       </div>
-      <div class="modal-body" id="manageGroupsModalBody">
-        <!-- Group Checkboxes -->
+      <div class="modal-body">
+        <div id="manageGroupsModalList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gh-border); display: flex; gap: 8px;">
+          <input type="text" id="newGroupNameModalInput" class="gh-input" placeholder="New group name..." style="flex: 1;" onkeypress="if(event.key==='Enter') createGroupFromModal()" />
+          <button class="gh-btn gh-btn-sm" onclick="createGroupFromModal()">+ Add</button>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="gh-btn gh-btn-primary gh-btn-sm" onclick="closeManagePageGroupsModal()">Done</button>
