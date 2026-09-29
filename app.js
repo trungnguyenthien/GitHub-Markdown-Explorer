@@ -105,6 +105,8 @@ const appState = {
   currentTreeEntries: [], // All entries from recursive tree fetch
   currentFile: null, // { owner, name, path }
   currentFileContent: null, // Raw markdown string
+  favGroups: JSON.parse(localStorage.getItem('gh_fav_groups') || '["All"]'),
+  activeFavGroup: 'All',
   favoriteRepos: JSON.parse(localStorage.getItem('gh_favorite_repos') || '[]'),
   favoriteFiles: JSON.parse(localStorage.getItem('gh_favorite_files') || '[]'),
   readingHistory: JSON.parse(localStorage.getItem('gh_reading_history') || '[]'),
@@ -120,6 +122,43 @@ const appState = {
   lastGistBackupTime: localStorage.getItem('gh_last_gist_backup_time') || null,
   autoGistBackupTimer: null
 };
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function sanitizeFavGroups() {
+  if (!Array.isArray(appState.favGroups) || appState.favGroups.length === 0) {
+    appState.favGroups = ['All'];
+  }
+  if (!appState.favGroups.includes('All')) {
+    appState.favGroups.unshift('All');
+  }
+  localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+
+  let filesChanged = false;
+  if (Array.isArray(appState.favoriteFiles)) {
+    appState.favoriteFiles.forEach(file => {
+      if (!Array.isArray(file.groups) || file.groups.length === 0) {
+        file.groups = ['All'];
+        filesChanged = true;
+      } else if (!file.groups.includes('All')) {
+        file.groups.unshift('All');
+        filesChanged = true;
+      }
+    });
+  }
+  if (filesChanged) {
+    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+  }
+}
+sanitizeFavGroups();
 
 function markStateDirty() {
   appState.hasUnsavedChanges = true;
@@ -1190,11 +1229,16 @@ async function toggleFavoriteFile(owner, name, path) {
   const fileKey = `${owner}/${name}/${path}`;
 
   if (index > -1) {
-    appState.favoriteFiles.splice(index, 1);
-    try { await getIdb().del(fileKey); } catch (err) {}
-    showFlash('Removed file from Favorites.', 'info');
+    // If user clicks star from file viewer or elsewhere, confirm if removing from All
+    if (confirm('Remove file from Favorites & delete from All groups permanently?')) {
+      appState.favoriteFiles.splice(index, 1);
+      try { await getIdb().del(fileKey); } catch (err) {}
+      showFlash('Removed file from Favorites.', 'info');
+    } else {
+      return;
+    }
   } else {
-    appState.favoriteFiles.unshift({ owner, name, path, lastModified: Date.now(), addedAt: Date.now() });
+    appState.favoriteFiles.unshift({ owner, name, path, groups: ['All'], lastModified: Date.now(), addedAt: Date.now() });
     showFlash('Added file to Favorites & Cached offline!', 'success');
     
     if (appState.currentFileContent && appState.currentFile && appState.currentFile.path === path) {
@@ -1256,16 +1300,271 @@ function updateViewerFavoriteStar() {
   }
 }
 
+// --- FAV GROUPS MANAGEMENT ---
+function renderFavGroupsBar() {
+  const container = document.getElementById('favGroupsBar');
+  if (!container) return;
+
+  sanitizeFavGroups();
+
+  if (!appState.activeFavGroup || !appState.favGroups.includes(appState.activeFavGroup)) {
+    appState.activeFavGroup = 'All';
+  }
+
+  const chipsHtml = appState.favGroups.map(group => {
+    const isActive = group === appState.activeFavGroup;
+    const isAll = group === 'All';
+    const activeClass = isActive ? 'active' : '';
+
+    if (isAll) {
+      return `<div class="fav-group-chip ${activeClass}" onclick="setActiveFavGroup('All')">All</div>`;
+    }
+
+    return `
+      <div class="fav-group-chip ${activeClass}" onclick="setActiveFavGroup('${escapeHtml(group)}')">
+        <span>${escapeHtml(group)}</span>
+        <button class="fav-group-delete-btn" onclick="event.stopPropagation(); deleteFavGroup('${escapeHtml(group)}')" title="Delete group">&times;</button>
+      </div>
+    `;
+  }).join('');
+
+  const addBtnHtml = `<button class="fav-group-chip-add" onclick="promptCreateGroup()">+ Group</button>`;
+
+  container.innerHTML = chipsHtml + addBtnHtml;
+}
+
+function setActiveFavGroup(groupName) {
+  appState.activeFavGroup = groupName;
+  renderFavGroupsBar();
+  renderFavoritesList();
+}
+
+function promptCreateGroup() {
+  const name = prompt('Enter new group name:');
+  if (!name) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+
+  if (appState.favGroups.includes(trimmed)) {
+    showFlash(`Group "${trimmed}" already exists.`, 'info');
+    setActiveFavGroup(trimmed);
+    return;
+  }
+
+  appState.favGroups.push(trimmed);
+  localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+  markStateDirty();
+  showFlash(`Group "${trimmed}" created!`, 'success');
+  setActiveFavGroup(trimmed);
+}
+
+function deleteFavGroup(groupName) {
+  if (groupName === 'All') {
+    showFlash('Group "All" cannot be deleted.', 'info');
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to delete group "${groupName}"? Pages in this group will remain in "All".`)) {
+    return;
+  }
+
+  appState.favGroups = appState.favGroups.filter(g => g !== groupName);
+  localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+
+  appState.favoriteFiles.forEach(file => {
+    if (file.groups) {
+      file.groups = file.groups.filter(g => g !== groupName);
+      if (file.groups.length === 0) {
+        file.groups.push('All');
+      }
+    }
+  });
+  localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+
+  markStateDirty();
+  showFlash(`Group "${groupName}" deleted.`, 'info');
+
+  if (appState.activeFavGroup === groupName) {
+    appState.activeFavGroup = 'All';
+  }
+
+  renderFavGroupsBar();
+  renderFavoritesList();
+}
+
+// --- CONTEXT-AWARE FAVORITE PAGE DELETION ---
+async function removeFavoriteFileInCurrentContext(owner, name, path) {
+  const currentGroup = appState.activeFavGroup || 'All';
+
+  if (currentGroup === 'All') {
+    // Deleting in group "All" requires confirmation because it completely deletes the page
+    if (confirm('Deleting from "All" will remove this favorite page permanently. Continue?')) {
+      await deleteFavoriteFileCompletely(owner, name, path);
+    }
+  } else {
+    // Deleting from custom group requires NO confirmation
+    const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+    if (file) {
+      file.groups = (file.groups || []).filter(g => g !== currentGroup);
+      if (file.groups.length === 0) {
+        file.groups.push('All');
+      }
+      localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+      markStateDirty();
+      showFlash(`Removed page from group "${currentGroup}".`, 'info');
+      renderFavoritesList();
+    }
+  }
+}
+
+async function deleteFavoriteFileCompletely(owner, name, path) {
+  const index = appState.favoriteFiles.findIndex(f => f.owner === owner && f.name === name && f.path === path);
+  const fileKey = `${owner}/${name}/${path}`;
+
+  if (index > -1) {
+    appState.favoriteFiles.splice(index, 1);
+    try { await getIdb().del(fileKey); } catch (err) {}
+    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    markStateDirty();
+    showFlash('Favorite page deleted permanently.', 'info');
+    updateViewerFavoriteStar();
+    renderFavoritesList();
+    if (appState.mobileView === 'tree') renderFileTree();
+    if (appState.mobileView === 'history') renderHistoryList();
+  }
+}
+
+// --- MODAL: MANAGE PAGE GROUPS ---
+let currentManagingFile = null;
+
+function openManagePageGroupsModal(owner, name, path) {
+  currentManagingFile = { owner, name, path };
+  const modal = document.getElementById('manageGroupsModal');
+  if (!modal) return;
+
+  const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+  if (!file) return;
+
+  const titleEl = document.getElementById('manageGroupsModalTitle');
+  if (titleEl) {
+    titleEl.textContent = `Groups for: ${path.split('/').pop()}`;
+  }
+
+  renderManageGroupsModalContent();
+  modal.classList.remove('hidden');
+}
+
+function closeManagePageGroupsModal() {
+  const modal = document.getElementById('manageGroupsModal');
+  if (modal) modal.classList.add('hidden');
+  currentManagingFile = null;
+}
+
+function renderManageGroupsModalContent() {
+  if (!currentManagingFile) return;
+  const { owner, name, path } = currentManagingFile;
+  const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+  if (!file) return;
+
+  const fileGroups = file.groups || ['All'];
+  const listEl = document.getElementById('manageGroupsModalList');
+  if (!listEl) return;
+
+  sanitizeFavGroups();
+
+  listEl.innerHTML = appState.favGroups.map(group => {
+    const isChecked = fileGroups.includes(group);
+    return `
+      <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--gh-bg-secondary); border: 1px solid var(--gh-border); border-radius: 6px; cursor: pointer; user-select: none;">
+        <span style="font-weight: 500; font-size: 14px; color: var(--gh-text);">${escapeHtml(group)}</span>
+        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFileGroupModal('${escapeHtml(group)}', this.checked)" style="width: 18px; height: 18px; cursor: pointer;">
+      </label>
+    `;
+  }).join('');
+}
+
+function toggleFileGroupModal(groupName, isChecked) {
+  if (!currentManagingFile) return;
+  const { owner, name, path } = currentManagingFile;
+  const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+  if (!file) return;
+
+  if (!Array.isArray(file.groups)) file.groups = ['All'];
+
+  if (isChecked) {
+    if (!file.groups.includes(groupName)) {
+      file.groups.push(groupName);
+    }
+  } else {
+    file.groups = file.groups.filter(g => g !== groupName);
+    if (file.groups.length === 0) {
+      file.groups.push('All');
+    }
+  }
+
+  localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+  markStateDirty();
+  renderManageGroupsModalContent();
+  renderFavoritesList();
+}
+
+function createGroupFromModal() {
+  const input = document.getElementById('newGroupNameModalInput');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) return;
+
+  if (appState.favGroups.includes(name)) {
+    showFlash(`Group "${name}" already exists.`, 'info');
+  } else {
+    appState.favGroups.push(name);
+    localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+    markStateDirty();
+    showFlash(`Group "${name}" created!`, 'success');
+  }
+
+  if (currentManagingFile) {
+    const { owner, name: repoName, path } = currentManagingFile;
+    const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === repoName && f.path === path);
+    if (file) {
+      if (!Array.isArray(file.groups)) file.groups = ['All'];
+      if (!file.groups.includes(name)) file.groups.push(name);
+      localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    }
+  }
+
+  input.value = '';
+  renderFavGroupsBar();
+  renderManageGroupsModalContent();
+  renderFavoritesList();
+}
+
 async function renderFavoritesList() {
   const favFilesContainer = document.getElementById('favFilesContainer');
   const favReposContainer = document.getElementById('favReposContainer');
 
   if (!favFilesContainer || !favReposContainer) return;
 
-  if (appState.favoriteFiles.length === 0) {
-    favFilesContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No favorite pages yet.</p></div>';
+  renderFavGroupsBar();
+  sanitizeFavGroups();
+
+  const activeGroup = appState.activeFavGroup || 'All';
+
+  // Filter favorite files by active group
+  const filteredFiles = appState.favoriteFiles.filter(f => {
+    const groups = f.groups || ['All'];
+    if (activeGroup === 'All') return true;
+    return groups.includes(activeGroup);
+  });
+
+  if (filteredFiles.length === 0) {
+    if (appState.favoriteFiles.length === 0) {
+      favFilesContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No favorite pages yet.</p></div>';
+    } else {
+      favFilesContainer.innerHTML = `<div class="blankslate" style="padding: 16px;"><p>No pages in group "${escapeHtml(activeGroup)}".</p></div>`;
+    }
   } else {
-    const fileItems = await Promise.all(appState.favoriteFiles.map(async file => {
+    const fileItems = await Promise.all(filteredFiles.map(async file => {
       const cleanRepoName = (file.name || '').includes('/') ? file.name.split('/').pop() : file.name;
       const fileKey = `${file.owner}/${cleanRepoName}/${file.path}`;
       let syncTime = 0;
@@ -1287,22 +1586,33 @@ async function renderFavoritesList() {
 
     const fileItemsHtml = fileItems.map(item => {
       const { file, cleanRepoName, syncText } = item;
+      const groups = file.groups || ['All'];
+      const badgesHtml = groups.map(g => `<span class="group-badge">${escapeHtml(g)}</span>`).join('');
+
       return `
         <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
-          <div class="repo-item-main">
-            <svg class="octicon octicon-file-code text-muted" viewBox="0 0 16 16" width="18" height="18" fill="#0969da">
+          <div class="repo-item-main" style="min-width: 0; flex: 1;">
+            <svg class="octicon octicon-file-code text-muted" viewBox="0 0 16 16" width="18" height="18" fill="#0969da" style="flex-shrink: 0; margin-top: 2px;">
               <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
             </svg>
-            <div>
+            <div style="min-width: 0; overflow: hidden;">
               <div class="repo-desc">[${cleanRepoName}]:[${getParentDirPath(file.path)}]${syncText}</div>
               <div class="repo-name">${file.path.split('/').pop()}</div>
+              <div class="group-badge-container">${badgesHtml}</div>
             </div>
           </div>
-          <button class="btn-star-icon favorited" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')" title="Favorite">
-            <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
-              <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
-            </svg>
-          </button>
+          <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;" onclick="event.stopPropagation();">
+            <button class="btn-group-manage-icon" onclick="openManagePageGroupsModal('${file.owner}', '${file.name}', '${file.path}')" title="Manage Groups">
+              <svg class="octicon octicon-tag" viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+                <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path>
+              </svg>
+            </button>
+            <button class="btn-star-icon favorited" onclick="removeFavoriteFileInCurrentContext('${file.owner}', '${file.name}', '${file.path}')" title="${activeGroup === 'All' ? 'Delete page completely' : 'Remove from group ' + escapeHtml(activeGroup)}">
+              <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+                <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
+              </svg>
+            </button>
+          </div>
         </div>
       `;
     });
@@ -1637,6 +1947,7 @@ async function exportAppData() {
       version: 1,
       exportedAt: new Date().toISOString(),
       token: appState.token,
+      favGroups: appState.favGroups,
       favoriteRepos: appState.favoriteRepos,
       favoriteFiles: appState.favoriteFiles,
       readingHistory: appState.readingHistory,
@@ -1674,6 +1985,13 @@ async function importAppData(jsonStr) {
       localStorage.setItem('gh_pat_token', data.token);
     }
 
+    // Merge Fav Groups
+    if (Array.isArray(data.favGroups)) {
+      const mergedGroupsSet = new Set(['All', ...appState.favGroups, ...data.favGroups]);
+      appState.favGroups = Array.from(mergedGroupsSet);
+      localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+    }
+
     // 1. Smart Merge Favorite Repositories (Deduplicate)
     if (Array.isArray(data.favoriteRepos)) {
       const mergedReposMap = new Map();
@@ -1687,13 +2005,20 @@ async function importAppData(jsonStr) {
       localStorage.setItem('gh_favorite_repos', JSON.stringify(appState.favoriteRepos));
     }
 
-    // 2. Smart Merge Favorite Files (Deduplicate)
+    // 2. Smart Merge Favorite Files (Deduplicate and merge groups)
     if (Array.isArray(data.favoriteFiles)) {
       const mergedFilesMap = new Map();
       appState.favoriteFiles.concat(data.favoriteFiles).forEach(f => {
         if (f && f.owner && f.name && f.path) {
           const key = `${f.owner}/${f.name}/${f.path}`;
-          mergedFilesMap.set(key, f);
+          const existing = mergedFilesMap.get(key);
+          if (existing) {
+            const mergedGroups = Array.from(new Set(['All', ...(existing.groups || []), ...(f.groups || [])]));
+            mergedFilesMap.set(key, { ...existing, ...f, groups: mergedGroups });
+          } else {
+            const groups = Array.from(new Set(['All', ...(f.groups || [])]));
+            mergedFilesMap.set(key, { ...f, groups });
+          }
         }
       });
       appState.favoriteFiles = Array.from(mergedFilesMap.values());
@@ -1784,6 +2109,7 @@ async function backupToGist(isSilent = false) {
     const backupData = {
       version: 1,
       exportedAt: new Date().toISOString(),
+      favGroups: appState.favGroups,
       favoriteRepos: appState.favoriteRepos,
       favoriteFiles: appState.favoriteFiles,
       readingHistory: appState.readingHistory,

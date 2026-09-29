@@ -104,13 +104,18 @@
       <section id="viewFavPages" class="mobile-view-panel">
         <div class="view-panel-header flex-row-header">
           <h3 class="view-panel-title">Favorite Pages</h3>
-          <button id="btnSyncAll" class="gh-btn gh-btn-sm" onclick="syncAllFavorites()">
-            <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-              <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
-            </svg>
-            <span>Sync All</span>
-          </button>
+          <div class="header-actions flex-row" style="gap: 6px;">
+            <button id="btnSyncAll" class="gh-btn gh-btn-sm" onclick="syncAllFavorites()">
+              <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
+              </svg>
+              <span>Sync All</span>
+            </button>
+          </div>
         </div>
+
+        <!-- Groups Bar -->
+        <div id="favGroupsBar" class="fav-groups-bar"></div>
 
         <div id="favFilesContainer" class="gh-action-list mobile-list">
           <div class="empty-state">No favorite pages yet.</div>
@@ -373,6 +378,22 @@
 
       <div class="gh-modal-footer">
         <button class="gh-btn" onclick="toggleGuideModal(false)">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Overlay for Manage Page Groups -->
+  <div id="manageGroupsModal" class="modal-overlay hidden" onclick="if(event.target===this) closeManagePageGroupsModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="manageGroupsModalTitle">Manage Groups</h4>
+        <button class="modal-close-btn" onclick="closeManagePageGroupsModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="manageGroupsModalBody">
+        <!-- Group Checkboxes -->
+      </div>
+      <div class="modal-footer">
+        <button class="gh-btn gh-btn-primary gh-btn-sm" onclick="closeManagePageGroupsModal()">Done</button>
       </div>
     </div>
   </div>
