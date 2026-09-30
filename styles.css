@@ -531,8 +531,15 @@ body.mobile-app {
 
 .markdown-body h1 {
   font-size: calc(1.75em * var(--md-content-scale, 1)) !important;
-  color: #bc4c00 !important;
+  color: #cf222e !important;
   font-weight: 700 !important;
+  text-align: center !important;
+  background-color: #fff1f2 !important;
+  border: 1px solid #cf222e !important;
+  border-radius: 6px !important;
+  padding: 10px 16px !important;
+  margin: 20px 0 16px 0 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
 }
 
 .markdown-body h2 {
