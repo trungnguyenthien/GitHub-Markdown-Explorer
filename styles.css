@@ -558,15 +558,16 @@ body.mobile-app {
 
 .markdown-body pre, .markdown-body code { font-size: calc(85% * var(--md-content-scale, 1)) !important; }
 
-/* Thin & Clean Divider Lines */
+/* Thin & Clean Hairline Divider Lines */
 .markdown-body hr {
-  height: 1px !important;
+  height: 0 !important;
   padding: 0 !important;
   margin: 20px 0 !important;
-  background-color: var(--color-border-default, #d0d7de) !important;
-  border: 0 !important;
-  border-top: 1px solid var(--color-border-default, #d0d7de) !important;
-  opacity: 0.7;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-top: 1px solid #d8dee4 !important;
+  opacity: 0.6 !important;
 }
 
 /* Custom Quote / Note Panel (Pale yellow background, light gray border, no vertical bar, black text) */
