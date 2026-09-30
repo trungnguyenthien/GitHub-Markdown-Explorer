@@ -562,6 +562,30 @@ body.mobile-app {
   opacity: 0.7;
 }
 
+/* Custom Quote / Note Panel (Pale yellow background, light gray border, no vertical bar, black text) */
+.markdown-body blockquote {
+  padding: 12px 16px !important;
+  margin: 16px 0 !important;
+  color: #1f2328 !important;
+  background-color: #fffbdd !important;
+  border: 1px solid #d0d7de !important;
+  border-left: 1px solid #d0d7de !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+}
+
+.markdown-body blockquote > :first-child {
+  margin-top: 0 !important;
+}
+
+.markdown-body blockquote > :last-child {
+  margin-bottom: 0 !important;
+}
+
+.markdown-body blockquote p {
+  color: #1f2328 !important;
+}
+
 /* Force Light Mode Overrides for Code Blocks, Tables & Syntax Highlighting */
 .markdown-body pre {
   background-color: #f6f8fa !important;
