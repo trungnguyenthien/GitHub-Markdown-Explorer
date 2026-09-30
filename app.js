@@ -1145,6 +1145,24 @@ function renderMarkdown(rawContent) {
   viewerPanel.innerHTML = cleanHtml;
   rawPanel.textContent = rawContent;
 
+  // Render LaTeX / Math Expressions (KaTeX: e.g. $\rightarrow$, $\sum$, equations)
+  if (window.renderMathInElement) {
+    try {
+      renderMathInElement(viewerPanel, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true }
+        ],
+        throwOnError: false,
+        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      });
+    } catch (kErr) {
+      console.warn('KaTeX render warning:', kErr);
+    }
+  }
+
   if (window.mermaid) {
     try {
       const mNodes = viewerPanel.querySelectorAll('.mermaid');

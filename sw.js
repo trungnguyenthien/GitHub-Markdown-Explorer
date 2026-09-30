@@ -2,7 +2,7 @@
    GitHub Markdown Explorer - Service Worker (Offline PWA Engine)
    ========================================================================== */
 
-const CACHE_NAME = 'gh-md-explorer-v7';
+const CACHE_NAME = 'gh-md-explorer-v8';
 
 // Static assets to precache (App Shell & CDN Dependencies)
 const PRECACHE_ASSETS = [
@@ -18,7 +18,10 @@ const PRECACHE_ASSETS = [
   'https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js',
   'https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js',
-  'https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js'
+  'https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js',
+  'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css',
+  'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js',
+  'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js'
 ];
 
 // Install Event: Precache all static resources
