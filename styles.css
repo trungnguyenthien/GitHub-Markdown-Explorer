@@ -504,10 +504,38 @@ body.mobile-app {
   background-color: transparent !important;
 }
 
-.markdown-body h1 { font-size: calc(1.75em * var(--md-content-scale, 1)) !important; color: #1f2328 !important; }
-.markdown-body h2 { font-size: calc(1.4em * var(--md-content-scale, 1)) !important; color: #1f2328 !important; }
-.markdown-body h3 { font-size: calc(1.2em * var(--md-content-scale, 1)) !important; color: #1f2328 !important; }
+.markdown-body h1 {
+  font-size: calc(1.75em * var(--md-content-scale, 1)) !important;
+  color: #bc4c00 !important;
+  font-weight: 700 !important;
+}
+
+.markdown-body h2 {
+  font-size: calc(1.4em * var(--md-content-scale, 1)) !important;
+  color: #0550ae !important;
+  font-weight: 700 !important;
+}
+
+.markdown-body h3 {
+  font-size: calc(1.2em * var(--md-content-scale, 1)) !important;
+  color: #0550ae !important;
+  font-weight: 600 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+}
+
 .markdown-body pre, .markdown-body code { font-size: calc(85% * var(--md-content-scale, 1)) !important; }
+
+/* Thin & Clean Divider Lines */
+.markdown-body hr {
+  height: 1px !important;
+  padding: 0 !important;
+  margin: 20px 0 !important;
+  background-color: var(--color-border-default, #d0d7de) !important;
+  border: 0 !important;
+  border-top: 1px solid var(--color-border-default, #d0d7de) !important;
+  opacity: 0.7;
+}
 
 /* Force Light Mode Overrides for Code Blocks, Tables & Syntax Highlighting */
 .markdown-body pre {
