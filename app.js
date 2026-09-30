@@ -228,12 +228,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Register PWA Service Worker for 100% full offline mode
+  // Register PWA Service Worker with auto-update on code change
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then((reg) => {
       console.log('[PWA] Service Worker registered:', reg.scope);
+      // Auto-check for updates on load, tab focus, and visibility change
+      reg.update();
+      window.addEventListener('focus', () => reg.update());
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
     }).catch((err) => {
       console.warn('[PWA] Service Worker registration failed:', err);
+    });
+
+    // Automatically reload page when a new Service Worker activates and takes control
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
     });
   }
 
@@ -1448,13 +1463,24 @@ async function deleteFavoriteFileCompletely(owner, name, path) {
 // --- MODAL: MANAGE PAGE GROUPS ---
 let currentManagingFile = null;
 
+function getManagingFileObj() {
+  if (!currentManagingFile) return null;
+  const { owner, name, path } = currentManagingFile;
+  return appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path)
+    || appState.favoriteFiles.find(f => f.owner === owner && f.path === path)
+    || null;
+}
+
 function openManagePageGroupsModal(owner, name, path) {
   currentManagingFile = { owner, name, path };
   const modal = document.getElementById('manageGroupsModal');
   if (!modal) return;
 
-  const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
-  if (!file) return;
+  const file = getManagingFileObj();
+  if (!file) {
+    console.warn('File not found in favoriteFiles:', owner, name, path);
+    return;
+  }
 
   const titleEl = document.getElementById('manageGroupsModalTitle');
   if (titleEl) {
@@ -1472,9 +1498,7 @@ function closeManagePageGroupsModal() {
 }
 
 function renderManageGroupsModalContent() {
-  if (!currentManagingFile) return;
-  const { owner, name, path } = currentManagingFile;
-  const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+  const file = getManagingFileObj();
   if (!file) return;
 
   const fileGroups = file.groups || ['All'];
@@ -1486,8 +1510,8 @@ function renderManageGroupsModalContent() {
   listEl.innerHTML = appState.favGroups.map(group => {
     const isChecked = fileGroups.includes(group);
     return `
-      <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--gh-bg-secondary); border: 1px solid var(--gh-border); border-radius: 6px; cursor: pointer; user-select: none;">
-        <span style="font-weight: 500; font-size: 14px; color: var(--gh-text);">${escapeHtml(group)}</span>
+      <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--gh-bg-secondary, #f6f8fa); border: 1px solid var(--gh-border, #d0d7de); border-radius: 6px; cursor: pointer; user-select: none;">
+        <span style="font-weight: 500; font-size: 14px; color: var(--gh-text, #1f2328);">${escapeHtml(group)}</span>
         <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFileGroupModal('${escapeHtml(group)}', this.checked)" style="width: 18px; height: 18px; cursor: pointer;">
       </label>
     `;
@@ -1495,9 +1519,7 @@ function renderManageGroupsModalContent() {
 }
 
 function toggleFileGroupModal(groupName, isChecked) {
-  if (!currentManagingFile) return;
-  const { owner, name, path } = currentManagingFile;
-  const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+  const file = getManagingFileObj();
   if (!file) return;
 
   if (!Array.isArray(file.groups)) file.groups = ['All'];
@@ -1534,14 +1556,11 @@ function createGroupFromModal() {
     showFlash(`Group "${name}" created!`, 'success');
   }
 
-  if (currentManagingFile) {
-    const { owner, name: repoName, path } = currentManagingFile;
-    const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === repoName && f.path === path);
-    if (file) {
-      if (!Array.isArray(file.groups)) file.groups = ['All'];
-      if (!file.groups.includes(name)) file.groups.push(name);
-      localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
-    }
+  const file = getManagingFileObj();
+  if (file) {
+    if (!Array.isArray(file.groups)) file.groups = ['All'];
+    if (!file.groups.includes(name)) file.groups.push(name);
+    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
   }
 
   input.value = '';

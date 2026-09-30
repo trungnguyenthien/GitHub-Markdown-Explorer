@@ -2,7 +2,7 @@
    GitHub Markdown Explorer - Service Worker (Offline PWA Engine)
    ========================================================================== */
 
-const CACHE_NAME = 'gh-md-explorer-v6';
+const CACHE_NAME = 'gh-md-explorer-v7';
 
 // Static assets to precache (App Shell & CDN Dependencies)
 const PRECACHE_ASSETS = [
@@ -49,7 +49,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Cache-First strategy for static assets, Network-Only for GitHub API
+// Fetch Event: Network-First for local assets (index.html, app.js, styles.css) with cache fallback
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
@@ -58,32 +58,48 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return cached response immediately
-        return cachedResponse;
-      }
+  const isLocalAsset = event.request.url.startsWith(self.location.origin) || event.request.mode === 'navigate';
 
-      // If not in cache, fetch from network & store copy in cache
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && networkResponse.type !== 'cors') {
+  if (isLocalAsset) {
+    // Network-First for local app code: ensures latest edits are immediately loaded
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
           return networkResponse;
+        })
+        .catch(() => {
+          // Offline fallback
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) return cachedResponse;
+            if (event.request.mode === 'navigate') {
+              return caches.match('./index.html');
+            }
+          });
+        })
+    );
+  } else {
+    // Cache-First for external CDN dependencies
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
         }
-
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
         });
-
-        return networkResponse;
-      }).catch((fetchErr) => {
-        console.warn('[Service Worker] Fetch failed, resource unavailable offline:', event.request.url);
-        // Fallback for navigation HTML requests if offline
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-      });
-    })
-  );
+      })
+    );
+  }
 });
