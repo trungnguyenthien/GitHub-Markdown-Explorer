@@ -1315,6 +1315,34 @@ function updateViewerFavoriteStar() {
   }
 }
 
+async function manageCurrentFileGroups() {
+  if (!appState.currentFile) return;
+  const { owner, name, path } = appState.currentFile;
+
+  let file = appState.favoriteFiles.find(f => f.owner === owner && (f.name === name || (f.name && name && f.name.endsWith(name))) && f.path === path)
+    || appState.favoriteFiles.find(f => f.owner === owner && f.path === path);
+
+  if (!file) {
+    // Automatically add to Favorites with default group ['All'] and cache offline
+    const newFav = { owner, name, path, groups: ['All'], lastModified: Date.now(), addedAt: Date.now() };
+    appState.favoriteFiles.unshift(newFav);
+    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    markStateDirty();
+    updateViewerFavoriteStar();
+    renderFavoritesList();
+
+    if (appState.currentFileContent) {
+      cacheFavoriteFile(owner, name, path, appState.currentFileContent);
+    } else {
+      cacheFavoriteFile(owner, name, path);
+    }
+
+    showFlash('Added to Favorites (Group: All). Select additional groups below:', 'success');
+  }
+
+  openManagePageGroupsModal(owner, name, path);
+}
+
 // --- FAV GROUPS MANAGEMENT ---
 function renderFavGroupsBar() {
   const container = document.getElementById('favGroupsBar');
@@ -1508,17 +1536,33 @@ function renderManageGroupsModalContent() {
   sanitizeFavGroups();
 
   listEl.innerHTML = appState.favGroups.map(group => {
-    const isChecked = fileGroups.includes(group);
+    const isAll = group === 'All';
+    const isChecked = isAll || fileGroups.includes(group);
+
+    if (isAll) {
+      return `
+        <label class="modal-group-item disabled" title="All pages belong to group All by default">
+          <span class="modal-group-name">
+            ${escapeHtml(group)}
+            <span class="modal-group-badge">Default</span>
+          </span>
+          <input type="checkbox" class="modal-group-checkbox" checked disabled />
+        </label>
+      `;
+    }
+
     return `
-      <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--gh-bg-secondary, #f6f8fa); border: 1px solid var(--gh-border, #d0d7de); border-radius: 6px; cursor: pointer; user-select: none;">
-        <span style="font-weight: 500; font-size: 14px; color: var(--gh-text, #1f2328);">${escapeHtml(group)}</span>
-        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFileGroupModal('${escapeHtml(group)}', this.checked)" style="width: 18px; height: 18px; cursor: pointer;">
+      <label class="modal-group-item">
+        <span class="modal-group-name">${escapeHtml(group)}</span>
+        <input type="checkbox" class="modal-group-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFileGroupModal('${escapeHtml(group)}', this.checked)">
       </label>
     `;
   }).join('');
 }
 
 function toggleFileGroupModal(groupName, isChecked) {
+  if (groupName === 'All') return; // Group All is always locked/checked
+
   const file = getManagingFileObj();
   if (!file) return;
 
