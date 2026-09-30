@@ -114,6 +114,7 @@ const appState = {
   previousView: 'favPages',
   isOffline: !navigator.onLine,
   fontScale: parseInt(localStorage.getItem('gh_font_scale') || '100', 10),
+  isSelectionLocked: true,
   isGuideOpen: false,
   activeGuideTab: 'pat',
   isRawView: false,
@@ -253,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   applyFontScale(appState.fontScale);
+  applyLockSelect();
 
   if (window.mermaid) {
     try {
@@ -968,6 +970,8 @@ async function checkAndUpdatePageIfModified(owner, name, path, cached) {
 // --- LOGIC 6: Open Markdown File ---
 async function openMarkdownFile(owner, name, path) {
   appState.currentFile = { owner, name, path };
+  appState.isSelectionLocked = true; // Always default to locked for each new page opened
+  applyLockSelect();
   saveCurrentLocationState();
   const fileKey = `${owner}/${name}/${path}`;
 
@@ -1181,6 +1185,7 @@ function renderMarkdown(rawContent) {
   });
 
   applyFontScale(appState.fontScale);
+  applyLockSelect();
 }
 
 function encodePlantUML(sourceText) {
@@ -1990,6 +1995,52 @@ function applyFontScale(scale) {
   document.documentElement.style.setProperty('--md-content-scale', (scale / 100).toString());
   const badge = document.getElementById('zoomScaleBadge');
   if (badge) badge.textContent = `${scale}%`;
+}
+
+// --- LOGIC: Lock / Unlock Text Selection ---
+function applyLockSelect() {
+  const viewerBodies = document.querySelectorAll('.viewer-body, #markdownViewerPanel');
+  const btn = document.getElementById('btnToggleLockSelect');
+  const icon = document.getElementById('lockSelectIcon');
+  const text = document.getElementById('lockSelectText');
+
+  viewerBodies.forEach(el => {
+    if (appState.isSelectionLocked) {
+      el.classList.add('selection-locked');
+    } else {
+      el.classList.remove('selection-locked');
+    }
+  });
+
+  if (btn) {
+    if (appState.isSelectionLocked) {
+      btn.classList.add('active-lock');
+      btn.title = 'Text selection is Locked (Tap to Unlock / Copy text)';
+      if (icon) {
+        icon.innerHTML = '<path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8 2V4a2 2 0 1 0-4 0v2ZM3.5 7.75v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Z"></path>';
+      }
+      if (text) text.textContent = 'Lock';
+    } else {
+      btn.classList.remove('active-lock');
+      btn.title = 'Text selection is Unlocked (Tap to Lock)';
+      if (icon) {
+        icon.innerHTML = '<path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4ZM10.5 4a2.5 2.5 0 0 0-5 0v2h5ZM3.5 7.75v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Z"></path>';
+      }
+      if (text) text.textContent = 'Unlock';
+    }
+  }
+}
+
+function toggleLockSelect() {
+  appState.isSelectionLocked = !appState.isSelectionLocked;
+  applyLockSelect();
+  showFlash(
+    appState.isSelectionLocked
+      ? '🔒 Text selection LOCKED (Touch scroll optimized)'
+      : '🔓 Text selection UNLOCKED (Active for this page session)',
+    'info',
+    2000
+  );
 }
 
 // --- LOGIC 16: User Guide & PAT Help Modal ---
