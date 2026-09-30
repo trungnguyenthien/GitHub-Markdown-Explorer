@@ -1356,21 +1356,11 @@ function renderFavGroupsBar() {
 
   const chipsHtml = appState.favGroups.map(group => {
     const isActive = group === appState.activeFavGroup;
-    const isAll = group === 'All';
     const activeClass = isActive ? 'active' : '';
-
-    if (isAll) {
-      return `<div class="fav-group-chip ${activeClass}" onclick="setActiveFavGroup('All')">All</div>`;
-    }
 
     return `
       <div class="fav-group-chip ${activeClass}" onclick="setActiveFavGroup('${escapeHtml(group)}')">
         <span>${escapeHtml(group)}</span>
-        <button class="fav-group-delete-btn" onclick="event.stopPropagation(); deleteFavGroup('${escapeHtml(group)}')" title="Delete group">
-          <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
-            <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path>
-          </svg>
-        </button>
       </div>
     `;
   }).join('');
@@ -1385,6 +1375,34 @@ function renderFavGroupsBar() {
   `;
 
   container.innerHTML = chipsHtml + addBtnHtml;
+  updateDeleteGroupButtonUI();
+}
+
+function updateDeleteGroupButtonUI() {
+  const btn = document.getElementById('btnDeleteActiveFavGroup');
+  if (!btn) return;
+  const currentGroup = appState.activeFavGroup || 'All';
+  if (currentGroup === 'All') {
+    btn.classList.add('hidden');
+  } else {
+    btn.classList.remove('hidden');
+    btn.title = `Delete group "${currentGroup}"`;
+    btn.innerHTML = `
+      <svg class="octicon octicon-trash" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+        <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a1.75 1.75 0 0 0 1.744 1.475h2.2c.905 0 1.66-.69 1.744-1.475l.66-6.6a.75.75 0 0 0-1.492-.15l-.66 6.6a.25.25 0 0 1-.248.21h-2.2a.25.25 0 0 1-.248-.21l-.66-6.6a.75.75 0 0 0-1.496.15ZM6.5 1.5h3a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"></path>
+      </svg>
+      <span>Delete Group</span>
+    `;
+  }
+}
+
+function deleteCurrentActiveFavGroup() {
+  const currentGroup = appState.activeFavGroup || 'All';
+  if (currentGroup === 'All') {
+    showFlash('Group "All" cannot be deleted.', 'info');
+    return;
+  }
+  deleteFavGroup(currentGroup);
 }
 
 function setActiveFavGroup(groupName) {

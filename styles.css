@@ -852,29 +852,19 @@ body.mobile-app {
   box-shadow: 0 2px 6px rgba(9, 105, 218, 0.25);
 }
 
-.fav-group-delete-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.08);
-  color: var(--color-fg-muted);
-  padding: 0;
-  margin-left: 2px;
-  cursor: pointer;
+.gh-btn-danger {
+  color: #cf222e;
+  border-color: var(--color-border-default);
+  background-color: var(--color-canvas-subtle);
   transition: all 0.15s ease;
 }
-.fav-group-chip.active .fav-group-delete-btn {
-  background: rgba(255, 255, 255, 0.22);
+.gh-btn-danger:hover {
+  background-color: #cf222e;
   color: #ffffff;
+  border-color: #cf222e;
 }
-.fav-group-delete-btn:hover {
-  background: #cf222e !important;
-  color: #ffffff !important;
-  transform: scale(1.15);
+.gh-btn-danger svg {
+  color: inherit;
 }
 
 .fav-group-chip-add {
