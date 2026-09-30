@@ -854,17 +854,30 @@ body.mobile-app {
 
 .gh-btn-danger {
   color: #cf222e;
-  border-color: var(--color-border-default);
-  background-color: var(--color-canvas-subtle);
-  transition: all 0.15s ease;
+  background-color: rgba(207, 34, 46, 0.08);
+  border: 1px solid rgba(207, 34, 46, 0.35);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 1px 3px rgba(207, 34, 46, 0.1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .gh-btn-danger:hover {
   background-color: #cf222e;
   color: #ffffff;
   border-color: #cf222e;
+  box-shadow: 0 3px 10px rgba(207, 34, 46, 0.35);
+  transform: translateY(-1px);
+}
+.gh-btn-danger:active {
+  transform: translateY(0);
+  background-color: #a40e26;
+  border-color: #a40e26;
 }
 .gh-btn-danger svg {
   color: inherit;
+  flex-shrink: 0;
 }
 
 .fav-group-chip-add {

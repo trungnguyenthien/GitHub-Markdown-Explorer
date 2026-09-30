@@ -1436,7 +1436,18 @@ function deleteFavGroup(groupName) {
     return;
   }
 
-  if (!confirm(`Are you sure you want to delete group "${groupName}"? Pages in this group will remain in "All".`)) {
+  // Count how many pages belong to this group
+  const pagesInGroupCount = appState.favoriteFiles.filter(file => {
+    const groups = file.groups || ['All'];
+    return groups.includes(groupName);
+  }).length;
+
+  const warningMsg = `⚠️ Delete group "${groupName}"?\n\n` +
+    `• This group currently contains ${pagesInGroupCount} favorite page${pagesInGroupCount === 1 ? '' : 's'}.\n` +
+    `• After deletion, all ${pagesInGroupCount} page${pagesInGroupCount === 1 ? '' : 's'} will still be kept safely in group "All".\n\n` +
+    `Do you want to proceed with deleting this group?`;
+
+  if (!confirm(warningMsg)) {
     return;
   }
 
@@ -1454,7 +1465,7 @@ function deleteFavGroup(groupName) {
   localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
 
   markStateDirty();
-  showFlash(`Group "${groupName}" deleted.`, 'info');
+  showFlash(`Group "${groupName}" deleted. (Pages retained in "All")`, 'info');
 
   if (appState.activeFavGroup === groupName) {
     appState.activeFavGroup = 'All';
