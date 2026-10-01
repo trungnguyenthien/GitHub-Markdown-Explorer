@@ -660,26 +660,30 @@ body.mobile-app {
   border-spacing: 0 !important;
 }
 
-.markdown-body table tr {
-  background-color: #ffffff !important;
-  border-top: 1px solid #b8cee5 !important;
-}
-
+.markdown-body table tr,
 .markdown-body table tr:nth-child(2n) {
-  background-color: #f8fafc !important;
+  background-color: #ffffff !important;
+  border: none !important;
 }
 
 .markdown-body table th {
   background-color: #eef3f8 !important;
   color: #0550ae !important;
   font-weight: 600 !important;
-  border: 1px solid #b8cee5 !important;
+  border-top: 1.5px solid #9bbadc !important;
+  border-bottom: 2px solid #9bbadc !important;
+  border-left: 1px solid #dbe6f2 !important;
+  border-right: 1px solid #dbe6f2 !important;
   padding: 8px 14px !important;
 }
 
 .markdown-body table td {
-  border: 1px solid #b8cee5 !important;
+  background-color: #ffffff !important;
   color: #1f2328 !important;
+  border-top: 1.5px solid #9bbadc !important;
+  border-bottom: 1.5px solid #9bbadc !important;
+  border-left: 1px solid #dbe6f2 !important;
+  border-right: 1px solid #dbe6f2 !important;
   padding: 8px 14px !important;
 }
 
