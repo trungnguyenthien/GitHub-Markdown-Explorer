@@ -653,22 +653,34 @@ body.mobile-app {
 .markdown-body table {
   display: block;
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   background-color: #ffffff !important;
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
 }
 
 .markdown-body table tr {
   background-color: #ffffff !important;
+  border-top: 1px solid #b8cee5 !important;
 }
 
 .markdown-body table tr:nth-child(2n) {
-  background-color: #f6f8fa !important;
+  background-color: #f8fafc !important;
 }
 
-.markdown-body table th,
+.markdown-body table th {
+  background-color: #eef3f8 !important;
+  color: #0550ae !important;
+  font-weight: 600 !important;
+  border: 1px solid #b8cee5 !important;
+  padding: 8px 14px !important;
+}
+
 .markdown-body table td {
-  border: 1px solid #d0d7de !important;
+  border: 1px solid #b8cee5 !important;
   color: #1f2328 !important;
+  padding: 8px 14px !important;
 }
 
 .markdown-body img:not(.plantuml-diagram img) {
