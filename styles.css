@@ -670,8 +670,8 @@ body.mobile-app {
   background-color: #eef3f8 !important;
   color: #0550ae !important;
   font-weight: 600 !important;
-  border-top: 1.5px solid #9bbadc !important;
-  border-bottom: 2px solid #9bbadc !important;
+  border-top: 2px solid #678eb8 !important;
+  border-bottom: 2.5px solid #5480ab !important;
   border-left: 1px solid #dbe6f2 !important;
   border-right: 1px solid #dbe6f2 !important;
   padding: 8px 14px !important;
@@ -680,8 +680,8 @@ body.mobile-app {
 .markdown-body table td {
   background-color: #ffffff !important;
   color: #1f2328 !important;
-  border-top: 1.5px solid #9bbadc !important;
-  border-bottom: 1.5px solid #9bbadc !important;
+  border-top: 1.5px solid #678eb8 !important;
+  border-bottom: 1.5px solid #678eb8 !important;
   border-left: 1px solid #dbe6f2 !important;
   border-right: 1px solid #dbe6f2 !important;
   padding: 8px 14px !important;
