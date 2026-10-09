@@ -391,13 +391,31 @@ function switchMobileView(targetView, skipPushState = false) {
 function updateHeaderBackButton() {
   const btnBack = document.getElementById('btnHeaderBack');
   const headerBrand = document.getElementById('headerBrand');
+  const headerViewerGroup = document.getElementById('headerViewerGroup');
 
-  if (appState.mobileView === 'viewer' || appState.mobileView === 'tree' || appState.currentPath.length > 0) {
+  if (appState.mobileView === 'viewer') {
     btnBack.classList.remove('hidden');
     headerBrand.classList.add('hidden');
+    if (headerViewerGroup) headerViewerGroup.classList.remove('hidden');
+    if (appState.currentFile) {
+      const { name, path } = appState.currentFile;
+      const cleanRepoName = (name || '').includes('/') ? name.split('/').pop() : name;
+      const fileName = path ? path.split('/').pop() : 'Document';
+      const parentPath = getParentDirPath(path || '');
+      const repoPathDesc = parentPath ? `[${cleanRepoName}]:[${parentPath}]` : `[${cleanRepoName}]`;
+      const headerViewerTitleEl = document.getElementById('headerViewerTitle');
+      if (headerViewerTitleEl) {
+        headerViewerTitleEl.innerHTML = `<div class="header-viewer-repo">${escapeHtml(repoPathDesc)}</div><div class="header-viewer-filename">${escapeHtml(fileName)}</div>`;
+      }
+    }
+  } else if (appState.mobileView === 'tree' || appState.currentPath.length > 0) {
+    btnBack.classList.remove('hidden');
+    headerBrand.classList.add('hidden');
+    if (headerViewerGroup) headerViewerGroup.classList.add('hidden');
   } else {
     btnBack.classList.add('hidden');
     headerBrand.classList.remove('hidden');
+    if (headerViewerGroup) headerViewerGroup.classList.add('hidden');
   }
 }
 
@@ -986,9 +1004,16 @@ async function openMarkdownFile(owner, name, path) {
 
   const cleanRepoName = (name || '').includes('/') ? name.split('/').pop() : name;
   const fileName = path.split('/').pop();
+  const parentPath = getParentDirPath(path);
+  const repoPathDesc = parentPath ? `[${cleanRepoName}]:[${parentPath}]` : `[${cleanRepoName}]`;
+
+  const headerViewerTitleEl = document.getElementById('headerViewerTitle');
+  if (headerViewerTitleEl) {
+    headerViewerTitleEl.innerHTML = `<div class="header-viewer-repo">${escapeHtml(repoPathDesc)}</div><div class="header-viewer-filename">${escapeHtml(fileName)}</div>`;
+  }
   const viewerTitleEl = document.getElementById('viewerFileName');
   if (viewerTitleEl) {
-    viewerTitleEl.innerHTML = `<div class="repo-desc" style="font-size: 11px; color: var(--color-fg-muted); line-height: 1.2;">[${cleanRepoName}]:[${getParentDirPath(path)}]</div><div style="font-weight: 600; font-size: 14px; color: var(--gh-text-primary); line-height: 1.3;">${fileName}</div>`;
+    viewerTitleEl.innerHTML = `<div class="repo-desc" style="font-size: 11px; color: var(--color-fg-muted); line-height: 1.2;">${repoPathDesc}</div><div style="font-weight: 600; font-size: 14px; color: var(--gh-text-primary); line-height: 1.3;">${fileName}</div>`;
   }
   document.getElementById('linkOpenGithub').href = `https://github.com/${owner}/${name}/blob/${appState.currentRepo ? appState.currentRepo.defaultBranch || 'main' : 'main'}/${path}`;
 

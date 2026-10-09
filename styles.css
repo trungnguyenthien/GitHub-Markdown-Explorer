@@ -89,12 +89,15 @@ body.mobile-app {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .gh-header-brand {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .gh-header-logo {
@@ -109,20 +112,90 @@ body.mobile-app {
   font-weight: 600;
 }
 
+.gh-header-viewer-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.header-viewer-title-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  justify-content: center;
+}
+
+.header-viewer-repo {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.header-viewer-filename {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.btn-header-sync {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: none !important;
+  color: #ffffff !important;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.15s ease;
+}
+
+.btn-header-sync:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+}
+
+.btn-header-sync:active {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+.btn-header-sync:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-header-sync .octicon-sync.is-spinning {
+  animation: sync-spin 1s linear infinite;
+}
+
 .btn-back {
-  background: rgba(255,255,255,0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   border: none !important;
   color: #fff !important;
   padding: 4px 10px !important;
   height: 34px;
   border-radius: 6px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .gh-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 /* Badges */

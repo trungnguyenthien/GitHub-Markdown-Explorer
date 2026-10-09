@@ -40,14 +40,21 @@
         <img src="icon.jpeg" alt="Logo" class="gh-header-logo" width="24" height="24">
         <span class="gh-header-title">GH Explorer</span>
       </div>
+
+      <!-- Reader Title & Sync Button on Top Bar (shown in Reader view) -->
+      <div id="headerViewerGroup" class="gh-header-viewer-group hidden">
+        <div id="headerViewerTitle" class="header-viewer-title-box">
+          <span class="header-viewer-filename">Select a file</span>
+        </div>
+        <button id="btnSyncCurrentFile" class="btn-header-sync" onclick="syncCurrentFile()" title="Sync file">
+          <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
+          </svg>
+        </button>
+      </div>
     </div>
     
     <div class="gh-header-actions">
-      <!-- Network Dot Indicator -->
-      <span id="networkBadge" class="gh-badge gh-badge-success" title="Connection Status">
-        <span class="badge-dot"></span> <span class="badge-text">Online</span>
-      </span>
-
       <!-- Help Button -->
       <button id="btnOpenHelp" class="gh-btn gh-btn-icon" onclick="toggleGuideModal(true, 'pat')" title="Help & PAT Guide">
         <svg class="octicon octicon-question" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
@@ -196,8 +203,7 @@
       <!-- MARKDOWN VIEWER VIEW (Reader) -->
       <section id="viewViewer" class="mobile-view-panel hidden">
         <div class="viewer-mobile-header">
-          <div class="viewer-title-group">
-            <span id="viewerFileName" class="viewer-filename">Select a file</span>
+          <div class="mobile-reader-toolbar">
             <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
               <button id="btnFavCurrentFile" class="btn-star-icon" onclick="toggleCurrentFileFavorite()" title="Toggle Favorite">
                 <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
@@ -210,16 +216,14 @@
                 </svg>
               </button>
             </div>
-          </div>
 
-          <div class="mobile-reader-toolbar">
+            <!-- Network Dot Indicator (Positioned here as requested) -->
+            <span id="networkBadge" class="gh-badge gh-badge-success" title="Connection Status">
+              <span class="badge-dot"></span> <span class="badge-text">Online</span>
+            </span>
+
+            <!-- File Sync Status Badge -->
             <span id="fileSyncBadge" class="gh-badge gh-badge-secondary">🟢 Synced</span>
-            
-            <button id="btnSyncCurrentFile" class="gh-btn gh-btn-sm" onclick="syncCurrentFile()" title="Sync file">
-              <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-                <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
-              </svg>
-            </button>
 
             <!-- Zoom -->
             <div class="zoom-controls">
