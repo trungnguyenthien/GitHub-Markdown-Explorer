@@ -256,6 +256,16 @@ document.addEventListener('DOMContentLoaded', () => {
   applyFontScale(appState.fontScale);
   applyLockSelect();
 
+  // Code Block Copy Button Listener (Event Delegation)
+  document.addEventListener('click', (e) => {
+    const copyBtn = e.target.closest('.btn-copy-code');
+    if (copyBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleCopyCodeBlock(copyBtn);
+    }
+  });
+
   if (window.mermaid) {
     try {
       mermaid.initialize({
@@ -1159,14 +1169,24 @@ function renderMarkdown(rawContent) {
     }
 
     const escapedCode = escapeHtml(code);
-    return `<pre><code class="hljs language-${lang}">${escapedCode}</code></pre>`;
+    return `
+      <div class="code-block-wrapper">
+        <button class="btn-copy-code" type="button" title="Copy code" aria-label="Copy code">
+          <svg class="octicon octicon-copy" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+            <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+          </svg>
+          <span>Copy</span>
+        </button>
+        <pre><code class="hljs language-${lang}">${escapedCode}</code></pre>
+      </div>
+    `;
   };
 
   marked.setOptions({ renderer });
   const rawHtml = marked.parse(rawContent);
   const cleanHtml = DOMPurify.sanitize(rawHtml, {
-    ADD_TAGS: ['div', 'img'],
-    ADD_ATTR: ['src', 'alt', 'class']
+    ADD_TAGS: ['div', 'img', 'button', 'span', 'svg', 'path'],
+    ADD_ATTR: ['src', 'alt', 'class', 'type', 'title', 'aria-label', 'viewBox', 'width', 'height', 'fill', 'd']
   });
 
   const viewerPanel = document.getElementById('markdownViewerPanel');
@@ -1212,6 +1232,68 @@ function renderMarkdown(rawContent) {
 
   applyFontScale(appState.fontScale);
   applyLockSelect();
+}
+
+function handleCopyCodeBlock(btn) {
+  const wrapper = btn.closest('.code-block-wrapper');
+  if (!wrapper) return;
+  const codeEl = wrapper.querySelector('pre code');
+  if (!codeEl) return;
+
+  const codeText = codeEl.textContent || codeEl.innerText || '';
+
+  const setCopiedUI = () => {
+    btn.classList.add('copied');
+    btn.innerHTML = `
+      <svg class="octicon octicon-check" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+        <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+      </svg>
+      <span>Copied!</span>
+    `;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `
+        <svg class="octicon octicon-copy" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+          <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+        </svg>
+        <span>Copy</span>
+      `;
+    }, 2000);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(codeText).then(setCopiedUI).catch(() => {
+      fallbackCopyText(codeText);
+      setCopiedUI();
+    });
+  } else {
+    fallbackCopyText(codeText);
+    setCopiedUI();
+  }
+}
+
+function fallbackCopyText(text) {
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.width = '2em';
+    textArea.style.height = '2em';
+    textArea.style.padding = '0';
+    textArea.style.border = 'none';
+    textArea.style.outline = 'none';
+    textArea.style.boxShadow = 'none';
+    textArea.style.background = 'transparent';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  } catch (e) {
+    console.warn('Fallback copy failed:', e);
+  }
 }
 
 function encodePlantUML(sourceText) {

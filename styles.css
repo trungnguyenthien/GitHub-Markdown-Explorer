@@ -671,6 +671,59 @@ body.mobile-app {
   color: #1f2328 !important;
 }
 
+/* Code Block Wrapper & Floating Copy Button */
+.code-block-wrapper {
+  position: relative;
+  margin: 16px 0;
+}
+
+.code-block-wrapper pre {
+  margin: 0 !important;
+}
+
+.btn-copy-code {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--color-fg-muted, #656d76);
+  background-color: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--color-border-default, #d0d7de);
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.btn-copy-code:hover {
+  background-color: #ffffff;
+  color: var(--color-fg-default, #1f2328);
+  border-color: #8c959f;
+}
+
+.btn-copy-code:active {
+  background-color: #f3f4f6;
+  transform: scale(0.96);
+}
+
+.btn-copy-code.copied {
+  color: #1a7f37 !important;
+  border-color: #1a7f37 !important;
+  background-color: #dafbe1 !important;
+  font-weight: 600;
+}
+
 /* Force Light Mode Overrides for Code Blocks, Tables & Syntax Highlighting */
 .markdown-body pre {
   background-color: #f6f8fa !important;
