@@ -1158,7 +1158,8 @@ function renderMarkdown(rawContent) {
       `;
     }
 
-    return `<pre><code class="hljs language-${lang}">${code}</code></pre>`;
+    const escapedCode = escapeHtml(code);
+    return `<pre><code class="hljs language-${lang}">${escapedCode}</code></pre>`;
   };
 
   marked.setOptions({ renderer });
