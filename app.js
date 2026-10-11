@@ -1359,6 +1359,93 @@ function toggleRawView() {
   }
 }
 
+async function copyAllMarkdown() {
+  const content = appState.currentFileContent || (document.getElementById('rawMarkdownPanel') ? document.getElementById('rawMarkdownPanel').textContent : '');
+  if (!content) {
+    showFlash('No Markdown content available to copy.', 'info');
+    return;
+  }
+
+  const btn = document.getElementById('btnCopyAllMarkdown');
+  const originalHtml = btn ? btn.innerHTML : '';
+
+  const setCopiedUI = () => {
+    if (btn) {
+      btn.classList.add('copied');
+      btn.innerHTML = `
+        <svg class="octicon octicon-check" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+          <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+        </svg>
+        <span>Copied!</span>
+      `;
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = originalHtml;
+      }, 2000);
+    }
+    showFlash('Copied entire Markdown file to clipboard!', 'success');
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedUI();
+    } catch (err) {
+      fallbackCopyText(content);
+      setCopiedUI();
+    }
+  } else {
+    fallbackCopyText(content);
+    setCopiedUI();
+  }
+}
+
+function downloadCurrentMarkdownFile() {
+  const content = appState.currentFileContent || (document.getElementById('rawMarkdownPanel') ? document.getElementById('rawMarkdownPanel').textContent : '');
+  if (!content) {
+    showFlash('No Markdown content available to download.', 'info');
+    return;
+  }
+
+  let fileName = 'document.md';
+  if (appState.currentFile && appState.currentFile.path) {
+    fileName = appState.currentFile.path.split('/').pop() || 'document.md';
+  }
+
+  const btn = document.getElementById('btnDownloadMarkdown');
+  const originalHtml = btn ? btn.innerHTML : '';
+
+  try {
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (btn) {
+      btn.classList.add('copied');
+      btn.innerHTML = `
+        <svg class="octicon octicon-check" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+          <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+        </svg>
+        <span>Saved!</span>
+      `;
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = originalHtml;
+      }, 2000);
+    }
+    showFlash(`Downloaded ${fileName}!`, 'success');
+  } catch (err) {
+    console.error('Download error:', err);
+    showFlash('Failed to download Markdown file.', 'error');
+  }
+}
+
 // --- LOGIC 9 & 12: Favorite Files & Auto-cache ---
 function isFileFavorited(owner, name, path) {
   return appState.favoriteFiles.some(f => f.owner === owner && f.name === name && f.path === path);

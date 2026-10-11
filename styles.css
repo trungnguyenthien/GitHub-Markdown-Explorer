@@ -594,6 +594,13 @@ body.mobile-app {
   font-weight: 600 !important;
 }
 
+.gh-btn.copied {
+  color: #1a7f37 !important;
+  border-color: #1a7f37 !important;
+  background-color: #dafbe1 !important;
+  font-weight: 600 !important;
+}
+
 /* GitHub Markdown Body Custom Font Scale & Strict Light Mode Overrides */
 .markdown-body {
   color-scheme: light !important;
