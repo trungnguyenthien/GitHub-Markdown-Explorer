@@ -2,7 +2,7 @@
    GitHub Markdown Explorer - Service Worker (Offline PWA Engine)
    ========================================================================== */
 
-const CACHE_NAME = 'gh-md-explorer-v20';
+const CACHE_NAME = 'gh-md-explorer-v21';
 
 // Static assets to precache (App Shell & CDN Dependencies)
 const PRECACHE_ASSETS = [
@@ -61,7 +61,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const isLocalAsset = event.request.url.startsWith(self.location.origin) || event.request.mode === 'navigate';
+  // Do NOT intercept requests to other apps on the same domain outside this app's scope (e.g. /MyQuizlet/)
+  if (requestUrl.origin === self.location.origin && !event.request.url.startsWith(self.registration.scope)) {
+    return;
+  }
+
+  const isLocalAsset = event.request.url.startsWith(self.registration.scope);
 
   if (isLocalAsset) {
     // Network-First for local app code: ensures latest edits are immediately loaded
@@ -80,7 +85,7 @@ self.addEventListener('fetch', (event) => {
           // Offline fallback
           return caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) return cachedResponse;
-            if (event.request.mode === 'navigate') {
+            if (event.request.mode === 'navigate' && event.request.url.startsWith(self.registration.scope)) {
               return caches.match('./index.html');
             }
           });

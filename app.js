@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Register PWA Service Worker with auto-update on code change
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').then((reg) => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' }).then((reg) => {
       console.log('[PWA] Service Worker registered:', reg.scope);
       // Auto-check for updates on load, tab focus, and visibility change
       reg.update();
