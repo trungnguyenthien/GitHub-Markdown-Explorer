@@ -2,16 +2,19 @@
    GitHub Markdown Explorer - Service Worker (Offline PWA Engine)
    ========================================================================== */
 
-const CACHE_NAME = 'gh-md-explorer-v21';
+const CACHE_NAME = 'gh-md-explorer-v22';
 
 // Static assets to precache (App Shell & CDN Dependencies)
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './styles.css',
+  './styles.css?v=22',
   './app.js',
+  './app.js?v=22',
   './icon.jpeg',
   './manifest.json',
+  './manifest.json?v=22',
   'https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown-light.min.css',
   'https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css',
   'https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js',
@@ -83,7 +86,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           // Offline fallback
-          return caches.match(event.request).then((cachedResponse) => {
+          return caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
             if (cachedResponse) return cachedResponse;
             if (event.request.mode === 'navigate' && event.request.url.startsWith(self.registration.scope)) {
               return caches.match('./index.html');
