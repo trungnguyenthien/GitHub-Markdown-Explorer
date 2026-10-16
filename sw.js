@@ -2,23 +2,25 @@
    GitHub Markdown Explorer - Service Worker (Offline PWA Engine)
    ========================================================================== */
 
-const CACHE_NAME = 'gh-md-explorer-v26';
+const CACHE_NAME = 'gh-md-explorer-v27';
 
 // Static assets to precache (App Shell & CDN Dependencies)
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './styles.css',
-  './styles.css?v=26',
+  './styles.css?v=27',
   './app.js',
-  './app.js?v=26',
+  './app.js?v=27',
   './manifest.webmanifest',
+  './manifest.webmanifest?v=27',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-192.png',
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png',
+  './icon.jpeg',
   'https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown-light.min.css',
   'https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css',
   'https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js',
@@ -39,8 +41,15 @@ self.addEventListener('install', (event) => {
       return cache.addAll(PRECACHE_ASSETS).catch((err) => {
         console.warn('[Service Worker] Precache partial warning:', err);
       });
-    }).then(() => self.skipWaiting())
+    })
   );
+});
+
+// Message Event: Listen for skipWaiting from In-App Update flow (Rule 6D)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
 
 // Activate Event: Clean up old cache versions
@@ -59,9 +68,14 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Network-First for local assets (index.html, app.js, styles.css) with cache fallback
+// Fetch Event: Network-First for local assets with cache fallback (PWA Standards Rule 4)
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
+
+  // Ignore non-HTTP protocols (e.g. data:, blob:, chrome-extension:)
+  if (!requestUrl.protocol.startsWith('http')) {
+    return;
+  }
 
   // Ignore non-GET requests or GitHub API requests (API offline is handled via IndexedDB)
   if (event.request.method !== 'GET' || requestUrl.hostname.includes('api.github.com')) {
@@ -93,7 +107,7 @@ self.addEventListener('fetch', (event) => {
           return caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
             if (cachedResponse) return cachedResponse;
             if (event.request.mode === 'navigate' && event.request.url.startsWith(self.registration.scope)) {
-              return caches.match('./index.html');
+              return caches.match('./index.html', { ignoreSearch: true });
             }
           });
         })
@@ -101,7 +115,7 @@ self.addEventListener('fetch', (event) => {
   } else {
     // Cache-First for external CDN dependencies
     event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
+      caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
         if (cachedResponse) {
           return cachedResponse;
         }

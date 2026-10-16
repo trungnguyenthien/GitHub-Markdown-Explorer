@@ -229,10 +229,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Register PWA Service Worker with auto-update on code change
+  // Register PWA Service Worker & Handle Updates (PWA Standards Rule 3, 5, 6D)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js', { scope: './' }).then((reg) => {
       console.log('[PWA] Service Worker registered:', reg.scope);
+
+      // If a worker is already waiting, show update banner
+      if (reg.waiting) {
+        promptPwaUpdate(reg.waiting);
+      }
+
+      // Listen for new worker installing
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              promptPwaUpdate(newWorker);
+            }
+          });
+        }
+      });
+
       // Auto-check for updates on load, tab focus, and visibility change
       reg.update();
       window.addEventListener('focus', () => reg.update());
@@ -243,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('[PWA] Service Worker registration failed:', err);
     });
 
-    // Automatically reload page when a new Service Worker activates and takes control
+    // Reload page when a new Service Worker takes control after user confirmation
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!refreshing) {
@@ -252,6 +270,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Initialize PWA Install Flow (Rule 6)
+  initPWAInstallFlow();
+
+  // Global Escape key listener to close modals (Rule 10)
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      toggleGuideModal(false);
+      closeManagePageGroupsModal();
+      toggleIosInstallModal(false);
+    }
+  });
 
   applyFontScale(appState.fontScale);
   applyLockSelect();
@@ -1400,7 +1430,7 @@ async function copyAllMarkdown() {
   }
 }
 
-function downloadCurrentMarkdownFile() {
+async function downloadCurrentMarkdownFile() {
   const content = appState.currentFileContent || (document.getElementById('rawMarkdownPanel') ? document.getElementById('rawMarkdownPanel').textContent : '');
   if (!content) {
     showFlash('No Markdown content available to download.', 'info');
@@ -1417,14 +1447,8 @@ function downloadCurrentMarkdownFile() {
 
   try {
     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const success = await downloadBlobFile(blob, fileName, 'text/markdown');
+    if (!success) return; // User cancelled share dialog
 
     if (btn) {
       btn.classList.add('copied');
@@ -2324,15 +2348,10 @@ async function exportAppData() {
 
     const jsonStr = JSON.stringify(backupData, null, 2);
     const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
     const dateStr = new Date().toISOString().slice(0, 10);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gh_explorer_backup_${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const fileName = `gh_explorer_backup_${dateStr}.json`;
+    const success = await downloadBlobFile(blob, fileName, 'application/json');
+    if (!success) return; // Cancelled
     showFlash('Backup JSON file exported successfully!', 'success');
   } catch (err) {
     console.error('Export error:', err);
@@ -2585,3 +2604,149 @@ async function restoreFromGist() {
     showFlash(`Cloud restore failed: ${err.message}`, 'info');
   }
 }
+
+/* ==========================================================================
+   PWA STANDARDS IMPLEMENTATION (Rule 6, Rule 8, Rule 10)
+   ========================================================================== */
+
+/**
+ * Universal Mobile File Download & Web Share Handler (Rule 8)
+ * Uses Web Share API on iOS Safari/PWA to save to Files; falls back to <a> download on Desktop/Android.
+ */
+async function downloadBlobFile(blob, fileName, mimeType = 'text/plain') {
+  const file = new File([blob], fileName, { type: mimeType });
+  const isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: fileName
+      });
+      return true;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        return false;
+      }
+      console.warn('[WebShare] Fallback to direct download link:', err);
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return true;
+}
+
+/**
+ * In-App PWA Update Notification Banner (Rule 6D)
+ * Displays a non-intrusive banner when a new Service Worker is waiting to activate.
+ */
+function promptPwaUpdate(waitingWorker) {
+  const banner = document.getElementById('pwaUpdateBanner');
+  const btnReload = document.getElementById('btnPwaReload');
+  const btnDismiss = document.getElementById('btnPwaDismiss');
+  if (!banner) return;
+
+  banner.classList.remove('hidden');
+
+  if (btnReload) {
+    btnReload.onclick = () => {
+      waitingWorker.postMessage({ action: 'skipWaiting' });
+    };
+  }
+
+  if (btnDismiss) {
+    btnDismiss.onclick = () => {
+      banner.classList.add('hidden');
+    };
+  }
+}
+
+/**
+ * PWA Install Button Pattern (Rule 6A, 6B, 6C)
+ * Supports native beforeinstallprompt on Chromium and custom guide modal on iOS Safari.
+ */
+function initPWAInstallFlow() {
+  const btnInstall = document.getElementById('btnInstall');
+  const iosInstallModal = document.getElementById('iosInstallModal');
+  const btnCloseIosModal = document.getElementById('btnCloseIosModal');
+  const btnGotItIos = document.getElementById('btnGotItIos');
+
+  let deferredInstallPrompt = null;
+
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  const isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isStandalone) {
+    if (btnInstall) btnInstall.classList.add('hidden');
+  } else if (isIOS && btnInstall) {
+    // iOS Safari does not fire beforeinstallprompt: show button to open instructions
+    btnInstall.classList.remove('hidden');
+  }
+
+  // 1. Listen for beforeinstallprompt on Chromium (Android / Desktop)
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!isStandalone && btnInstall) {
+      btnInstall.classList.remove('hidden');
+    }
+  });
+
+  // 2. Listen when app is installed successfully
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    if (btnInstall) btnInstall.classList.add('hidden');
+    showFlash('Cài đặt ứng dụng thành công!', 'success');
+  });
+
+  // 3. Handle click on Install button
+  if (btnInstall) {
+    btnInstall.addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          btnInstall.classList.add('hidden');
+        }
+        deferredInstallPrompt = null;
+      } else if (iosInstallModal) {
+        toggleIosInstallModal(true);
+      }
+    });
+  }
+
+  if (btnCloseIosModal) {
+    btnCloseIosModal.addEventListener('click', () => toggleIosInstallModal(false));
+  }
+  if (btnGotItIos) {
+    btnGotItIos.addEventListener('click', () => toggleIosInstallModal(false));
+  }
+}
+
+/**
+ * Toggle iOS Safari Install Guide Modal
+ */
+function toggleIosInstallModal(show) {
+  const modal = document.getElementById('iosInstallModal');
+  if (!modal) return;
+  if (show) {
+    modal.classList.remove('hidden');
+  } else {
+    modal.classList.add('hidden');
+  }
+}
+

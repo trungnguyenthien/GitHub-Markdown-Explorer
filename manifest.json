@@ -1,9 +1,9 @@
 {
-  "id": "./?app=md-explorer",
+  "id": "/GitHub-Markdown-Explorer/",
   "name": "GitHub Markdown Reader",
   "short_name": "MD Reader",
   "description": "Mobile-First GitHub Markdown Explorer & Offline Reader",
-  "start_url": "./?pwa=1",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
@@ -16,25 +16,25 @@
   "categories": ["developer", "productivity", "utilities"],
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-maskable-192.png",
+      "src": "./icons/icon-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-maskable-512.png",
+      "src": "./icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

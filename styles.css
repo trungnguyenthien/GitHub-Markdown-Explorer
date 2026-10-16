@@ -46,7 +46,7 @@ body.mobile-app {
   color: var(--color-fg-default);
   background-color: var(--color-canvas-subtle);
   min-height: 100vh;
-  padding-bottom: 66px; /* Space for Fixed Bottom Nav Bar */
+  padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)); /* Space for Fixed Bottom Nav Bar & Home Indicator */
   display: flex;
   flex-direction: column;
 }
@@ -74,8 +74,11 @@ body.mobile-app {
 .gh-header {
   background-color: var(--color-header-bg);
   color: var(--color-header-text);
-  height: 52px;
-  padding: 0 12px;
+  height: calc(52px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: calc(12px + env(safe-area-inset-left, 0px));
+  padding-right: calc(12px + env(safe-area-inset-right, 0px));
+  padding-bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -884,7 +887,10 @@ body.mobile-app {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   background-color: var(--color-header-bg);
   color: var(--color-header-text);
   display: flex;
@@ -958,6 +964,7 @@ body.mobile-app {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @media (min-width: 600px) {
@@ -1394,4 +1401,118 @@ body.mobile-app {
   gap: 8px;
   background-color: var(--color-canvas-subtle);
 }
+
+/* ==========================================================================
+   PWA Standards & Accessibility Extensions (Rule 6, 8, 10)
+   ========================================================================== */
+
+/* Top Header PWA Install Button */
+.btn-install {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  min-height: 36px;
+}
+
+.btn-install:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+}
+
+.btn-install:active {
+  background: rgba(255, 255, 255, 0.38) !important;
+}
+
+/* PWA In-App Update Banner (Rule 6D) */
+.pwa-update-banner {
+  position: fixed;
+  top: calc(58px + env(safe-area-inset-top, 0px));
+  left: 12px;
+  right: 12px;
+  max-width: 500px;
+  margin: 0 auto;
+  z-index: 2500;
+  background-color: var(--color-header-bg, #24292f);
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.pwa-update-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.pwa-update-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Touch Targets Minimum Sizing (Rule 10: Touch Targets >= 44x44px) */
+.gh-btn-icon {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-header-sync {
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.nav-item {
+  min-height: 48px;
+}
+
+/* Tabular Numbers for Stable Width on Numbers & Timestamps (Rule 10) */
+.badge-count,
+.header-viewer-repo,
+.header-viewer-filename,
+.repo-card-meta,
+.history-item-date,
+.reading-time,
+.font-scale-value,
+.code-action-btn {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Keyboard Accessible Focus Visible Ring (Rule 10) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-accent-fg, #0969da);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion Preference (Rule 10) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 

@@ -2,7 +2,7 @@
 <html lang="en" data-color-mode="light" data-light-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="color-scheme" content="light">
   <meta name="description" content="Mobile-First GitHub Markdown Explorer & Offline Reader">
   <meta name="theme-color" content="#24292f">
@@ -12,7 +12,7 @@
   <title>GitHub Markdown Explorer</title>
   
   <!-- Web App Manifest & App Icons -->
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="manifest" href="./manifest.webmanifest?v=27">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   
@@ -26,14 +26,14 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
   
   <!-- Custom Mobile-First GitHub Primer Styles -->
-  <link rel="stylesheet" href="./styles.css?v=26">
+  <link rel="stylesheet" href="./styles.css?v=27">
 </head>
 <body class="mobile-app">
   <!-- Header Bar -->
   <header class="gh-header">
     <div class="gh-header-left">
       <!-- Header Back Button -->
-      <button id="btnHeaderBack" class="gh-btn gh-btn-sm btn-back hidden" onclick="handleHeaderBack()">
+      <button id="btnHeaderBack" class="gh-btn gh-btn-sm btn-back hidden" onclick="handleHeaderBack()" aria-label="Back">
         <svg class="octicon octicon-chevron-left" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
           <path d="M9.78 12.78a.75.75 0 0 1-1.06 0L4.47 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L6.06 8l3.72 3.72a.75.75 0 0 1 0 1.06Z"></path>
         </svg>
@@ -50,7 +50,7 @@
         <div id="headerViewerTitle" class="header-viewer-title-box">
           <span class="header-viewer-filename">Select a file</span>
         </div>
-        <button id="btnSyncCurrentFile" class="btn-header-sync" onclick="syncCurrentFile()" title="Sync file">
+        <button id="btnSyncCurrentFile" class="btn-header-sync" onclick="syncCurrentFile()" title="Sync file" aria-label="Sync file">
           <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
             <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
           </svg>
@@ -59,21 +59,45 @@
     </div>
     
     <div class="gh-header-actions">
+      <!-- PWA Install Button (PWA Standards Rule 6) -->
+      <button id="btnInstall" class="gh-btn gh-btn-sm btn-install hidden" aria-label="Cài đặt ứng dụng" title="Cài đặt ứng dụng">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>Cài đặt</span>
+      </button>
+
       <!-- Help Button -->
-      <button id="btnOpenHelp" class="gh-btn gh-btn-icon" onclick="toggleGuideModal(true, 'pat')" title="Help & PAT Guide">
+      <button id="btnOpenHelp" class="gh-btn gh-btn-icon" onclick="toggleGuideModal(true, 'pat')" title="Help & PAT Guide" aria-label="Help & PAT Guide">
         <svg class="octicon octicon-question" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
           <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085c.081-.57.552-.985 1.17-.985.644 0 1.16.477 1.16 1.066 0 .445-.244.757-.666 1.066l-.326.237c-.524.38-.858.883-.858 1.531v.5a.75.75 0 0 0 1.5 0v-.354c0-.285.127-.514.475-.767l.325-.236c.692-.503 1.15-1.189 1.15-2.046 0-1.408-1.205-2.466-2.76-2.466-1.503 0-2.658 1.002-2.784 2.378a.75.75 0 0 0 1.488.136ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path>
         </svg>
       </button>
 
       <!-- Settings Button -->
-      <button id="btnSettings" class="gh-btn gh-btn-icon hidden" title="Settings & Disconnect">
+      <button id="btnSettings" class="gh-btn gh-btn-icon hidden" title="Settings & Disconnect" aria-label="Settings & Disconnect">
         <svg class="octicon octicon-gear" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
           <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm6.5-2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"></path>
         </svg>
       </button>
     </div>
   </header>
+
+  <!-- PWA In-App Update Banner (PWA Standards Rule 6D) -->
+  <div id="pwaUpdateBanner" class="pwa-update-banner hidden" role="alert">
+    <div class="pwa-update-text">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+        <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
+      </svg>
+      <span>Đã có bản cập nhật mới.</span>
+    </div>
+    <div class="pwa-update-actions">
+      <button id="btnPwaReload" class="gh-btn gh-btn-sm gh-btn-primary">Tải lại</button>
+      <button id="btnPwaDismiss" class="gh-btn gh-btn-sm" aria-label="Đóng">&times;</button>
+    </div>
+  </div>
 
   <!-- Flash Alert Container -->
   <div id="flashContainer" class="gh-flash-container"></div>
@@ -322,11 +346,11 @@
   </nav>
 
   <!-- MODAL: Help & Guide -->
-  <div id="helpGuideModal" class="gh-modal-backdrop hidden">
+  <div id="helpGuideModal" class="gh-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="helpGuideTitle">
     <div class="gh-modal">
       <div class="gh-modal-header">
-        <h3 class="gh-modal-title">Help & Guide</h3>
-        <button class="gh-modal-close" onclick="toggleGuideModal(false)">&times;</button>
+        <h3 class="gh-modal-title" id="helpGuideTitle">Help & Guide</h3>
+        <button class="gh-modal-close" onclick="toggleGuideModal(false)" aria-label="Close">&times;</button>
       </div>
 
       <nav class="gh-modal-tabs">
@@ -431,11 +455,11 @@
   </div>
 
   <!-- Modal Overlay for Manage Page Groups -->
-  <div id="manageGroupsModal" class="modal-overlay hidden" onclick="if(event.target===this) closeManagePageGroupsModal()">
+  <div id="manageGroupsModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="manageGroupsModalTitle" onclick="if(event.target===this) closeManagePageGroupsModal()">
     <div class="modal-content">
       <div class="modal-header">
         <h4 class="modal-title" id="manageGroupsModalTitle">Manage Groups</h4>
-        <button class="modal-close-btn" onclick="closeManagePageGroupsModal()">&times;</button>
+        <button class="modal-close-btn" onclick="closeManagePageGroupsModal()" aria-label="Close">&times;</button>
       </div>
       <div class="modal-body">
         <div id="manageGroupsModalList" style="display: flex; flex-direction: column; gap: 8px;"></div>
@@ -460,6 +484,33 @@
     </div>
   </div>
 
+  <!-- Modal: iOS Safari PWA Install Guide (PWA Standards Rule 6B) -->
+  <div id="iosInstallModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="iosModalTitle" onclick="if(event.target===this) toggleIosInstallModal(false)">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header">
+        <h4 class="modal-title" id="iosModalTitle">Cài đặt trên iOS (Safari)</h4>
+        <button id="btnCloseIosModal" class="modal-close-btn" onclick="toggleIosInstallModal(false)" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <p style="font-size: 0.9375rem; margin-bottom: 16px; color: var(--color-fg-default);">
+          Để cài đặt <strong>GitHub Markdown Reader</strong> lên iPhone hoặc iPad:
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 12px; text-align: left; background: var(--color-canvas-subtle, #f6f8fa); padding: 16px; border-radius: 8px; border: 1px solid var(--color-border-default, #d0d7de); font-size: 13px; line-height: 1.5;">
+          <div>1. Nhấn nút <strong>Chia sẻ (Share)</strong> 
+            <svg style="vertical-align: middle; display: inline-block; margin: 0 2px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> ở thanh công cụ Safari.
+          </div>
+          <div>2. Cuộn xuống và chọn <strong>Thêm vào MH chính (Add to Home Screen)</strong> 
+            <svg style="vertical-align: middle; display: inline-block; margin: 0 2px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>.
+          </div>
+          <div>3. Nhấn <strong>Thêm (Add)</strong> ở góc trên bên phải màn hình để hoàn tất.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnGotItIos" class="gh-btn gh-btn-primary gh-btn-sm" style="width: 100%; min-height: 38px;" onclick="toggleIosInstallModal(false)">Đã hiểu</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CDN Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
@@ -470,6 +521,6 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="./app.js?v=26"></script>
+  <script src="./app.js?v=27"></script>
 </body>
 </html>
