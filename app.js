@@ -2905,7 +2905,6 @@ function toggleTocModal(show) {
     if (searchInput) {
       searchInput.value = '';
       renderTocList(appState.readerHeadings);
-      setTimeout(() => searchInput.focus(), 80);
     }
   } else {
     modal.classList.add('hidden');
