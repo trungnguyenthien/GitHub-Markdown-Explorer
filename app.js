@@ -2769,7 +2769,7 @@ function buildReaderTableOfContents() {
   const headings = [];
 
   headingElements.forEach((el, index) => {
-    const rawText = (el.textContent || '').trim();
+    const rawText = (el.textContent || '').replace(/\s+/g, ' ').trim();
     if (!rawText) return;
 
     let id = el.id;
@@ -2835,10 +2835,10 @@ function renderTocList(headings) {
     const tagLabel = item.level === 1 ? 'H1' : 'H2';
 
     return `
-      <button type="button" class="toc-item ${levelClass}" onclick="seekToHeading('${escapeHtml(item.id)}')" aria-label="Nhảy đến ${tagLabel}: ${escapeHtml(item.text)}">
+      <div role="button" tabindex="0" class="toc-item ${levelClass}" onclick="seekToHeading('${escapeHtml(item.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ')seekToHeading('${escapeHtml(item.id)}')" aria-label="Nhảy đến ${tagLabel}: ${escapeHtml(item.text)}">
         <span class="toc-level-tag ${tagClass}">${tagLabel}</span>
         <span class="toc-item-text">${escapeHtml(item.text)}</span>
-      </button>
+      </div>
     `;
   }).join('');
 }
