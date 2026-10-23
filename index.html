@@ -12,7 +12,7 @@
   <title>GitHub Markdown Explorer</title>
   
   <!-- Web App Manifest & App Icons -->
-  <link rel="manifest" href="./manifest.webmanifest?v=27">
+  <link rel="manifest" href="./manifest.webmanifest?v=28">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   
@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
   
   <!-- Custom Mobile-First GitHub Primer Styles -->
-  <link rel="stylesheet" href="./styles.css?v=27">
+  <link rel="stylesheet" href="./styles.css?v=28">
 </head>
 <body class="mobile-app">
   <!-- Header Bar -->
@@ -53,6 +53,11 @@
         <button id="btnSyncCurrentFile" class="btn-header-sync" onclick="syncCurrentFile()" title="Sync file" aria-label="Sync file">
           <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
             <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
+          </svg>
+        </button>
+        <button id="btnHeaderToc" class="btn-header-sync" onclick="toggleTocModal()" title="Seek Headings (H1 & H2)" aria-label="Table of Contents">
+          <svg class="octicon octicon-list-unordered" viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path>
           </svg>
         </button>
       </div>
@@ -266,6 +271,14 @@
                 <path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8 2V4a2 2 0 1 0-4 0v2ZM3.5 7.75v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Z"></path>
               </svg>
               <span id="lockSelectText">Lock</span>
+            </button>
+
+            <!-- Outline / TOC Quick Seek -->
+            <button id="btnToggleToc" class="gh-btn gh-btn-sm btn-toc" onclick="toggleTocModal()" title="Seek Headings (H1 & H2)" aria-label="Table of Contents">
+              <svg class="octicon octicon-list-unordered" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path>
+              </svg>
+              <span>Outline</span>
             </button>
 
             <!-- Raw Toggle -->
@@ -511,6 +524,32 @@
     </div>
   </div>
 
+  <!-- SIDE MODAL: Quick TOC / Headings Seek (H1 & H2 only) -->
+  <div id="readerTocModal" class="side-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="readerTocTitle" onclick="if(event.target===this) toggleTocModal(false)">
+    <aside class="side-modal-panel">
+      <div class="side-modal-header">
+        <div class="side-modal-title-group">
+          <svg class="octicon octicon-list-unordered" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+            <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path>
+          </svg>
+          <h3 id="readerTocTitle" class="side-modal-title">Outline (H1 &amp; H2)</h3>
+          <span id="readerTocCount" class="gh-badge gh-badge-secondary">0</span>
+        </div>
+        <button class="modal-close-btn" onclick="toggleTocModal(false)" aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Quick Filter for Headings -->
+      <div class="side-modal-filter">
+        <input type="text" id="tocSearchInput" class="form-control" placeholder="Lọc tiêu đề H1, H2..." oninput="filterTocItems(this.value)" autocomplete="off">
+      </div>
+
+      <!-- TOC Items List -->
+      <nav id="readerTocList" class="side-modal-body" aria-label="Mục lục tiêu đề">
+        <!-- Injected dynamically -->
+      </nav>
+    </aside>
+  </div>
+
   <!-- CDN Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
@@ -521,6 +560,6 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="./app.js?v=27"></script>
+  <script src="./app.js?v=28"></script>
 </body>
 </html>

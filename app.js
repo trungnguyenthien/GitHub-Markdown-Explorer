@@ -121,7 +121,8 @@ const appState = {
   syncStatus: {},
   hasUnsavedChanges: false,
   lastGistBackupTime: localStorage.getItem('gh_last_gist_backup_time') || null,
-  autoGistBackupTimer: null
+  autoGistBackupTimer: null,
+  readerHeadings: []
 };
 
 function escapeHtml(str) {
@@ -280,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleGuideModal(false);
       closeManagePageGroupsModal();
       toggleIosInstallModal(false);
+      toggleTocModal(false);
     }
   });
 
@@ -460,6 +462,7 @@ function updateHeaderBackButton() {
 }
 
 function handleHeaderBack(isPopState = false) {
+  toggleTocModal(false);
   if (!isPopState && window.history.length > 1) {
     history.back();
     return;
@@ -1060,6 +1063,7 @@ async function openMarkdownFile(owner, name, path) {
   updateViewerFavoriteStar();
   const viewerPanel = document.getElementById('markdownViewerPanel');
   viewerPanel.innerHTML = '<p class="text-muted">Loading document...</p>';
+  clearReaderTableOfContents();
 
   // Step 1: Check Cache
   let cached = null;
@@ -1262,6 +1266,7 @@ function renderMarkdown(rawContent) {
 
   applyFontScale(appState.fontScale);
   applyLockSelect();
+  buildReaderTableOfContents();
 }
 
 function handleCopyCodeBlock(btn) {
@@ -2749,4 +2754,179 @@ function toggleIosInstallModal(show) {
     modal.classList.add('hidden');
   }
 }
+
+// --- LOGIC 19: Reader Table of Contents (H1 & H2 Seek Drawer) ---
+/**
+ * Scans the rendered markdown panel for H1 and H2 tags only (strictly 2 levels).
+ * Extracts text, ensures unique element IDs for scrolling, and populates the TOC drawer.
+ */
+function buildReaderTableOfContents() {
+  const viewerPanel = document.getElementById('markdownViewerPanel');
+  if (!viewerPanel) return;
+
+  // Query strictly H1 and H2 tags as requested (2 levels only)
+  const headingElements = viewerPanel.querySelectorAll('h1, h2');
+  const headings = [];
+
+  headingElements.forEach((el, index) => {
+    const rawText = (el.textContent || '').trim();
+    if (!rawText) return;
+
+    let id = el.id;
+    if (!id) {
+      const slug = rawText
+        .toLowerCase()
+        .replace(/[^\w\s\u00C0-\u024F\u1EA0-\u1EF9-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-');
+      id = slug ? `h-${slug}-${index + 1}` : `heading-${index + 1}`;
+      el.id = id;
+    }
+
+    const tagName = el.tagName.toLowerCase();
+    const level = tagName === 'h1' ? 1 : 2;
+
+    headings.push({
+      id,
+      text: rawText,
+      level
+    });
+  });
+
+  appState.readerHeadings = headings;
+
+  // Update count badge
+  const countBadge = document.getElementById('readerTocCount');
+  if (countBadge) {
+    countBadge.textContent = headings.length.toString();
+  }
+
+  // Reset search filter input
+  const searchInput = document.getElementById('tocSearchInput');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+
+  renderTocList(headings);
+}
+
+/**
+ * Renders the array of headings into the side modal list.
+ */
+function renderTocList(headings) {
+  const listContainer = document.getElementById('readerTocList');
+  if (!listContainer) return;
+
+  if (!headings || headings.length === 0) {
+    listContainer.innerHTML = `
+      <div style="padding: 28px 16px; text-align: center; color: var(--color-fg-muted); font-size: 13px;">
+        <svg class="octicon" viewBox="0 0 16 16" width="28" height="28" fill="currentColor" style="opacity: 0.5; margin-bottom: 8px;">
+          <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path>
+        </svg>
+        <div>Không tìm thấy tiêu đề H1, H2 trong tài liệu này.</div>
+      </div>
+    `;
+    return;
+  }
+
+  listContainer.innerHTML = headings.map(item => {
+    const levelClass = item.level === 1 ? 'toc-item-h1' : 'toc-item-h2';
+    const tagClass = item.level === 1 ? 'toc-tag-h1' : 'toc-tag-h2';
+    const tagLabel = item.level === 1 ? 'H1' : 'H2';
+
+    return `
+      <button type="button" class="toc-item ${levelClass}" onclick="seekToHeading('${escapeHtml(item.id)}')" aria-label="Nhảy đến ${tagLabel}: ${escapeHtml(item.text)}">
+        <span class="toc-level-tag ${tagClass}">${tagLabel}</span>
+        <span class="toc-item-text">${escapeHtml(item.text)}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+/**
+ * Smoothly scrolls the viewer to the chosen heading element and highlights it with a temporary pulse.
+ */
+function seekToHeading(headingId) {
+  if (!headingId) return;
+  const target = document.getElementById(headingId);
+
+  // Close the TOC modal
+  toggleTocModal(false);
+
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Trigger visual pulse glow
+    target.classList.remove('heading-target-active');
+    void target.offsetWidth; // Force reflow
+    target.classList.add('heading-target-active');
+
+    setTimeout(() => {
+      target.classList.remove('heading-target-active');
+    }, 2000);
+  }
+}
+
+/**
+ * Filters the TOC list dynamically as the user types in the search field.
+ */
+function filterTocItems(query) {
+  if (!appState.readerHeadings) return;
+  const q = (query || '').trim().toLowerCase();
+
+  if (!q) {
+    renderTocList(appState.readerHeadings);
+    return;
+  }
+
+  const filtered = appState.readerHeadings.filter(item =>
+    (item.text || '').toLowerCase().includes(q)
+  );
+  renderTocList(filtered);
+}
+
+/**
+ * Toggles the TOC side modal drawer open or closed.
+ */
+function toggleTocModal(show) {
+  const modal = document.getElementById('readerTocModal');
+  if (!modal) return;
+
+  const shouldOpen = (show === undefined) ? modal.classList.contains('hidden') : Boolean(show);
+
+  if (shouldOpen) {
+    // If headings haven't been scanned yet, scan them now
+    if (!appState.readerHeadings || appState.readerHeadings.length === 0) {
+      buildReaderTableOfContents();
+    }
+    modal.classList.remove('hidden');
+
+    const searchInput = document.getElementById('tocSearchInput');
+    if (searchInput) {
+      searchInput.value = '';
+      renderTocList(appState.readerHeadings);
+      setTimeout(() => searchInput.focus(), 80);
+    }
+  } else {
+    modal.classList.add('hidden');
+  }
+}
+
+/**
+ * Resets the TOC state when closing or changing documents.
+ */
+function clearReaderTableOfContents() {
+  appState.readerHeadings = [];
+  const countBadge = document.getElementById('readerTocCount');
+  if (countBadge) countBadge.textContent = '0';
+
+  const listContainer = document.getElementById('readerTocList');
+  if (listContainer) listContainer.innerHTML = '';
+
+  const modal = document.getElementById('readerTocModal');
+  if (modal && !modal.classList.contains('hidden')) {
+    modal.classList.add('hidden');
+  }
+}
+
 
