@@ -2885,6 +2885,65 @@ function filterTocItems(query) {
   renderTocList(filtered);
 }
 
+let isTocScrollLockInitialized = false;
+
+/**
+ * Initializes boundary scroll containment for the TOC side modal
+ * to prevent scroll chaining to the background content when hitting top or bottom.
+ */
+function initTocScrollLock() {
+  if (isTocScrollLockInitialized) return;
+  const modal = document.getElementById('readerTocModal');
+  const tocList = document.getElementById('readerTocList');
+  if (!modal || !tocList) return;
+
+  isTocScrollLockInitialized = true;
+
+  // 1. Prevent touchmove scrolling on backdrop and non-scrollable header/filter
+  modal.addEventListener('touchmove', (e) => {
+    if (!e.target.closest('.side-modal-body')) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // 2. Prevent touch scroll chaining at boundaries of .side-modal-body
+  let startTouchY = 0;
+  tocList.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length > 0) {
+      startTouchY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  tocList.addEventListener('touchmove', (e) => {
+    if (!e.touches || e.touches.length === 0) return;
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - startTouchY;
+    const isAtTop = tocList.scrollTop <= 0;
+    const isAtBottom = Math.ceil(tocList.scrollTop + tocList.clientHeight) >= tocList.scrollHeight - 1;
+
+    // Pulling down while at top (trying to scroll up beyond beginning)
+    if (isAtTop && deltaY > 0) {
+      e.preventDefault();
+      return;
+    }
+    // Pushing up while at bottom (trying to scroll down past end of list)
+    if (isAtBottom && deltaY < 0) {
+      e.preventDefault();
+      return;
+    }
+  }, { passive: false });
+
+  // 3. Prevent mouse wheel / trackpad scroll chaining at boundaries
+  tocList.addEventListener('wheel', (e) => {
+    const isAtTop = tocList.scrollTop <= 0;
+    const isAtBottom = Math.ceil(tocList.scrollTop + tocList.clientHeight) >= tocList.scrollHeight - 1;
+
+    if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+}
+
 /**
  * Toggles the TOC side modal drawer open or closed.
  */
@@ -2895,11 +2954,14 @@ function toggleTocModal(show) {
   const shouldOpen = (show === undefined) ? modal.classList.contains('hidden') : Boolean(show);
 
   if (shouldOpen) {
+    initTocScrollLock();
+
     // If headings haven't been scanned yet, scan them now
     if (!appState.readerHeadings || appState.readerHeadings.length === 0) {
       buildReaderTableOfContents();
     }
     modal.classList.remove('hidden');
+    document.body.classList.add('body-toc-open');
 
     const searchInput = document.getElementById('tocSearchInput');
     if (searchInput) {
@@ -2908,6 +2970,7 @@ function toggleTocModal(show) {
     }
   } else {
     modal.classList.add('hidden');
+    document.body.classList.remove('body-toc-open');
   }
 }
 
@@ -2926,6 +2989,7 @@ function clearReaderTableOfContents() {
   if (modal && !modal.classList.contains('hidden')) {
     modal.classList.add('hidden');
   }
+  document.body.classList.remove('body-toc-open');
 }
 
 
