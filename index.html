@@ -12,7 +12,7 @@
   <title>GitHub Markdown Explorer</title>
   
   <!-- Web App Manifest & App Icons -->
-  <link rel="manifest" href="./manifest.webmanifest?v=35">
+  <link rel="manifest" href="./manifest.webmanifest?v=36">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   
@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
   
   <!-- Custom Mobile-First GitHub Primer Styles -->
-  <link rel="stylesheet" href="./styles.css?v=35">
+  <link rel="stylesheet" href="./styles.css?v=36">
 </head>
 <body class="mobile-app">
   <!-- Header Bar -->
@@ -370,8 +370,8 @@
           <button class="tts-btn-close" onclick="ttsClose()" title="Đóng thanh phát" aria-label="Đóng">&times;</button>
         </div>
 
-        <!-- Silent Audio Element for Background / Lock Screen Playback Persistence -->
-        <audio id="ttsSilentAudio" loop playsinline preload="auto" style="display:none; width:0; height:0;"></audio>
+        <!-- HTML5 Audio Element for Background / Lock Screen Playback (Screen-Off Resistant) -->
+        <audio id="ttsAudioPlayer" playsinline preload="auto" style="display:none; width:0; height:0;"></audio>
       </section>
 
     </div>
@@ -617,6 +617,6 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="./app.js?v=35"></script>
+  <script src="./app.js?v=36"></script>
 </body>
 </html>

@@ -3011,14 +3011,12 @@ function clearReaderTableOfContents() {
      4. Screen Wake Lock API (giữ sáng màn hình khi đang xem trực tiếp)
    ========================================================================== */
 
-// 0.1s Silent Audio WAV Loop (Base64 PCM 8000Hz 8-bit mono)
-const SILENT_AUDIO_URI = 'data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==';
-
 // Khoảng thời gian tự ngắt 0.2s (200ms) khi gặp dấu chấm câu, header, hoặc bullet
 const TTS_PAUSE_DURATION_MS = 200;
 
 const ttsState = {
-  isSupported: 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window,
+  isSupported: true,
+  mode: 'audio', // 'audio' (HTML5 Media Stream) | 'speechSynthesis' (Offline Fallback)
   active: false,
   playing: false,
   currentIndex: 0,
@@ -3027,64 +3025,40 @@ const ttsState = {
   maleVoice: null,
   viVoices: [],
   utterance: null,
+  audioPlayer: null,
+  preloadAudio: null,
   watchdogTimer: null,
   pauseTimeout: null,
   currentStartTimestamp: 0,
-  wakeLock: null,
-  silentAudioElement: null
+  wakeLock: null
 };
 
 /**
- * Ensures the silent audio element is ready for keeping the OS Audio Session alive.
+ * Generates Google Translate TTS audio URL for Vietnamese speech.
  */
-function getSilentAudioElement() {
-  if (!ttsState.silentAudioElement) {
-    let audio = document.getElementById('ttsSilentAudio');
+function getTtsAudioUrl(text) {
+  const clean = (text || '').trim();
+  const encoded = encodeURIComponent(clean);
+  return `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encoded}`;
+}
+
+/**
+ * Returns or creates the dedicated HTML5 Audio element for media playback.
+ */
+function getTtsAudioPlayer() {
+  if (!ttsState.audioPlayer) {
+    let audio = document.getElementById('ttsAudioPlayer');
     if (!audio) {
       audio = document.createElement('audio');
-      audio.id = 'ttsSilentAudio';
-      audio.loop = true;
+      audio.id = 'ttsAudioPlayer';
       audio.playsInline = true;
+      audio.preload = 'auto';
       audio.style.display = 'none';
       document.body.appendChild(audio);
     }
-    if (!audio.src || audio.src === window.location.href) {
-      audio.src = SILENT_AUDIO_URI;
-    }
-    ttsState.silentAudioElement = audio;
+    ttsState.audioPlayer = audio;
   }
-  return ttsState.silentAudioElement;
-}
-
-/**
- * Starts silent audio playback to keep mobile audio session and background JS alive.
- */
-function startSilentAudioPlayback() {
-  try {
-    const audio = getSilentAudioElement();
-    if (audio && audio.paused) {
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          console.warn('[TTS] Silent audio play notice:', err);
-        });
-      }
-    }
-  } catch (e) {
-    console.warn('[TTS] Silent audio error:', e);
-  }
-}
-
-/**
- * Pauses silent audio playback.
- */
-function pauseSilentAudioPlayback() {
-  try {
-    const audio = getSilentAudioElement();
-    if (audio && !audio.paused) {
-      audio.pause();
-    }
-  } catch (e) {}
+  return ttsState.audioPlayer;
 }
 
 /**
@@ -3124,7 +3098,7 @@ function setupMediaSession() {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: fileName,
       artist: 'GitHub Markdown Reader • Tiếng Việt',
-      album: 'Giọng nữ (H1/H2) & Giọng nam trầm',
+      album: 'H1/H2 Giọng nữ • Nội dung Nam trầm, chậm',
       artwork: [
         { src: './icons/icon-192.png', sizes: '192x192', type: 'image/png' },
         { src: './icons/icon-512.png', sizes: '512x512', type: 'image/png' }
@@ -3152,7 +3126,7 @@ function setupMediaSession() {
 }
 
 /**
- * Updates Media Session playback state and current segment information on Lock Screen.
+ * Updates Media Session playback state and segment info on Lock Screen.
  */
 function updateMediaSessionStatus() {
   if (!('mediaSession' in navigator)) return;
@@ -3178,39 +3152,38 @@ function updateMediaSessionStatus() {
 }
 
 /**
- * Watchdog timer: solves Chromium 14s silence bug and handles background throttling / stuck recovery.
+ * Watchdog timer: verifies playback progress in background and auto-recovers if stuck.
  */
 function startTtsWatchdog() {
   stopTtsWatchdog();
   ttsState.watchdogTimer = setInterval(() => {
     if (!ttsState.active || !ttsState.playing) return;
 
-    // 1. Keep silent audio loop playing (prevents OS from killing audio session)
-    const audio = getSilentAudioElement();
-    if (audio && audio.paused) {
-      audio.play().catch(() => {});
+    // In audio mode: check if audio is paused unexpectedly while playing flag is true
+    if (ttsState.mode === 'audio' && ttsState.audioPlayer) {
+      if (ttsState.audioPlayer.paused && !ttsState.pauseTimeout) {
+        ttsState.audioPlayer.play().catch(() => {});
+      }
     }
 
-    // 2. Prevent Chrome 15s SpeechSynthesis freeze bug
-    try {
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
-    } catch (e) {}
+    // In speech synthesis mode: keep Chrome synthesis active
+    if (ttsState.mode === 'speechSynthesis' && 'speechSynthesis' in window) {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
+    }
 
-    // 3. Auto-recovery if a segment gets stuck in background
+    // Auto-recovery if a segment gets stuck longer than safety threshold
     if (ttsState.currentStartTimestamp > 0 && ttsState.items && ttsState.currentIndex < ttsState.items.length) {
       const item = ttsState.items[ttsState.currentIndex];
       const wordCount = (item.text || '').split(/\s+/).length;
-      // Estimate reading time with safety margin (approx 0.5s per word + 8s margin)
-      const maxAllowedDurationMs = Math.max(7000, (wordCount * 500) + 8000);
+      const maxAllowedDurationMs = Math.max(8000, (wordCount * 600) + 9000);
       const elapsedMs = Date.now() - ttsState.currentStartTimestamp;
 
       if (elapsedMs > maxAllowedDurationMs) {
         console.warn('[TTS Watchdog] Detected stuck segment in background. Auto-advancing...');
-        try {
-          window.speechSynthesis.cancel();
-        } catch (e) {}
         ttsSpeakItem(ttsState.currentIndex + 1);
       }
     }
@@ -3246,20 +3219,14 @@ document.addEventListener('visibilitychange', () => {
       }
       updateTtsUI();
     }
-  } else {
-    // When going to background or locking screen:
-    // Ensure silent audio continues playing so background media thread stays alive
-    if (ttsState.active && ttsState.playing) {
-      startSilentAudioPlayback();
-    }
   }
 });
 
 /**
- * Initializes and selects Vietnamese voices for female and male roles.
+ * Initializes and selects Vietnamese voices for fallback Web Speech API.
  */
 function initTtsVoices() {
-  if (!ttsState.isSupported) return;
+  if (!('speechSynthesis' in window)) return;
   try {
     const voices = window.speechSynthesis.getVoices() || [];
     ttsState.viVoices = voices.filter(v => {
@@ -3275,7 +3242,7 @@ function initTtsVoices() {
              name.includes('chi') || name.includes('lan') || name.includes('an');
     }) || ttsState.viVoices[0] || null;
 
-    // 2. Select Vietnamese male voice (prefer different from female voice if available)
+    // 2. Select Vietnamese male voice
     ttsState.maleVoice = ttsState.viVoices.find(v => {
       const name = (v.name || '').toLowerCase();
       return (name.includes('male') || name.includes('nam') || name.includes('namminh') ||
@@ -3321,22 +3288,45 @@ function splitTextIntoSentences(rawText) {
   // 2. Segment at punctuation marks: . ! ? : ; … or end of string
   const regex = /[^.!?…;:]+([.!?…;:]+|$)/g;
   const rawMatches = protectedText.match(regex);
-  if (!rawMatches || rawMatches.length === 0) {
-    return [text];
+  const candidateSentences = [];
+
+  if (rawMatches && rawMatches.length > 0) {
+    rawMatches.forEach(m => {
+      let s = m
+        .replace(new RegExp(PLACEHOLDER_DECIMAL, 'g'), '.')
+        .replace(new RegExp(PLACEHOLDER_ABBR, 'g'), '.')
+        .trim();
+      if (s.length > 0) candidateSentences.push(s);
+    });
+  } else {
+    candidateSentences.push(text);
   }
 
-  const sentences = [];
-  rawMatches.forEach(m => {
-    let s = m
-      .replace(new RegExp(PLACEHOLDER_DECIMAL, 'g'), '.')
-      .replace(new RegExp(PLACEHOLDER_ABBR, 'g'), '.')
-      .trim();
-    if (s.length > 0) {
-      sentences.push(s);
+  // 3. For extra-long sentences (>150 chars), split by commas to stay within TTS stream limits
+  const finalSentences = [];
+  candidateSentences.forEach(sentence => {
+    if (sentence.length <= 150) {
+      finalSentences.push(sentence);
+    } else {
+      const commaParts = sentence.split(/,\s*/);
+      let currentChunk = '';
+      commaParts.forEach((part, pIdx) => {
+        const isLastPart = (pIdx === commaParts.length - 1);
+        const suffix = isLastPart ? '' : ', ';
+        if ((currentChunk + part + suffix).length > 140 && currentChunk.length > 0) {
+          finalSentences.push(currentChunk.trim());
+          currentChunk = part + suffix;
+        } else {
+          currentChunk += part + suffix;
+        }
+      });
+      if (currentChunk.trim().length > 0) {
+        finalSentences.push(currentChunk.trim());
+      }
     }
   });
 
-  return sentences.length > 0 ? sentences : [text];
+  return finalSentences.length > 0 ? finalSentences : [text];
 }
 
 /**
@@ -3422,15 +3412,121 @@ function extractTtsItems() {
 }
 
 /**
- * Speaks the TTS item at the specified index with 0.2s pause upon completion.
+ * Plays speech unit via HTML5 Audio Stream (persistent when screen locked).
  */
-function ttsSpeakItem(index) {
-  if (!ttsState.isSupported) {
-    showFlash('Trình duyệt của bạn không hỗ trợ Web Speech API.', 'warning');
+function playViaAudioElement(item, index) {
+  ttsState.mode = 'audio';
+  const audio = getTtsAudioPlayer();
+
+  if ('speechSynthesis' in window) {
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+  }
+
+  const audioUrl = getTtsAudioUrl(item.text);
+  audio.src = audioUrl;
+
+  // Voice rules:
+  // - Headers H1 & H2: Female voice (natural pitch, clear speed 1.0)
+  // - Others: Male voice (deep tone pitch via playbackRate: 0.86, slow and warm)
+  if (item.type === 'h1' || item.type === 'h2') {
+    audio.preservesPitch = true;
+    audio.playbackRate = 1.0;
+  } else {
+    audio.preservesPitch = false;
+    audio.playbackRate = 0.86; // Lower frequency & slower pace = warm, deep male tone
+  }
+
+  audio.onended = () => {
+    if (ttsState.playing && ttsState.active) {
+      if (ttsState.pauseTimeout) {
+        clearTimeout(ttsState.pauseTimeout);
+      }
+      const pauseDuration = item.pauseAfterMs || TTS_PAUSE_DURATION_MS; // 0.2s
+      ttsState.pauseTimeout = setTimeout(() => {
+        if (ttsState.playing && ttsState.active) {
+          ttsSpeakItem(index + 1);
+        }
+      }, pauseDuration);
+    }
+  };
+
+  audio.onerror = (e) => {
+    console.warn('[TTS Audio Stream] Fallback to SpeechSynthesis due to audio error:', e);
+    playViaSpeechSynthesis(item, index);
+  };
+
+  ttsState.playing = true;
+  const playPromise = audio.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(err => {
+      console.warn('[TTS Audio play notice]:', err);
+      playViaSpeechSynthesis(item, index);
+    });
+  }
+}
+
+/**
+ * Plays speech unit via Web Speech API (offline fallback).
+ */
+function playViaSpeechSynthesis(item, index) {
+  ttsState.mode = 'speechSynthesis';
+  if (!('speechSynthesis' in window)) {
+    showFlash('Trình duyệt không hỗ trợ Web Speech API.', 'warning');
     return;
   }
 
-  // Clear any pending pause timeout
+  if (ttsState.audioPlayer) {
+    try { ttsState.audioPlayer.pause(); } catch (e) {}
+  }
+
+  try { window.speechSynthesis.cancel(); } catch (e) {}
+
+  const utterance = new SpeechSynthesisUtterance(item.text);
+  utterance.lang = 'vi-VN';
+
+  if (item.type === 'h1' || item.type === 'h2') {
+    if (ttsState.femaleVoice) utterance.voice = ttsState.femaleVoice;
+    utterance.pitch = ttsState.femaleVoice ? 1.15 : 1.25;
+    utterance.rate = 1.0;
+  } else {
+    if (ttsState.maleVoice) utterance.voice = ttsState.maleVoice;
+    utterance.pitch = 0.75;
+    utterance.rate = 0.82;
+  }
+
+  utterance.onend = () => {
+    if (ttsState.playing && ttsState.active) {
+      if (ttsState.pauseTimeout) clearTimeout(ttsState.pauseTimeout);
+      const pauseDuration = item.pauseAfterMs || TTS_PAUSE_DURATION_MS;
+      ttsState.pauseTimeout = setTimeout(() => {
+        if (ttsState.playing && ttsState.active) {
+          ttsSpeakItem(index + 1);
+        }
+      }, pauseDuration);
+    }
+  };
+
+  utterance.onerror = (event) => {
+    if (event.error === 'canceled' || event.error === 'interrupted') return;
+    if (ttsState.playing && ttsState.active) {
+      ttsSpeakItem(index + 1);
+    }
+  };
+
+  ttsState.utterance = utterance;
+  ttsState.playing = true;
+
+  try {
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.error('SpeechSynthesis.speak error:', e);
+  }
+}
+
+/**
+ * Speaks the TTS item at the specified index with 0.2s pause and background support.
+ */
+function ttsSpeakItem(index) {
   if (ttsState.pauseTimeout) {
     clearTimeout(ttsState.pauseTimeout);
     ttsState.pauseTimeout = null;
@@ -3452,15 +3548,7 @@ function ttsSpeakItem(index) {
   ttsState.currentStartTimestamp = Date.now();
   const item = ttsState.items[index];
 
-  // Cancel any ongoing speech
-  try {
-    window.speechSynthesis.cancel();
-  } catch (e) {}
-
-  // Keep background audio playback active
-  startSilentAudioPlayback();
-
-  // Update DOM highlights smoothly (only re-highlight if element changed)
+  // Update DOM highlights smoothly
   if (document.visibilityState === 'visible') {
     const prevItem = (index > 0 && ttsState.items[index - 1]) ? ttsState.items[index - 1] : null;
     if (!prevItem || prevItem.element !== item.element) {
@@ -3476,57 +3564,22 @@ function ttsSpeakItem(index) {
     }
   }
 
-  // Build utterance
-  const utterance = new SpeechSynthesisUtterance(item.text);
-  utterance.lang = 'vi-VN';
-
-  // Apply voice rules:
-  // - Headers H1 & H2: Female voice (rate 1.0, pitch ~1.2)
-  // - Others: Male voice (deep tone pitch 0.75, slow rate 0.82)
-  if (item.type === 'h1' || item.type === 'h2') {
-    if (ttsState.femaleVoice) {
-      utterance.voice = ttsState.femaleVoice;
-    }
-    utterance.pitch = ttsState.femaleVoice ? 1.15 : 1.25;
-    utterance.rate = 1.0;
-  } else {
-    if (ttsState.maleVoice) {
-      utterance.voice = ttsState.maleVoice;
-    }
-    utterance.pitch = 0.75; // Giọng nam trầm
-    utterance.rate = 0.82;  // Đọc chậm rãi, đầm ấm
+  // Preload next audio unit in background to eliminate transition latency
+  if (index + 1 < ttsState.items.length && navigator.onLine) {
+    try {
+      if (!ttsState.preloadAudio) {
+        ttsState.preloadAudio = new Audio();
+      }
+      ttsState.preloadAudio.src = getTtsAudioUrl(ttsState.items[index + 1].text);
+      ttsState.preloadAudio.preload = 'auto';
+    } catch (e) {}
   }
 
-  // Automatic 0.2s pause when encountering punctuation, headers, or bullets
-  utterance.onend = () => {
-    if (ttsState.playing && ttsState.active) {
-      if (ttsState.pauseTimeout) {
-        clearTimeout(ttsState.pauseTimeout);
-      }
-      const pauseDuration = item.pauseAfterMs || TTS_PAUSE_DURATION_MS; // 0.2s (200ms)
-      ttsState.pauseTimeout = setTimeout(() => {
-        if (ttsState.playing && ttsState.active) {
-          ttsSpeakItem(index + 1);
-        }
-      }, pauseDuration);
-    }
-  };
-
-  utterance.onerror = (event) => {
-    if (event.error === 'canceled' || event.error === 'interrupted') return;
-    console.warn('[TTS] Playback notice:', event);
-    if (ttsState.playing && ttsState.active) {
-      ttsSpeakItem(index + 1);
-    }
-  };
-
-  ttsState.utterance = utterance;
-  ttsState.playing = true;
-
-  try {
-    window.speechSynthesis.speak(utterance);
-  } catch (e) {
-    console.error('SpeechSynthesis.speak error:', e);
+  // Choose playback engine: HTML5 Media Stream (screen-off persistent) or SpeechSynthesis (offline)
+  if (navigator.onLine) {
+    playViaAudioElement(item, index);
+  } else {
+    playViaSpeechSynthesis(item, index);
   }
 
   updateTtsUI();
@@ -3661,11 +3714,6 @@ function detachTtsClickListeners() {
  * Toggles TTS player on/off or play/pause.
  */
 function toggleTtsPlayer() {
-  if (!ttsState.isSupported) {
-    showFlash('Trình duyệt không hỗ trợ Web Speech API.', 'warning');
-    return;
-  }
-
   if (ttsState.active) {
     ttsTogglePlayPause();
   } else {
@@ -3676,7 +3724,6 @@ function toggleTtsPlayer() {
       return;
     }
     ttsState.active = true;
-    startSilentAudioPlayback();
     setupMediaSession();
     requestTtsWakeLock();
     startTtsWatchdog();
@@ -3701,24 +3748,29 @@ function ttsTogglePlayPause() {
   }
 
   if (ttsState.playing) {
-    try {
-      window.speechSynthesis.pause();
-    } catch (e) {}
-    pauseSilentAudioPlayback();
+    if (ttsState.mode === 'audio' && ttsState.audioPlayer) {
+      try { ttsState.audioPlayer.pause(); } catch (e) {}
+    } else if ('speechSynthesis' in window) {
+      try { window.speechSynthesis.pause(); } catch (e) {}
+    }
     ttsState.playing = false;
     stopTtsWatchdog();
     releaseTtsWakeLock();
     updateTtsUI();
     updateMediaSessionStatus();
   } else {
-    startSilentAudioPlayback();
     requestTtsWakeLock();
     startTtsWatchdog();
-    if (window.speechSynthesis.paused) {
-      try {
-        window.speechSynthesis.resume();
-      } catch (e) {}
-      ttsState.playing = true;
+    ttsState.playing = true;
+
+    if (ttsState.mode === 'audio' && ttsState.audioPlayer && ttsState.audioPlayer.src) {
+      ttsState.audioPlayer.play().catch(() => {
+        ttsSpeakItem(ttsState.currentIndex);
+      });
+      updateTtsUI();
+      updateMediaSessionStatus();
+    } else if (window.speechSynthesis && window.speechSynthesis.paused) {
+      try { window.speechSynthesis.resume(); } catch (e) {}
       updateTtsUI();
       updateMediaSessionStatus();
     } else {
@@ -3766,9 +3818,16 @@ function ttsStop() {
     ttsState.pauseTimeout = null;
   }
 
-  try {
-    window.speechSynthesis.cancel();
-  } catch (e) {}
+  if (ttsState.audioPlayer) {
+    try {
+      ttsState.audioPlayer.pause();
+      ttsState.audioPlayer.currentTime = 0;
+    } catch (e) {}
+  }
+
+  if ('speechSynthesis' in window) {
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+  }
 
   ttsState.playing = false;
   ttsState.active = false;
@@ -3776,7 +3835,6 @@ function ttsStop() {
   ttsState.currentStartTimestamp = 0;
 
   stopTtsWatchdog();
-  pauseSilentAudioPlayback();
   releaseTtsWakeLock();
 
   if ('mediaSession' in navigator) {
@@ -3795,5 +3853,6 @@ function ttsStop() {
 function ttsClose() {
   ttsStop();
 }
+
 
 
