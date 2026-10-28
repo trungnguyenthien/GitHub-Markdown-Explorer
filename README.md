@@ -18,6 +18,7 @@
 - ⚡ **Đọc ngoại tuyến (Offline)**: Đọc lại toàn bộ nội dung các bài viết đã yêu thích ngay cả khi không có kết nối mạng Internet hoặc đang bật Chế độ máy bay.
 - ☀️ **Giao diện sáng dễ đọc**: Màn hình luôn hiển thị màu sáng đồng nhất cho văn bản, bảng biểu, sơ đồ và mã nguồn, giúp đọc tài liệu rõ ràng và không mỏi mắt.
 - 📐 **Hỗ trợ sơ đồ & mã nguồn**: Tự động hiển thị các sơ đồ vẽ bằng Mermaid, PlantUML và làm nổi bật cú pháp mã lập trình.
+- 🔊 **Đọc bài viết bằng giọng nói (Text-to-Speech)**: Trình đọc giọng nói tiếng Việt chuyên biệt; các tiêu đề H1, H2 được đọc bằng giọng nữ trong trẻo, toàn bộ nội dung còn lại đọc bằng giọng nam trầm ấm, chậm rãi kèm hiệu ứng highlight đoạn văn bản và thanh điều khiển phát tiện lợi.
 - 🔍 **Tùy chỉnh cỡ chữ**: Nút phóng to/thu nhỏ nội dung văn bản (+ / -) giúp điều chỉnh kích thước chữ vừa mắt nhất.
 
 ---

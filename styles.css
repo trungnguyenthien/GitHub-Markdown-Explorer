@@ -1751,5 +1751,219 @@ body.body-toc-open {
   animation: headingPulse 2s ease-out;
 }
 
+/* --------------------------------------------------------------------------
+   TEXT-TO-SPEECH (TTS) PLAYER & HIGHLIGHT STYLES
+   -------------------------------------------------------------------------- */
+
+/* TTS Trigger Buttons */
+.btn-tts {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  background-color: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-fg-default);
+  transition: all 0.2s ease;
+}
+.btn-tts:hover,
+.btn-tts.active {
+  background-color: rgba(9, 105, 218, 0.1);
+  border-color: var(--color-accent-fg);
+  color: var(--color-accent-fg);
+}
+.btn-header-sync.tts-active {
+  color: var(--color-accent-fg) !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Floating TTS Player Bar */
+.tts-player-bar {
+  position: fixed;
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  left: 10px;
+  right: 10px;
+  max-width: 520px;
+  margin: 0 auto;
+  background-color: var(--color-canvas-default);
+  border: 1px solid var(--color-border-default);
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 999;
+  backdrop-filter: blur(8px);
+  animation: ttsSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ttsSlideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.tts-player-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Animated Soundwave */
+.tts-soundwave {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+  width: 14px;
+  flex-shrink: 0;
+}
+.tts-soundwave span {
+  width: 3px;
+  height: 4px;
+  background-color: var(--color-accent-fg);
+  border-radius: 2px;
+  transition: height 0.2s ease;
+}
+.tts-soundwave.active span:nth-child(1) {
+  animation: ttsWave 0.7s infinite ease-in-out alternate;
+}
+.tts-soundwave.active span:nth-child(2) {
+  animation: ttsWave 0.7s infinite ease-in-out alternate 0.2s;
+}
+.tts-soundwave.active span:nth-child(3) {
+  animation: ttsWave 0.7s infinite ease-in-out alternate 0.4s;
+}
+@keyframes ttsWave {
+  0% { height: 4px; }
+  100% { height: 16px; }
+}
+
+/* Info Box */
+.tts-info-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.tts-voice-role {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 12px;
+  display: inline-block;
+  white-space: nowrap;
+  width: fit-content;
+  line-height: 1.3;
+}
+.tts-voice-role.role-female {
+  background-color: #fce7f3;
+  color: #be185d;
+  border: 1px solid #fbcfe8;
+}
+.tts-voice-role.role-male {
+  background-color: #ddf4ff;
+  color: #0969da;
+  border: 1px solid #b6e3ff;
+}
+.tts-progress-text {
+  font-size: 11px;
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Controls Group */
+.tts-controls-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.tts-btn-control {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+.tts-btn-control.gh-btn-primary {
+  min-width: 36px;
+  min-height: 34px;
+}
+.tts-btn-stop {
+  color: var(--color-danger-fg);
+}
+.tts-btn-stop:hover {
+  background-color: rgba(207, 34, 46, 0.1);
+  border-color: var(--color-danger-fg);
+}
+
+.tts-btn-close {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.tts-btn-close:hover {
+  color: var(--color-fg-default);
+  background-color: var(--color-canvas-subtle);
+}
+
+/* Highlight current reading paragraph */
+.tts-active-reading {
+  background-color: rgba(9, 105, 218, 0.09) !important;
+  border-left: 3.5px solid var(--color-accent-fg) !important;
+  padding-left: 10px !important;
+  border-radius: 4px;
+  transition: background-color 0.25s ease, border-left-color 0.25s ease;
+  scroll-margin-top: calc(80px + env(safe-area-inset-top, 0px));
+}
+
+/* Special Pink/Magenta highlight for H1 & H2 (Female voice) */
+h1.tts-active-reading,
+h2.tts-active-reading {
+  background-color: rgba(219, 39, 119, 0.08) !important;
+  border-left: 3.5px solid #db2777 !important;
+  color: #9d174d !important;
+}
+
+/* Interactive click-to-speak cursor in TTS active mode */
+.tts-mode-active .markdown-body h1,
+.tts-mode-active .markdown-body h2,
+.tts-mode-active .markdown-body h3,
+.tts-mode-active .markdown-body h4,
+.tts-mode-active .markdown-body h5,
+.tts-mode-active .markdown-body h6,
+.tts-mode-active .markdown-body p,
+.tts-mode-active .markdown-body li,
+.tts-mode-active .markdown-body blockquote {
+  cursor: pointer;
+}
+.tts-mode-active .markdown-body h1:hover,
+.tts-mode-active .markdown-body h2:hover,
+.tts-mode-active .markdown-body p:hover,
+.tts-mode-active .markdown-body li:hover {
+  background-color: rgba(9, 105, 218, 0.04);
+}
+
+
 
 
