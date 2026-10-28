@@ -2,18 +2,18 @@
    GitHub Markdown Explorer - Service Worker (Offline PWA Engine)
    ========================================================================== */
 
-const CACHE_NAME = 'gh-md-explorer-v36';
+const CACHE_NAME = 'gh-md-explorer-v37';
 
 // Static assets to precache (App Shell & CDN Dependencies)
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './styles.css',
-  './styles.css?v=36',
+  './styles.css?v=37',
   './app.js',
-  './app.js?v=36',
+  './app.js?v=37',
   './manifest.webmanifest',
-  './manifest.webmanifest?v=36',
+  './manifest.webmanifest?v=37',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',

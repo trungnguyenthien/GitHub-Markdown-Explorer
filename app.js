@@ -3003,7 +3003,7 @@ function clearReaderTableOfContents() {
    TEXT TO SPEECH (TTS) ENGINE FOR READER VIEW (BACKGROUND & LOCK SCREEN ENABLED)
    - Ngôn ngữ mặc định: Tiếng Việt (vi-VN)
    - Tiêu đề (H1, H2): Giọng nữ (trong trẻo, nhịp độ tự nhiên 1.0, pitch cao 1.15-1.25)
-   - Còn lại (H3-H6, p, li, blockquote): Giọng nam trầm, chậm (pitch 0.75, rate 0.82)
+   - Còn lại (H3-H6, p, li, blockquote): Giọng nam trầm, tốc độ chuẩn (pitch 0.75, rate 1.0)
    - Đảm bảo đọc 100% khi tắt màn hình hoặc đưa app xuống background qua 4 tầng:
      1. Silent Audio Keep-Alive Loop (giữ OS Audio Session & Web Thread luôn active)
      2. Media Session API (điều khiển trực tiếp trên Màn hình khóa Lock Screen)
@@ -3098,7 +3098,7 @@ function setupMediaSession() {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: fileName,
       artist: 'GitHub Markdown Reader • Tiếng Việt',
-      album: 'H1/H2 Giọng nữ • Nội dung Nam trầm, chậm',
+      album: 'H1/H2 Giọng nữ • Nội dung Giọng nam',
       artwork: [
         { src: './icons/icon-192.png', sizes: '192x192', type: 'image/png' },
         { src: './icons/icon-512.png', sizes: '512x512', type: 'image/png' }
@@ -3135,7 +3135,7 @@ function updateMediaSessionStatus() {
 
     if (ttsState.items && ttsState.items.length > 0 && ttsState.currentIndex < ttsState.items.length) {
       const cur = ttsState.items[ttsState.currentIndex];
-      const roleText = (cur.type === 'h1' || cur.type === 'h2') ? 'Giọng nữ' : 'Nam trầm, chậm';
+      const roleText = (cur.type === 'h1' || cur.type === 'h2') ? 'Giọng nữ' : 'Giọng nam';
       const fileName = appState.currentFile ? appState.currentFile.path.split('/').pop() : 'Tài liệu Markdown';
 
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -3427,13 +3427,13 @@ function playViaAudioElement(item, index) {
 
   // Voice rules:
   // - Headers H1 & H2: Female voice (natural pitch, clear speed 1.0)
-  // - Others: Male voice (deep tone pitch via playbackRate: 0.86, slow and warm)
+  // - Others: Male voice (normal speed 1.0, equal to female voice)
   if (item.type === 'h1' || item.type === 'h2') {
     audio.preservesPitch = true;
     audio.playbackRate = 1.0;
   } else {
-    audio.preservesPitch = false;
-    audio.playbackRate = 0.86; // Lower frequency & slower pace = warm, deep male tone
+    audio.preservesPitch = true;
+    audio.playbackRate = 1.0; // Normal rate, matches female voice speed
   }
 
   audio.onended = () => {
@@ -3491,7 +3491,7 @@ function playViaSpeechSynthesis(item, index) {
   } else {
     if (ttsState.maleVoice) utterance.voice = ttsState.maleVoice;
     utterance.pitch = 0.75;
-    utterance.rate = 0.82;
+    utterance.rate = 1.0;
   }
 
   utterance.onend = () => {
@@ -3659,7 +3659,7 @@ function updateTtsUI() {
         voiceRoleBadge.textContent = 'H2 • Giọng nữ';
         voiceRoleBadge.className = 'tts-voice-role role-female';
       } else {
-        voiceRoleBadge.textContent = 'Nội dung • Nam trầm, chậm';
+        voiceRoleBadge.textContent = 'Nội dung • Giọng nam';
         voiceRoleBadge.className = 'tts-voice-role role-male';
       }
     }
