@@ -3344,9 +3344,9 @@ function extractTtsItems() {
   const candidates = panel.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, blockquote');
 
   candidates.forEach(el => {
-    // Skip diagrams, code blocks, blank states, and hidden panels
-    if (el.closest('.mermaid') || el.closest('.plantuml-diagram') || el.closest('pre') ||
-        el.closest('.blankslate') || el.closest('.raw-content-panel')) {
+    // Skip code blocks, diagrams, blank states, and hidden panels
+    if (el.closest('.code-block-wrapper') || el.closest('pre') || el.closest('.mermaid') ||
+        el.closest('.plantuml-diagram') || el.closest('.blankslate') || el.closest('.raw-content-panel')) {
       return;
     }
 
@@ -3359,19 +3359,33 @@ function extractTtsItems() {
       return;
     }
 
-    // Clean text by cloning and stripping non-speech sub-elements
+    // Clean text by cloning and stripping non-speech sub-elements:
+    // Strictly strip code blocks, pre elements, copy buttons, SVGs, math, and styles
     const clone = el.cloneNode(true);
-    clone.querySelectorAll('button, svg, .katex-html, style, script').forEach(node => node.remove());
+    clone.querySelectorAll('.code-block-wrapper, pre, .btn-copy-code, button, svg, .katex-html, style, script').forEach(node => node.remove());
+
+    // Also strip code elements that represent code blocks (syntax highlighted, language tagged, or multiline)
+    clone.querySelectorAll('code').forEach(codeEl => {
+      if (codeEl.classList.contains('hljs') ||
+          (codeEl.className && codeEl.className.includes('language-')) ||
+          (codeEl.textContent && codeEl.textContent.includes('\n')) ||
+          (codeEl.textContent && codeEl.textContent.trim().length > 60)) {
+        codeEl.remove();
+      }
+    });
 
     let text = (clone.textContent || '').trim();
-    if (!text || text.length < 2) return;
 
-    // Clean markdown artifact remnants and format links
+    // Clean raw code fences, markdown artifact remnants, and format links
+    text = text.replace(/```[\s\S]*?```/g, '');
+    text = text.replace(/```[a-zA-Z0-9_-]*/g, '');
+    text = text.replace(/```/g, '');
     text = text.replace(/^#+\s*/, '');
     text = text.replace(/https?:\/\/[^\s]+/g, 'đường dẫn liên kết');
     text = text.replace(/\s+/g, ' ').trim();
 
-    if (!text) return;
+    // If empty, too short, or only punctuation remnants (e.g. ":", "-", "•", ".", ";")
+    if (!text || text.length < 2 || /^[:\-\s•.,;]+$/.test(text)) return;
 
     const tag = el.tagName.toLowerCase();
     const isH1 = (tag === 'h1');
@@ -3693,6 +3707,13 @@ function attachTtsClickListeners() {
       }
     };
   });
+
+  // Prevent clicks or interactions with code blocks from triggering speech
+  panel.querySelectorAll('.code-block-wrapper, pre').forEach(codeBlock => {
+    codeBlock.onclick = (e) => {
+      e.stopPropagation();
+    };
+  });
 }
 
 /**
@@ -3700,7 +3721,12 @@ function attachTtsClickListeners() {
  */
 function detachTtsClickListeners() {
   const panel = document.getElementById('markdownViewerPanel');
-  if (panel) panel.classList.remove('tts-mode-active');
+  if (panel) {
+    panel.classList.remove('tts-mode-active');
+    panel.querySelectorAll('.code-block-wrapper, pre').forEach(codeBlock => {
+      codeBlock.onclick = null;
+    });
+  }
 
   ttsState.items.forEach((item) => {
     if (item.element) {

@@ -1964,6 +1964,19 @@ h2.tts-active-reading {
   background-color: rgba(9, 105, 218, 0.04);
 }
 
+/* Exclude code blocks from TTS click cursor and active reading highlight */
+.tts-mode-active .code-block-wrapper,
+.tts-mode-active pre,
+.tts-mode-active pre code {
+  cursor: text !important;
+}
+.tts-active-reading .code-block-wrapper,
+.tts-active-reading pre {
+  background-color: var(--color-canvas-subtle, #f6f8fa) !important;
+  border-left: none !important;
+  color: var(--color-fg-default, #1f2328) !important;
+}
+
 
 
 
