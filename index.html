@@ -12,7 +12,7 @@
   <title>GitHub Markdown Explorer</title>
   
   <!-- Web App Manifest & App Icons -->
-  <link rel="manifest" href="./manifest.webmanifest?v=40">
+  <link rel="manifest" href="./manifest.webmanifest?v=41">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   
@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
   
   <!-- Custom Mobile-First GitHub Primer Styles -->
-  <link rel="stylesheet" href="./styles.css?v=40">
+  <link rel="stylesheet" href="./styles.css?v=41">
 </head>
 <body class="mobile-app">
   <!-- Header Bar -->
@@ -92,6 +92,40 @@
           <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm6.5-2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"></path>
         </svg>
       </button>
+    </div>
+
+    <!-- Media Control Header Bar (Dark Style Overlay for Reader Page) -->
+    <div id="ttsControlBar" class="tts-player-bar hidden" role="region" aria-label="Trình phát giọng đọc">
+      <div class="tts-player-left">
+        <div class="tts-soundwave" id="ttsSoundwave">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="tts-info-box">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button id="btnTtsChangeLang" class="tts-lang-badge" onclick="showTtsLanguageModal()" title="Đổi ngôn ngữ đọc" aria-label="Đổi ngôn ngữ đọc">
+              <span id="ttsLangBadgeText">🇻🇳 VI</span>
+            </button>
+            <div class="tts-voice-role" id="ttsVoiceRoleBadge">H1 (Nữ)</div>
+          </div>
+          <div class="tts-progress-text" id="ttsProgressText">Đoạn 1 / 10</div>
+        </div>
+      </div>
+      
+      <div class="tts-controls-group">
+        <button id="btnTtsPlayPause" class="gh-btn gh-btn-sm gh-btn-primary tts-btn-control btn-tts-playpause" onclick="ttsTogglePlayPause()" title="Tạm dừng / Tiếp tục" aria-label="Tạm dừng hoặc tiếp tục">
+          <svg id="ttsPlayPauseIcon" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+            <path d="M4.5 3.25A.75.75 0 0 1 5.25 4v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Zm7 0a.75.75 0 0 1 .75v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Z"></path>
+          </svg>
+          <span id="ttsPlayPauseText">Tạm dừng</span>
+        </button>
+
+        <button id="btnTtsStop" class="gh-btn gh-btn-sm tts-btn-control btn-tts-stop" onclick="ttsStop()" title="Dừng đọc" aria-label="Dừng đọc">
+          <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+            <path d="M3.25 3.25h9.5v9.5h-9.5z"></path>
+          </svg>
+          <span id="ttsStopBtnText">Dừng</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -327,40 +361,6 @@
             </div>
           </div>
           <pre id="rawMarkdownPanel" class="raw-content-panel hidden"></pre>
-        </div>
-
-        <!-- Floating TTS Controller Bar -->
-        <div id="ttsControlBar" class="tts-player-bar hidden" role="region" aria-label="Trình phát giọng đọc">
-          <div class="tts-player-left">
-            <div class="tts-soundwave" id="ttsSoundwave">
-              <span></span><span></span><span></span>
-            </div>
-            <div class="tts-info-box">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <button id="btnTtsChangeLang" class="tts-lang-badge" onclick="showTtsLanguageModal()" title="Đổi ngôn ngữ đọc" aria-label="Đổi ngôn ngữ đọc">
-                  <span id="ttsLangBadgeText">🇻🇳 VI</span>
-                </button>
-                <div class="tts-voice-role" id="ttsVoiceRoleBadge">H1 (Nữ)</div>
-              </div>
-              <div class="tts-progress-text" id="ttsProgressText">Đoạn 1 / 10</div>
-            </div>
-          </div>
-          
-          <div class="tts-controls-group">
-            <button id="btnTtsPlayPause" class="gh-btn gh-btn-sm gh-btn-primary tts-btn-control" onclick="ttsTogglePlayPause()" title="Tạm dừng / Tiếp tục" aria-label="Tạm dừng hoặc tiếp tục">
-              <svg id="ttsPlayPauseIcon" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
-                <path d="M4.5 3.25A.75.75 0 0 1 5.25 4v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Zm7 0a.75.75 0 0 1 .75v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Z"></path>
-              </svg>
-              <span id="ttsPlayPauseText">Tạm dừng</span>
-            </button>
-
-            <button id="btnTtsStop" class="gh-btn gh-btn-sm tts-btn-control tts-btn-stop" onclick="ttsStop()" title="Dừng đọc" aria-label="Dừng đọc">
-              <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
-                <path d="M3.25 3.25h9.5v9.5h-9.5z"></path>
-              </svg>
-              <span id="ttsStopBtnText">Dừng</span>
-            </button>
-          </div>
         </div>
 
         <!-- HTML5 Audio Element for Background / Lock Screen Playback (Screen-Off Resistant) -->
@@ -670,6 +670,6 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="./app.js?v=40"></script>
+  <script src="./app.js?v=41"></script>
 </body>
 </html>
