@@ -3164,7 +3164,6 @@ const ttsState = {
   preloadAudio: null,
   watchdogTimer: null,
   pauseTimeout: null,
-  isChangingTrack: false,
   currentStartTimestamp: 0,
   wakeLock: null
 };
@@ -3193,22 +3192,6 @@ function getTtsAudioPlayer() {
       audio.style.display = 'none';
       document.body.appendChild(audio);
     }
-
-    // Bluetooth Headset, Car Audio & Lock Screen Hardware Listeners
-    audio.addEventListener('pause', () => {
-      if (ttsState.isChangingTrack || ttsState.pauseTimeout) return;
-      if (ttsState.active && ttsState.playing && !audio.ended) {
-        ttsPause();
-      }
-    });
-
-    audio.addEventListener('play', () => {
-      if (ttsState.isChangingTrack) return;
-      if (ttsState.active && !ttsState.playing) {
-        ttsPlay();
-      }
-    });
-
     ttsState.audioPlayer = audio;
   }
   return ttsState.audioPlayer;
@@ -3326,12 +3309,14 @@ function updateMediaSessionStatus() {
         ]
       });
 
-      if ('setPositionState' in navigator.mediaSession && ttsState.audioPlayer && ttsState.audioPlayer.duration > 0) {
+      if ('setPositionState' in navigator.mediaSession && ttsState.audioPlayer && isFinite(ttsState.audioPlayer.duration) && ttsState.audioPlayer.duration > 0) {
         try {
+          const dur = ttsState.audioPlayer.duration;
+          const pos = Math.min(dur, Math.max(0, ttsState.audioPlayer.currentTime || 0));
           navigator.mediaSession.setPositionState({
-            duration: Math.max(0.1, ttsState.audioPlayer.duration || 1),
+            duration: dur,
             playbackRate: ttsState.audioPlayer.playbackRate || 1.0,
-            position: Math.min(ttsState.audioPlayer.duration || 1, Math.max(0, ttsState.audioPlayer.currentTime || 0))
+            position: pos
           });
         } catch (posErr) {}
       }
@@ -3659,7 +3644,6 @@ function playViaAudioElement(item, index) {
     try { window.speechSynthesis.cancel(); } catch (e) {}
   }
 
-  ttsState.isChangingTrack = true;
   const audioUrl = getTtsAudioUrl(item.text);
   audio.src = audioUrl;
 
@@ -3689,7 +3673,6 @@ function playViaAudioElement(item, index) {
   };
 
   audio.onerror = (e) => {
-    ttsState.isChangingTrack = false;
     console.warn('[TTS Audio Stream] Fallback to SpeechSynthesis due to audio error:', e);
     playViaSpeechSynthesis(item, index);
   };
@@ -3698,15 +3681,11 @@ function playViaAudioElement(item, index) {
   const playPromise = audio.play();
   if (playPromise !== undefined) {
     playPromise.then(() => {
-      ttsState.isChangingTrack = false;
       updateMediaSessionStatus();
     }).catch(err => {
-      ttsState.isChangingTrack = false;
       console.warn('[TTS Audio play notice]:', err);
       playViaSpeechSynthesis(item, index);
     });
-  } else {
-    ttsState.isChangingTrack = false;
   }
 }
 
