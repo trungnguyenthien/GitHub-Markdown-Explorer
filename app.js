@@ -3701,19 +3701,28 @@ function updateTtsUI() {
     }
   }
 
-  // Update Play/Pause Icon
+  // Update Play/Pause Icon and Label
+  const playPauseText = document.getElementById('ttsPlayPauseText');
+  const isEn = (ttsState.language === 'en');
   if (playPauseIcon) {
     if (ttsState.playing) {
       // Pause icon
       playPauseIcon.innerHTML = `
         <path d="M4.5 3.25A.75.75 0 0 1 5.25 4v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Zm7 0a.75.75 0 0 1 .75v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Z"></path>
       `;
+      if (playPauseText) playPauseText.textContent = isEn ? 'Pause' : 'Tạm dừng';
     } else {
       // Play icon
       playPauseIcon.innerHTML = `
         <path d="M4.5 3.75A.75.75 0 0 1 5.7 3.12l7 4.25a.75.75 0 0 1 0 1.26l-7 4.25A.75.75 0 0 1 4.5 12.25v-8.5Z"></path>
       `;
+      if (playPauseText) playPauseText.textContent = isEn ? 'Resume' : 'Tiếp tục';
     }
+  }
+
+  const stopBtnText = document.getElementById('ttsStopBtnText');
+  if (stopBtnText) {
+    stopBtnText.textContent = isEn ? 'Stop' : 'Dừng';
   }
 
   // Update Language Badge Text

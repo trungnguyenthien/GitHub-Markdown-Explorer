@@ -1883,48 +1883,39 @@ body.body-toc-open {
   text-overflow: ellipsis;
 }
 
-/* Controls Group */
+/* Controls Group: Minimalist 2-Button Layout (Pause & Stop) */
 .tts-controls-group {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex-shrink: 0;
 }
 .tts-btn-control {
-  min-height: 32px;
-  min-width: 32px;
-  padding: 4px 8px;
+  min-height: 34px;
+  padding: 5px 11px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
 }
 .tts-btn-control.gh-btn-primary {
-  min-width: 36px;
   min-height: 34px;
 }
 .tts-btn-stop {
-  color: var(--color-danger-fg);
+  color: var(--color-danger-fg, #cf222e);
+  background-color: var(--color-canvas-subtle, #f6f8fa);
+  border: 1px solid var(--color-border-default, #d0d7de);
 }
 .tts-btn-stop:hover {
-  background-color: rgba(207, 34, 46, 0.1);
-  border-color: var(--color-danger-fg);
-}
-
-.tts-btn-close {
-  background: transparent;
-  border: none;
-  font-size: 20px;
-  line-height: 1;
-  color: var(--color-fg-muted);
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-.tts-btn-close:hover {
-  color: var(--color-fg-default);
-  background-color: var(--color-canvas-subtle);
+  background-color: rgba(207, 34, 46, 0.08);
+  border-color: var(--color-danger-fg, #cf222e);
+  color: var(--color-danger-fg, #cf222e);
 }
 
 /* Highlight current reading paragraph */

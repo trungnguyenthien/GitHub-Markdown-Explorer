@@ -12,7 +12,7 @@
   <title>GitHub Markdown Explorer</title>
   
   <!-- Web App Manifest & App Icons -->
-  <link rel="manifest" href="./manifest.webmanifest?v=39">
+  <link rel="manifest" href="./manifest.webmanifest?v=40">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   
@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
   
   <!-- Custom Mobile-First GitHub Primer Styles -->
-  <link rel="stylesheet" href="./styles.css?v=39">
+  <link rel="stylesheet" href="./styles.css?v=40">
 </head>
 <body class="mobile-app">
   <!-- Header Bar -->
@@ -347,32 +347,20 @@
           </div>
           
           <div class="tts-controls-group">
-            <button class="gh-btn gh-btn-sm tts-btn-control" onclick="ttsPrev()" title="Đoạn trước" aria-label="Đoạn trước">
-              <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
-                <path d="M3.5 2.5a.75.75 0 0 1 1.5 0v11a.75.75 0 0 1-1.5 0v-11Zm10.03 1.28a.75.75 0 0 0-1.06-1.06L6.97 8.22a.75.75 0 0 0 0 1.06l5.5 5.5a.75.75 0 0 0 1.06-1.06L8.56 8.75l4.97-4.97Z"></path>
-              </svg>
-            </button>
-
-            <button id="btnTtsPlayPause" class="gh-btn gh-btn-sm gh-btn-primary tts-btn-control" onclick="ttsTogglePlayPause()" title="Phát / Tạm dừng" aria-label="Phát hoặc tạm dừng">
+            <button id="btnTtsPlayPause" class="gh-btn gh-btn-sm gh-btn-primary tts-btn-control" onclick="ttsTogglePlayPause()" title="Tạm dừng / Tiếp tục" aria-label="Tạm dừng hoặc tiếp tục">
               <svg id="ttsPlayPauseIcon" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
-                <path d="M4.5 3.25A.75.75 0 0 1 5.25 4v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Zm7 0a.75.75 0 0 1 .75.75v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Z"></path>
+                <path d="M4.5 3.25A.75.75 0 0 1 5.25 4v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Zm7 0a.75.75 0 0 1 .75v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Z"></path>
               </svg>
+              <span id="ttsPlayPauseText">Tạm dừng</span>
             </button>
 
-            <button class="gh-btn gh-btn-sm tts-btn-control" onclick="ttsNext()" title="Đoạn tiếp theo" aria-label="Đoạn tiếp theo">
-              <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
-                <path d="M12.5 2.5a.75.75 0 0 0-1.5 0v11a.75.75 0 0 0 1.5 0v-11ZM2.47 3.72a.75.75 0 0 1 1.06-1.06l5.5 5.5a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06-1.06L7.44 8.75 2.47 3.72Z"></path>
-              </svg>
-            </button>
-
-            <button class="gh-btn gh-btn-sm tts-btn-control tts-btn-stop" onclick="ttsStop()" title="Dừng đọc" aria-label="Dừng đọc">
+            <button id="btnTtsStop" class="gh-btn gh-btn-sm tts-btn-control tts-btn-stop" onclick="ttsStop()" title="Dừng đọc" aria-label="Dừng đọc">
               <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
                 <path d="M3.25 3.25h9.5v9.5h-9.5z"></path>
               </svg>
+              <span id="ttsStopBtnText">Dừng</span>
             </button>
           </div>
-
-          <button class="tts-btn-close" onclick="ttsClose()" title="Đóng thanh phát" aria-label="Đóng">&times;</button>
         </div>
 
         <!-- HTML5 Audio Element for Background / Lock Screen Playback (Screen-Off Resistant) -->
@@ -682,6 +670,6 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="./app.js?v=39"></script>
+  <script src="./app.js?v=40"></script>
 </body>
 </html>
