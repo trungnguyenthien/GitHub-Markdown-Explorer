@@ -3138,8 +3138,8 @@ function clearReaderTableOfContents() {
      4. Screen Wake Lock API (giữ sáng màn hình khi đang xem trực tiếp)
    ========================================================================== */
 
-// Khoảng thời gian tự ngắt 0.2s (200ms) khi gặp dấu chấm câu, header, hoặc bullet
-const TTS_PAUSE_DURATION_MS = 200;
+// Khoảng thời gian tự ngắt 0.1s (100ms) khi gặp dấu chấm câu, header, hoặc bullet
+const TTS_PAUSE_DURATION_MS = 100;
 
 const ttsState = {
   isSupported: true,
@@ -3510,7 +3510,7 @@ function splitTextIntoSentences(rawText) {
 
 /**
  * Extracts, segments into speech units, and cleans text elements from the markdown viewer panel for TTS.
- * Automatically enables 0.2s pause mechanism for:
+ * Automatically enables 0.1s pause mechanism for:
  * - All punctuation marks (periods, commas, colons, semicolons, exclamation, question marks)
  * - All headers (H1 through H6)
  * - Every bullet list item (LI)
@@ -3578,7 +3578,7 @@ function extractTtsItems() {
     else if (isH2) voiceType = 'h2';
 
     if (isHeader) {
-      // Headers: Read complete title unit then apply 0.2s pause
+      // Headers: Read complete title unit then apply 0.1s pause
       items.push({
         element: el,
         type: voiceType,
@@ -3587,7 +3587,7 @@ function extractTtsItems() {
         pauseAfterMs: TTS_PAUSE_DURATION_MS
       });
     } else {
-      // Paragraphs & Bullets: Segment by punctuation marks with 0.2s pause for each sentence/bullet
+      // Paragraphs & Bullets: Segment by punctuation marks with 0.1s pause for each sentence/bullet
       const sentences = splitTextIntoSentences(text);
       sentences.forEach((sentenceText, sIdx) => {
         items.push({
@@ -3635,7 +3635,7 @@ function playViaAudioElement(item, index) {
       if (ttsState.pauseTimeout) {
         clearTimeout(ttsState.pauseTimeout);
       }
-      const pauseDuration = item.pauseAfterMs || TTS_PAUSE_DURATION_MS; // 0.2s
+      const pauseDuration = item.pauseAfterMs || TTS_PAUSE_DURATION_MS; // 0.1s
       ttsState.pauseTimeout = setTimeout(() => {
         if (ttsState.playing && ttsState.active) {
           ttsSpeakItem(index + 1);
@@ -3718,7 +3718,7 @@ function playViaSpeechSynthesis(item, index) {
 }
 
 /**
- * Speaks the TTS item at the specified index with 0.2s pause and background support.
+ * Speaks the TTS item at the specified index with 0.1s pause and background support.
  */
 function ttsSpeakItem(index) {
   if (ttsState.pauseTimeout) {
