@@ -32,6 +32,110 @@ function getParentDirPath(filePath) {
   return parts.join('/');
 }
 
+// --- HELPER: Safely encode path segments for GitHub REST API (preserving directory slashes) ---
+function encodeGitPath(path) {
+  if (!path) return '';
+  return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+}
+
+// --- HELPER: Detect if a text string is actually raw GitHub API JSON metadata ---
+function isGitHubApiJson(text) {
+  if (typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return false;
+  try {
+    const obj = JSON.parse(trimmed);
+    if (obj && typeof obj === 'object') {
+      if (obj.sha && (obj.download_url !== undefined || obj.git_url !== undefined || obj.html_url !== undefined || obj.type === 'file')) {
+        return true;
+      }
+    }
+  } catch (e) {}
+  return false;
+}
+
+// --- HELPER: Extract genuine file content from GitHub API response or fallback ---
+async function resolveFileRawContent(data, owner, name, path) {
+  if (!data) return '';
+
+  // 1. If file has size 0 or empty base64 content, it is legitimately empty (0 bytes)
+  if (data.size === 0 || (data.content === '' && data.encoding === 'base64')) {
+    return '';
+  }
+
+  // 2. Standard GitHub contents API (files <= 1MB) returns base64 content
+  if (typeof data.content === 'string' && data.content.length > 0) {
+    return base64ToUtf8(data.content);
+  }
+
+  // 3. For large files (> 1MB) or if content was omitted by GitHub:
+  let rawContent = '';
+
+  // 3a. Try fetching directly from download_url (raw.githubusercontent.com)
+  if (data.download_url) {
+    try {
+      const headers = {};
+      if (appState.token) {
+        headers['Authorization'] = `Bearer ${appState.token}`;
+      }
+      const dlRes = await fetch(data.download_url, { headers });
+      if (dlRes.ok) {
+        const text = await dlRes.text();
+        if (!isGitHubApiJson(text)) {
+          return text;
+        }
+      }
+    } catch (e) {
+      console.warn('Fallback download_url failed:', e);
+    }
+  }
+
+  // 3b. Try fetching blob directly via Git Data Blobs API (supports up to 100MB)
+  if (data.sha) {
+    try {
+      const blobRes = await fetch(`https://api.github.com/repos/${owner}/${name}/git/blobs/${data.sha}`, {
+        headers: {
+          'Authorization': `Bearer ${appState.token}`,
+          'Accept': 'application/vnd.github.v3.raw'
+        }
+      });
+      if (blobRes.ok) {
+        const text = await blobRes.text();
+        if (!isGitHubApiJson(text)) {
+          return text;
+        }
+      }
+    } catch (e) {
+      console.warn('Fallback blob raw failed:', e);
+    }
+  }
+
+  // 3c. Try fetching contents API with raw Accept header
+  try {
+    const rawRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3.raw'
+      }
+    });
+    if (rawRes.ok) {
+      const text = await rawRes.text();
+      if (!isGitHubApiJson(text)) {
+        return text;
+      }
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.size === 0) return '';
+        if (parsed.content) return base64ToUtf8(parsed.content);
+      } catch (e) {}
+    }
+  } catch (rawErr) {
+    console.warn('Fallback contents raw failed:', rawErr);
+  }
+
+  return rawContent;
+}
+
 // --- HELPER: Self-Contained Vanilla IndexedDB Helper ---
 const miniIdb = {
   dbPromise: null,
@@ -950,7 +1054,7 @@ async function checkAndUpdatePageIfModified(owner, name, path, cached) {
       hasChanged = (cached.lastCommitSha !== latestCommitSha);
     } else {
       // Fallback for legacy cache: check If-None-Match header against GitHub
-      const metaRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeURIComponent(path)}`, {
+      const metaRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
         headers: {
           'Authorization': `Bearer ${appState.token}`,
           'Accept': 'application/vnd.github.v3+json',
@@ -976,7 +1080,7 @@ async function checkAndUpdatePageIfModified(owner, name, path, cached) {
     }
 
     // File HAS CHANGED remote! Download new content
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeURIComponent(path)}`, {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
       headers: {
         'Authorization': `Bearer ${appState.token}`,
         'Accept': 'application/vnd.github.v3+json'
@@ -985,21 +1089,7 @@ async function checkAndUpdatePageIfModified(owner, name, path, cached) {
 
     if (res.ok) {
       const data = await res.json();
-      let rawContent = '';
-      if (data.content) {
-        rawContent = base64ToUtf8(data.content);
-      }
-      if (!rawContent && (data.download_url || data.sha)) {
-        try {
-          const rawRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeURIComponent(path)}`, {
-            headers: {
-              'Authorization': `Bearer ${appState.token}`,
-              'Accept': 'application/vnd.github.v3.raw'
-            }
-          });
-          if (rawRes.ok) rawContent = await rawRes.text();
-        } catch (rawErr) {}
-      }
+      const rawContent = await resolveFileRawContent(data, owner, name, path);
 
       const updatedCache = {
         fileKey: cached.fileKey,
@@ -1063,7 +1153,7 @@ async function openMarkdownFile(owner, name, path) {
   if (viewerTitleEl) {
     viewerTitleEl.innerHTML = `<div class="repo-desc" style="font-size: 11px; color: var(--color-fg-muted); line-height: 1.2;">${repoPathDesc}</div><div style="font-weight: 600; font-size: 14px; color: var(--gh-text-primary); line-height: 1.3;">${fileName}</div>`;
   }
-  document.getElementById('linkOpenGithub').href = `https://github.com/${owner}/${name}/blob/${appState.currentRepo ? appState.currentRepo.defaultBranch || 'main' : 'main'}/${path}`;
+  document.getElementById('linkOpenGithub').href = `https://github.com/${owner}/${name}/blob/${appState.currentRepo ? appState.currentRepo.defaultBranch || 'main' : 'main'}/${encodeGitPath(path)}`;
 
   updateViewerFavoriteStar();
   const viewerPanel = document.getElementById('markdownViewerPanel');
@@ -1076,7 +1166,27 @@ async function openMarkdownFile(owner, name, path) {
     cached = await getIdb().get(fileKey);
   } catch (err) { console.warn('Cache read error:', err); }
 
-  if (cached && cached.content) {
+  if (cached && typeof cached.content === 'string') {
+    // Self-healing: if cached content was polluted with GitHub API JSON metadata
+    if (isGitHubApiJson(cached.content)) {
+      try {
+        const parsed = JSON.parse(cached.content);
+        if (parsed.size === 0 || parsed.content === '') {
+          cached.content = '';
+          await getIdb().set(fileKey, cached);
+        } else if (parsed.content) {
+          cached.content = base64ToUtf8(parsed.content);
+          await getIdb().set(fileKey, cached);
+        } else {
+          cached = null; // force re-fetch
+        }
+      } catch (e) {
+        cached = null;
+      }
+    }
+  }
+
+  if (cached && typeof cached.content === 'string') {
     renderMarkdown(cached.content);
     updateFileSyncBadge('cached', cached.lastSyncedAt);
 
@@ -1101,7 +1211,7 @@ async function openMarkdownFile(owner, name, path) {
   updateFileSyncBadge('syncing');
 
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${path}`, {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
       headers: {
         'Authorization': `Bearer ${appState.token}`,
         'Accept': 'application/vnd.github.v3+json'
@@ -1110,23 +1220,7 @@ async function openMarkdownFile(owner, name, path) {
 
     if (res.ok) {
       const data = await res.json();
-      let rawContent = '';
-
-      if (data.content) {
-        rawContent = base64ToUtf8(data.content);
-      }
-      
-      if (!rawContent && (data.download_url || data.sha)) {
-        try {
-          const rawRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${path}`, {
-            headers: {
-              'Authorization': `Bearer ${appState.token}`,
-              'Accept': 'application/vnd.github.v3.raw'
-            }
-          });
-          if (rawRes.ok) rawContent = await rawRes.text();
-        } catch (rawErr) { console.warn('Raw fallback err:', rawErr); }
-      }
+      const rawContent = await resolveFileRawContent(data, owner, name, path);
 
       appState.currentFileContent = rawContent;
       renderMarkdown(rawContent);
@@ -1175,7 +1269,42 @@ function renderMarkdown(rawContent) {
   if (typeof ttsStop === 'function' && typeof ttsState !== 'undefined' && ttsState.active) {
     ttsStop();
   }
+
+  // Self-healing safeguard: if rawContent is accidentally GitHub API JSON metadata
+  if (isGitHubApiJson(rawContent)) {
+    try {
+      const parsed = JSON.parse(rawContent);
+      if (parsed.size === 0 || parsed.content === '') {
+        rawContent = '';
+      } else if (parsed.content) {
+        rawContent = base64ToUtf8(parsed.content);
+      } else {
+        rawContent = '';
+      }
+    } catch (e) {
+      rawContent = '';
+    }
+  }
+
   appState.currentFileContent = rawContent;
+
+  const viewerPanel = document.getElementById('markdownViewerPanel');
+  const rawPanel = document.getElementById('rawMarkdownPanel');
+
+  if (!rawContent || !rawContent.trim()) {
+    viewerPanel.innerHTML = `
+      <div class="blankslate" style="padding: 48px 16px; text-align: center; color: var(--color-fg-muted);">
+        <svg class="octicon octicon-file" viewBox="0 0 16 16" width="36" height="36" fill="currentColor" style="opacity: 0.4; margin-bottom: 12px;">
+          <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
+        </svg>
+        <h3 style="font-size: 15px; font-weight: 600; margin: 0 0 6px 0; color: var(--color-fg-default);">Tài liệu trống</h3>
+        <p style="font-size: 13px; margin: 0;">Tệp tin này hiện chưa có nội dung (0 bytes).</p>
+      </div>
+    `;
+    if (rawPanel) rawPanel.textContent = '';
+    clearReaderTableOfContents();
+    return;
+  }
 
   const renderer = new marked.Renderer();
 
@@ -1230,9 +1359,6 @@ function renderMarkdown(rawContent) {
     ADD_TAGS: ['div', 'img', 'button', 'span', 'svg', 'path'],
     ADD_ATTR: ['src', 'alt', 'class', 'type', 'title', 'aria-label', 'viewBox', 'width', 'height', 'fill', 'd']
   });
-
-  const viewerPanel = document.getElementById('markdownViewerPanel');
-  const rawPanel = document.getElementById('rawMarkdownPanel');
 
   viewerPanel.innerHTML = cleanHtml;
   rawPanel.textContent = rawContent;
@@ -1535,7 +1661,7 @@ async function cacheFavoriteFile(owner, name, path, content = null, sha = '') {
     localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
   }
   
-  if (content) {
+  if (typeof content === 'string') {
     const data = { fileKey, owner, name, path, content, sha, lastSyncedAt: Date.now() };
     await getIdb().set(fileKey, data);
     markStateDirty();
@@ -1543,7 +1669,7 @@ async function cacheFavoriteFile(owner, name, path, content = null, sha = '') {
   }
 
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${path}`, {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
       headers: {
         'Authorization': `Bearer ${appState.token}`,
         'Accept': 'application/vnd.github.v3+json'
@@ -1552,7 +1678,7 @@ async function cacheFavoriteFile(owner, name, path, content = null, sha = '') {
 
     if (res.ok) {
       const fileData = await res.json();
-      const raw = base64ToUtf8(fileData.content);
+      const raw = await resolveFileRawContent(fileData, owner, name, path);
       const data = { fileKey, owner, name, path, content: raw, sha: fileData.sha, lastSyncedAt: Date.now() };
       await getIdb().set(fileKey, data);
     }
@@ -2044,7 +2170,7 @@ async function syncFavoriteFile(owner, name, path) {
   updateFileSyncBadge('syncing');
 
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${path}`, {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
       headers: {
         'Authorization': `Bearer ${appState.token}`,
         'Accept': 'application/vnd.github.v3+json'
@@ -2053,7 +2179,7 @@ async function syncFavoriteFile(owner, name, path) {
 
     if (res.ok) {
       const data = await res.json();
-      const rawContent = base64ToUtf8(data.content);
+      const rawContent = await resolveFileRawContent(data, owner, name, path);
       
       await cacheFavoriteFile(owner, name, path, rawContent, data.sha);
       
