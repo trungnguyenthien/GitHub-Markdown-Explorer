@@ -3130,7 +3130,7 @@ function clearReaderTableOfContents() {
    TEXT TO SPEECH (TTS) ENGINE FOR READER VIEW (BACKGROUND & LOCK SCREEN ENABLED)
    - Ngôn ngữ mặc định: Tiếng Việt (vi-VN)
    - Tiêu đề (H1, H2): Giọng nữ (trong trẻo, nhịp độ tự nhiên 1.0, pitch cao 1.15-1.25)
-   - Còn lại (H3-H6, p, li, blockquote): Giọng nam trầm, tốc độ chuẩn (pitch 0.75, rate 1.0)
+   - Còn lại (H3-H6, p, li, blockquote): Giọng nam trầm, tốc độ nhanh hơn 25% (pitch 0.75, rate 1.25)
    - Đảm bảo đọc 100% khi tắt màn hình hoặc đưa app xuống background qua 4 tầng:
      1. Silent Audio Keep-Alive Loop (giữ OS Audio Session & Web Thread luôn active)
      2. Media Session API (điều khiển trực tiếp trên Màn hình khóa Lock Screen)
@@ -3621,13 +3621,13 @@ function playViaAudioElement(item, index) {
 
   // Voice rules:
   // - Headers H1 & H2: Female voice (natural pitch, clear speed 1.0)
-  // - Others: Male voice (normal speed 1.0, equal to female voice)
+  // - Others: Male voice (faster by 25%: playbackRate 1.25, preserves pitch)
   if (item.type === 'h1' || item.type === 'h2') {
     audio.preservesPitch = true;
     audio.playbackRate = 1.0;
   } else {
     audio.preservesPitch = true;
-    audio.playbackRate = 1.0; // Normal rate, matches female voice speed
+    audio.playbackRate = 1.25; // Nhanh hơn 25% theo yêu cầu
   }
 
   audio.onended = () => {
@@ -3685,7 +3685,7 @@ function playViaSpeechSynthesis(item, index) {
   } else {
     if (ttsState.maleVoice) utterance.voice = ttsState.maleVoice;
     utterance.pitch = (ttsState.language === 'en') ? 0.85 : 0.75;
-    utterance.rate = 1.0;
+    utterance.rate = 1.25; // Nhanh hơn 25%
   }
 
   utterance.onend = () => {
