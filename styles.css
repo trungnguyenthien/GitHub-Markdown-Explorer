@@ -1977,6 +1977,104 @@ h2.tts-active-reading {
   color: var(--color-fg-default, #1f2328) !important;
 }
 
+/* TTS Language Selection Modal & Cards */
+.tts-lang-options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tts-lang-option-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background-color: var(--color-canvas-default, #ffffff);
+  border: 1.5px solid var(--color-border-default, #d0d7de);
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  color: var(--color-fg-default, #1f2328);
+}
+
+.tts-lang-option-card:hover {
+  background-color: var(--color-canvas-subtle, #f6f8fa);
+  border-color: var(--color-accent-fg, #0969da);
+}
+
+.tts-lang-option-card.active {
+  border-color: var(--color-accent-fg, #0969da);
+  background-color: rgba(9, 105, 218, 0.05);
+}
+
+.tts-lang-card-flag {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tts-lang-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tts-lang-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.tts-lang-card-desc {
+  font-size: 12px;
+  color: var(--color-fg-muted, #656d76);
+  line-height: 1.3;
+}
+
+.tts-lang-card-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border-default, #d0d7de);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.tts-lang-option-card.active .tts-lang-card-check {
+  background-color: var(--color-accent-fg, #0969da);
+  border-color: var(--color-accent-fg, #0969da);
+  color: #ffffff;
+}
+
+.tts-lang-badge {
+  background: var(--color-canvas-subtle, #f6f8fa);
+  border: 1px solid var(--color-border-default, #d0d7de);
+  border-radius: 12px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-fg-default, #1f2328);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.tts-lang-badge:hover {
+  background: rgba(9, 105, 218, 0.1);
+  border-color: var(--color-accent-fg, #0969da);
+  color: var(--color-accent-fg, #0969da);
+}
+
 
 
 

@@ -12,7 +12,7 @@
   <title>GitHub Markdown Explorer</title>
   
   <!-- Web App Manifest & App Icons -->
-  <link rel="manifest" href="./manifest.webmanifest?v=38">
+  <link rel="manifest" href="./manifest.webmanifest?v=39">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   
@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
   
   <!-- Custom Mobile-First GitHub Primer Styles -->
-  <link rel="stylesheet" href="./styles.css?v=38">
+  <link rel="stylesheet" href="./styles.css?v=39">
 </head>
 <body class="mobile-app">
   <!-- Header Bar -->
@@ -336,7 +336,12 @@
               <span></span><span></span><span></span>
             </div>
             <div class="tts-info-box">
-              <div class="tts-voice-role" id="ttsVoiceRoleBadge">H1 (Nữ)</div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button id="btnTtsChangeLang" class="tts-lang-badge" onclick="showTtsLanguageModal()" title="Đổi ngôn ngữ đọc" aria-label="Đổi ngôn ngữ đọc">
+                  <span id="ttsLangBadgeText">🇻🇳 VI</span>
+                </button>
+                <div class="tts-voice-role" id="ttsVoiceRoleBadge">H1 (Nữ)</div>
+              </div>
               <div class="tts-progress-text" id="ttsProgressText">Đoạn 1 / 10</div>
             </div>
           </div>
@@ -607,6 +612,66 @@
     </aside>
   </div>
 
+  <!-- MODAL: Choose TTS Reading Language -->
+  <div id="ttsLanguageModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ttsLangModalTitle" onclick="if(event.target===this) closeTtsLanguageModal()">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg class="octicon octicon-unmute" viewBox="0 0 16 16" width="16" height="16" fill="var(--color-accent-fg, #0969da)">
+            <path d="M7.559 1.198a.75.75 0 0 1 .441.68v12.244a.75.75 0 0 1-1.22.583L3.25 11.5H1.75A1.75 1.75 0 0 1 0 9.75v-3.5C0 5.284.784 4.5 1.75 4.5h1.5l3.53-3.205a.75.75 0 0 1 .779-.1zM11.55 4.45a.75.75 0 0 1 1.06 0 5.002 5.002 0 0 1 0 7.1a.75.75 0 0 1-1.06-1.06 3.502 3.502 0 0 0 0-4.98.75.75 0 0 1 0-1.06zm2.83-2.83a.75.75 0 0 1 1.06 0 9.004 9.004 0 0 1 0 12.76.75.75 0 0 1-1.06-1.06 7.504 7.504 0 0 0 0-10.64.75.75 0 0 1 0-1.06z"></path>
+          </svg>
+          <h4 class="modal-title" id="ttsLangModalTitle">Chọn ngôn ngữ đọc</h4>
+        </div>
+        <button class="modal-close-btn" onclick="closeTtsLanguageModal()" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px 20px;">
+        <p style="font-size: 13px; color: var(--color-fg-muted); margin-bottom: 14px; line-height: 1.4;">
+          Chọn ngôn ngữ để trình phát đọc bài viết bằng giọng chuẩn nhất:
+        </p>
+
+        <div class="tts-lang-options-grid">
+          <!-- Option: Tiếng Việt -->
+          <button type="button" class="tts-lang-option-card active" id="ttsOptVi" onclick="selectTtsLanguageAndStart('vi')">
+            <div class="tts-lang-card-flag">🇻🇳</div>
+            <div class="tts-lang-card-info">
+              <div class="tts-lang-card-title">
+                <strong>Tiếng Việt</strong>
+                <span class="gh-badge gh-badge-secondary tts-badge-default">Mặc định</span>
+              </div>
+              <div class="tts-lang-card-desc">H1/H2 giọng nữ trong trẻo • Nội dung giọng nam chuẩn</div>
+            </div>
+            <div class="tts-lang-card-check">
+              <svg class="octicon octicon-check" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+              </svg>
+            </div>
+          </button>
+
+          <!-- Option: English -->
+          <button type="button" class="tts-lang-option-card" id="ttsOptEn" onclick="selectTtsLanguageAndStart('en')">
+            <div class="tts-lang-card-flag">🇬🇧</div>
+            <div class="tts-lang-card-info">
+              <div class="tts-lang-card-title">
+                <strong>English</strong>
+                <span class="gh-badge gh-badge-secondary">Global</span>
+              </div>
+              <div class="tts-lang-card-desc">H1/H2 Female voice • Content Male voice</div>
+            </div>
+            <div class="tts-lang-card-check">
+              <svg class="octicon octicon-check" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+              </svg>
+            </div>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
+        <span style="font-size: 11px; color: var(--color-fg-muted);">Lựa chọn được ghi nhớ tự động</span>
+        <button class="gh-btn gh-btn-sm" onclick="closeTtsLanguageModal()">Hủy</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CDN Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
@@ -617,6 +682,6 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="./app.js?v=38"></script>
+  <script src="./app.js?v=39"></script>
 </body>
 </html>

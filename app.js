@@ -282,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
       closeManagePageGroupsModal();
       toggleIosInstallModal(false);
       toggleTocModal(false);
+      closeTtsLanguageModal();
     }
   });
 
@@ -3017,6 +3018,13 @@ const TTS_PAUSE_DURATION_MS = 200;
 const ttsState = {
   isSupported: true,
   mode: 'audio', // 'audio' (HTML5 Media Stream) | 'speechSynthesis' (Offline Fallback)
+  language: (function() {
+    try {
+      return localStorage.getItem('gh_md_tts_lang') || 'vi';
+    } catch (e) {
+      return 'vi';
+    }
+  })(),
   active: false,
   playing: false,
   currentIndex: 0,
@@ -3024,6 +3032,7 @@ const ttsState = {
   femaleVoice: null,
   maleVoice: null,
   viVoices: [],
+  enVoices: [],
   utterance: null,
   audioPlayer: null,
   preloadAudio: null,
@@ -3034,12 +3043,13 @@ const ttsState = {
 };
 
 /**
- * Generates Google Translate TTS audio URL for Vietnamese speech.
+ * Generates Google Translate TTS audio URL for selected language (vi | en).
  */
 function getTtsAudioUrl(text) {
   const clean = (text || '').trim();
   const encoded = encodeURIComponent(clean);
-  return `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encoded}`;
+  const langCode = (ttsState.language === 'en') ? 'en' : 'vi';
+  return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encoded}`;
 }
 
 /**
@@ -3093,12 +3103,14 @@ function releaseTtsWakeLock() {
 function setupMediaSession() {
   if (!('mediaSession' in navigator)) return;
   try {
-    const fileName = appState.currentFile ? appState.currentFile.path.split('/').pop() : 'Tài liệu Markdown';
+    const isEn = (ttsState.language === 'en');
+    const defaultTitle = isEn ? 'Markdown Document' : 'Tài liệu Markdown';
+    const fileName = appState.currentFile ? appState.currentFile.path.split('/').pop() : defaultTitle;
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: fileName,
-      artist: 'GitHub Markdown Reader • Tiếng Việt',
-      album: 'H1/H2 Giọng nữ • Nội dung Giọng nam',
+      artist: isEn ? 'GitHub Markdown Reader • English' : 'GitHub Markdown Reader • Tiếng Việt',
+      album: isEn ? 'H1/H2 Female • Content Male' : 'H1/H2 Giọng nữ • Nội dung Giọng nam',
       artwork: [
         { src: './icons/icon-192.png', sizes: '192x192', type: 'image/png' },
         { src: './icons/icon-512.png', sizes: '512x512', type: 'image/png' }
@@ -3135,13 +3147,20 @@ function updateMediaSessionStatus() {
 
     if (ttsState.items && ttsState.items.length > 0 && ttsState.currentIndex < ttsState.items.length) {
       const cur = ttsState.items[ttsState.currentIndex];
-      const roleText = (cur.type === 'h1' || cur.type === 'h2') ? 'Giọng nữ' : 'Giọng nam';
-      const fileName = appState.currentFile ? appState.currentFile.path.split('/').pop() : 'Tài liệu Markdown';
+      const isEn = (ttsState.language === 'en');
+      let roleText = '';
+      if (cur.type === 'h1' || cur.type === 'h2') {
+        roleText = isEn ? 'Female Voice' : 'Giọng nữ';
+      } else {
+        roleText = isEn ? 'Male Voice' : 'Giọng nam';
+      }
+      const defaultTitle = isEn ? 'Markdown Document' : 'Tài liệu Markdown';
+      const fileName = appState.currentFile ? appState.currentFile.path.split('/').pop() : defaultTitle;
 
       navigator.mediaSession.metadata = new MediaMetadata({
         title: `[${ttsState.currentIndex + 1}/${ttsState.items.length}] ${fileName}`,
         artist: `${roleText} • ${cur.text.slice(0, 50)}...`,
-        album: 'GitHub Markdown Explorer',
+        album: isEn ? 'GitHub Markdown Reader (English)' : 'GitHub Markdown Reader (Tiếng Việt)',
         artwork: [
           { src: './icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: './icons/icon-512.png', sizes: '512x512', type: 'image/png' }
@@ -3223,7 +3242,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /**
- * Initializes and selects Vietnamese voices for fallback Web Speech API.
+ * Initializes and selects voices for fallback Web Speech API (Vietnamese & English).
  */
 function initTtsVoices() {
   if (!('speechSynthesis' in window)) return;
@@ -3234,29 +3253,63 @@ function initTtsVoices() {
       return lang.startsWith('vi') || lang.includes('viet');
     });
 
-    // 1. Select Vietnamese female voice
-    ttsState.femaleVoice = ttsState.viVoices.find(v => {
+    ttsState.enVoices = voices.filter(v => {
+      const lang = (v.lang || '').toLowerCase();
+      return lang.startsWith('en');
+    });
+
+    selectVoicesForLanguage();
+  } catch (e) {
+    console.warn('TTS voice init error:', e);
+  }
+}
+
+/**
+ * Selects female voice (for H1, H2) and male voice (for content) according to selected language.
+ */
+function selectVoicesForLanguage() {
+  const isEn = (ttsState.language === 'en');
+  const voiceList = isEn ? ttsState.enVoices : ttsState.viVoices;
+
+  if (isEn) {
+    // 1. English Female Voice
+    ttsState.femaleVoice = voiceList.find(v => {
+      const name = (v.name || '').toLowerCase();
+      return name.includes('female') || name.includes('samantha') || name.includes('karen') ||
+             name.includes('victoria') || name.includes('zira') || name.includes('ava') ||
+             name.includes('allison') || name.includes('susan');
+    }) || voiceList[0] || null;
+
+    // 2. English Male Voice
+    ttsState.maleVoice = voiceList.find(v => {
+      const name = (v.name || '').toLowerCase();
+      return (name.includes('male') || name.includes('alex') || name.includes('daniel') ||
+              name.includes('david') || name.includes('fred') || name.includes('tom') ||
+              name.includes('oliver') || name.includes('george')) &&
+             !name.includes('female');
+    }) || voiceList.find(v => v !== ttsState.femaleVoice) || voiceList[1] || voiceList[0] || null;
+  } else {
+    // 1. Vietnamese Female Voice
+    ttsState.femaleVoice = voiceList.find(v => {
       const name = (v.name || '').toLowerCase();
       return name.includes('female') || name.includes('nữ') || name.includes('nu') ||
              name.includes('linh') || name.includes('hoaimy') || name.includes('mai') ||
              name.includes('chi') || name.includes('lan') || name.includes('an');
-    }) || ttsState.viVoices[0] || null;
+    }) || voiceList[0] || null;
 
-    // 2. Select Vietnamese male voice
-    ttsState.maleVoice = ttsState.viVoices.find(v => {
+    // 2. Vietnamese Male Voice
+    ttsState.maleVoice = voiceList.find(v => {
       const name = (v.name || '').toLowerCase();
       return (name.includes('male') || name.includes('nam') || name.includes('namminh') ||
               name.includes('minh') || name.includes('trung') || name.includes('khoa')) &&
              !name.includes('female');
     });
 
-    if (!ttsState.maleVoice && ttsState.viVoices.length > 1) {
-      ttsState.maleVoice = ttsState.viVoices.find(v => v !== ttsState.femaleVoice) || ttsState.viVoices[1];
+    if (!ttsState.maleVoice && voiceList.length > 1) {
+      ttsState.maleVoice = voiceList.find(v => v !== ttsState.femaleVoice) || voiceList[1];
     } else if (!ttsState.maleVoice) {
-      ttsState.maleVoice = ttsState.viVoices[0] || null;
+      ttsState.maleVoice = voiceList[0] || null;
     }
-  } catch (e) {
-    console.warn('TTS voice init error:', e);
   }
 }
 
@@ -3280,10 +3333,10 @@ function splitTextIntoSentences(rawText) {
   const PLACEHOLDER_DECIMAL = '__DECIMAL_DOT__';
   const PLACEHOLDER_ABBR = '__ABBR_DOT__';
 
-  // 1. Protect decimal numbers (e.g., 3.14, 0.2) and common abbreviations
+  // 1. Protect decimal numbers (e.g., 3.14, 0.2) and common abbreviations (VI & EN)
   let protectedText = text
     .replace(/(\d+)\.(\d+)/g, '$1' + PLACEHOLDER_DECIMAL + '$2')
-    .replace(/(v\.v|e\.g|i\.e|tp|th\.s|ts|dr|mr|mrs|ms)\./gi, '$1' + PLACEHOLDER_ABBR);
+    .replace(/(v\.v|e\.g|i\.e|tp|th\.s|ts|dr|mr|mrs|ms|inc|ltd|co|corp|approx|vs|etc)\./gi, '$1' + PLACEHOLDER_ABBR);
 
   // 2. Segment at punctuation marks: . ! ? : ; … or end of string
   const regex = /[^.!?…;:]+([.!?…;:]+|$)/g;
@@ -3381,7 +3434,8 @@ function extractTtsItems() {
     text = text.replace(/```[a-zA-Z0-9_-]*/g, '');
     text = text.replace(/```/g, '');
     text = text.replace(/^#+\s*/, '');
-    text = text.replace(/https?:\/\/[^\s]+/g, 'đường dẫn liên kết');
+    const linkWord = (ttsState.language === 'en') ? 'link' : 'đường dẫn liên kết';
+    text = text.replace(/https?:\/\/[^\s]+/g, linkWord);
     text = text.replace(/\s+/g, ' ').trim();
 
     // If empty, too short, or only punctuation remnants (e.g. ":", "-", "•", ".", ";")
@@ -3496,7 +3550,7 @@ function playViaSpeechSynthesis(item, index) {
   try { window.speechSynthesis.cancel(); } catch (e) {}
 
   const utterance = new SpeechSynthesisUtterance(item.text);
-  utterance.lang = 'vi-VN';
+  utterance.lang = (ttsState.language === 'en') ? 'en-US' : 'vi-VN';
 
   if (item.type === 'h1' || item.type === 'h2') {
     if (ttsState.femaleVoice) utterance.voice = ttsState.femaleVoice;
@@ -3504,7 +3558,7 @@ function playViaSpeechSynthesis(item, index) {
     utterance.rate = 1.0;
   } else {
     if (ttsState.maleVoice) utterance.voice = ttsState.maleVoice;
-    utterance.pitch = 0.75;
+    utterance.pitch = (ttsState.language === 'en') ? 0.85 : 0.75;
     utterance.rate = 1.0;
   }
 
@@ -3662,23 +3716,32 @@ function updateTtsUI() {
     }
   }
 
+  // Update Language Badge Text
+  const langBadgeText = document.getElementById('ttsLangBadgeText');
+  if (langBadgeText) {
+    langBadgeText.textContent = (ttsState.language === 'en') ? '🇬🇧 EN' : '🇻🇳 VI';
+  }
+
   // Update Role Badge and Progress
   if (ttsState.items && ttsState.items.length > 0 && ttsState.currentIndex < ttsState.items.length) {
     const cur = ttsState.items[ttsState.currentIndex];
+    const isEn = (ttsState.language === 'en');
     if (voiceRoleBadge) {
       if (cur.type === 'h1') {
-        voiceRoleBadge.textContent = 'H1 • Giọng nữ';
+        voiceRoleBadge.textContent = isEn ? 'H1 • Female' : 'H1 • Giọng nữ';
         voiceRoleBadge.className = 'tts-voice-role role-female';
       } else if (cur.type === 'h2') {
-        voiceRoleBadge.textContent = 'H2 • Giọng nữ';
+        voiceRoleBadge.textContent = isEn ? 'H2 • Female' : 'H2 • Giọng nữ';
         voiceRoleBadge.className = 'tts-voice-role role-female';
       } else {
-        voiceRoleBadge.textContent = 'Nội dung • Giọng nam';
+        voiceRoleBadge.textContent = isEn ? 'Content • Male' : 'Nội dung • Giọng nam';
         voiceRoleBadge.className = 'tts-voice-role role-male';
       }
     }
     if (progressText) {
-      progressText.textContent = `Đoạn ${ttsState.currentIndex + 1} / ${ttsState.items.length}`;
+      progressText.textContent = isEn
+        ? `Part ${ttsState.currentIndex + 1} / ${ttsState.items.length}`
+        : `Đoạn ${ttsState.currentIndex + 1} / ${ttsState.items.length}`;
     }
   }
 }
@@ -3738,15 +3801,72 @@ function detachTtsClickListeners() {
 
 /**
  * Toggles TTS player on/off or play/pause.
+ * If inactive, opens language selection modal to let user choose Vietnamese or English.
  */
 function toggleTtsPlayer() {
   if (ttsState.active) {
     ttsTogglePlayPause();
   } else {
+    showTtsLanguageModal();
+  }
+}
+
+/**
+ * Shows the Language Selection Modal for TTS.
+ */
+function showTtsLanguageModal() {
+  const modal = document.getElementById('ttsLanguageModal');
+  if (!modal) return;
+
+  const currentLang = ttsState.language || localStorage.getItem('gh_md_tts_lang') || 'vi';
+  const optVi = document.getElementById('ttsOptVi');
+  const optEn = document.getElementById('ttsOptEn');
+
+  if (optVi && optEn) {
+    if (currentLang === 'en') {
+      optVi.classList.remove('active');
+      optEn.classList.add('active');
+    } else {
+      optVi.classList.add('active');
+      optEn.classList.remove('active');
+    }
+  }
+
+  modal.classList.remove('hidden');
+}
+
+/**
+ * Closes the Language Selection Modal.
+ */
+function closeTtsLanguageModal() {
+  const modal = document.getElementById('ttsLanguageModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+/**
+ * Selects reading language and starts or updates TTS playback.
+ */
+function selectTtsLanguageAndStart(lang) {
+  ttsState.language = (lang === 'en') ? 'en' : 'vi';
+  try {
+    localStorage.setItem('gh_md_tts_lang', ttsState.language);
+  } catch (e) {}
+
+  closeTtsLanguageModal();
+
+  if (ttsState.active) {
+    // If player is already active and user switched language from player bar
+    initTtsVoices();
+    ttsState.items = extractTtsItems();
+    updateTtsUI();
+    updateMediaSessionStatus();
+    ttsSpeakItem(ttsState.currentIndex);
+  } else {
+    // Start fresh reading session
     initTtsVoices();
     ttsState.items = extractTtsItems();
     if (ttsState.items.length === 0) {
-      showFlash('Không có văn bản nào để đọc.', 'info');
+      showFlash((ttsState.language === 'en') ? 'No readable text found.' : 'Không có văn bản nào để đọc.', 'info');
       return;
     }
     ttsState.active = true;
@@ -3818,7 +3938,7 @@ function ttsNext() {
   if (nextIdx < ttsState.items.length) {
     ttsSpeakItem(nextIdx);
   } else {
-    showFlash('Đã đến cuối tài liệu.', 'info');
+    showFlash((ttsState.language === 'en') ? 'Reached end of document.' : 'Đã đến cuối tài liệu.', 'info');
   }
 }
 
