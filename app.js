@@ -3164,6 +3164,7 @@ const ttsState = {
   preloadAudio: null,
   watchdogTimer: null,
   pauseTimeout: null,
+  isChangingTrack: false,
   currentStartTimestamp: 0,
   wakeLock: null
 };
@@ -3192,6 +3193,22 @@ function getTtsAudioPlayer() {
       audio.style.display = 'none';
       document.body.appendChild(audio);
     }
+
+    // Bluetooth Headset, Car Audio & Lock Screen Hardware Listeners
+    audio.addEventListener('pause', () => {
+      if (ttsState.isChangingTrack || ttsState.pauseTimeout) return;
+      if (ttsState.active && ttsState.playing && !audio.ended) {
+        ttsPause();
+      }
+    });
+
+    audio.addEventListener('play', () => {
+      if (ttsState.isChangingTrack) return;
+      if (ttsState.active && !ttsState.playing) {
+        ttsPlay();
+      }
+    });
+
     ttsState.audioPlayer = audio;
   }
   return ttsState.audioPlayer;
@@ -3224,7 +3241,7 @@ function releaseTtsWakeLock() {
 }
 
 /**
- * Registers Media Session API for Lock Screen Controls (iOS & Android).
+ * Registers Media Session API for Lock Screen Controls & Bluetooth Headset (iOS & Android).
  */
 function setupMediaSession() {
   if (!('mediaSession' in navigator)) return;
@@ -3243,20 +3260,36 @@ function setupMediaSession() {
       ]
     });
 
-    navigator.mediaSession.setActionHandler('play', () => {
+    const safeSetAction = (action, handler) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch (err) {}
+    };
+
+    // Bluetooth Headset Remote Control Handlers (AVRCP / MediaKeys)
+    safeSetAction('play', () => {
+      ttsPlay();
+    });
+    safeSetAction('pause', () => {
+      ttsPause();
+    });
+    safeSetAction('stop', () => {
+      ttsPause(); // Safely pause so playback can be resumed from headset
+    });
+    safeSetAction('toggleplaypause', () => {
       ttsTogglePlayPause();
     });
-    navigator.mediaSession.setActionHandler('pause', () => {
-      ttsTogglePlayPause();
-    });
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
+    safeSetAction('previoustrack', () => {
       ttsPrev();
     });
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
+    safeSetAction('nexttrack', () => {
       ttsNext();
     });
-    navigator.mediaSession.setActionHandler('stop', () => {
-      ttsStop();
+    safeSetAction('seekbackward', () => {
+      ttsPrev();
+    });
+    safeSetAction('seekforward', () => {
+      ttsNext();
     });
   } catch (e) {
     console.warn('[TTS] Media Session error:', e);
@@ -3264,7 +3297,7 @@ function setupMediaSession() {
 }
 
 /**
- * Updates Media Session playback state and segment info on Lock Screen.
+ * Updates Media Session playback state and segment info on Lock Screen and Bluetooth.
  */
 function updateMediaSessionStatus() {
   if (!('mediaSession' in navigator)) return;
@@ -3292,6 +3325,16 @@ function updateMediaSessionStatus() {
           { src: './icons/icon-512.png', sizes: '512x512', type: 'image/png' }
         ]
       });
+
+      if ('setPositionState' in navigator.mediaSession && ttsState.audioPlayer && ttsState.audioPlayer.duration > 0) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: Math.max(0.1, ttsState.audioPlayer.duration || 1),
+            playbackRate: ttsState.audioPlayer.playbackRate || 1.0,
+            position: Math.min(ttsState.audioPlayer.duration || 1, Math.max(0, ttsState.audioPlayer.currentTime || 0))
+          });
+        } catch (posErr) {}
+      }
     }
   } catch (e) {}
 }
@@ -3616,6 +3659,7 @@ function playViaAudioElement(item, index) {
     try { window.speechSynthesis.cancel(); } catch (e) {}
   }
 
+  ttsState.isChangingTrack = true;
   const audioUrl = getTtsAudioUrl(item.text);
   audio.src = audioUrl;
 
@@ -3645,6 +3689,7 @@ function playViaAudioElement(item, index) {
   };
 
   audio.onerror = (e) => {
+    ttsState.isChangingTrack = false;
     console.warn('[TTS Audio Stream] Fallback to SpeechSynthesis due to audio error:', e);
     playViaSpeechSynthesis(item, index);
   };
@@ -3652,10 +3697,16 @@ function playViaAudioElement(item, index) {
   ttsState.playing = true;
   const playPromise = audio.play();
   if (playPromise !== undefined) {
-    playPromise.catch(err => {
+    playPromise.then(() => {
+      ttsState.isChangingTrack = false;
+      updateMediaSessionStatus();
+    }).catch(err => {
+      ttsState.isChangingTrack = false;
       console.warn('[TTS Audio play notice]:', err);
       playViaSpeechSynthesis(item, index);
     });
+  } else {
+    ttsState.isChangingTrack = false;
   }
 }
 
@@ -4014,13 +4065,10 @@ function selectTtsLanguageAndStart(lang) {
 }
 
 /**
- * Toggles play and pause state of the current speech.
+ * Explicitly pauses TTS playback (supports Bluetooth Remote, Lock Screen & In-App UI).
  */
-function ttsTogglePlayPause() {
-  if (!ttsState.active) {
-    toggleTtsPlayer();
-    return;
-  }
+function ttsPause() {
+  if (!ttsState.active) return;
 
   // Clear any pause interval
   if (ttsState.pauseTimeout) {
@@ -4029,34 +4077,71 @@ function ttsTogglePlayPause() {
   }
 
   if (ttsState.playing) {
+    ttsState.playing = false;
+
     if (ttsState.mode === 'audio' && ttsState.audioPlayer) {
-      try { ttsState.audioPlayer.pause(); } catch (e) {}
+      try {
+        if (!ttsState.audioPlayer.paused) {
+          ttsState.audioPlayer.pause();
+        }
+      } catch (e) {}
     } else if ('speechSynthesis' in window) {
       try { window.speechSynthesis.pause(); } catch (e) {}
     }
-    ttsState.playing = false;
+
     stopTtsWatchdog();
     releaseTtsWakeLock();
     updateTtsUI();
     updateMediaSessionStatus();
-  } else {
-    requestTtsWakeLock();
-    startTtsWatchdog();
-    ttsState.playing = true;
+  }
+}
 
-    if (ttsState.mode === 'audio' && ttsState.audioPlayer && ttsState.audioPlayer.src) {
-      ttsState.audioPlayer.play().catch(() => {
-        ttsSpeakItem(ttsState.currentIndex);
-      });
-      updateTtsUI();
-      updateMediaSessionStatus();
-    } else if (window.speechSynthesis && window.speechSynthesis.paused) {
-      try { window.speechSynthesis.resume(); } catch (e) {}
-      updateTtsUI();
-      updateMediaSessionStatus();
-    } else {
+/**
+ * Explicitly resumes TTS playback (supports Bluetooth Remote, Lock Screen & In-App UI).
+ */
+function ttsPlay() {
+  if (!ttsState.active) {
+    toggleTtsPlayer();
+    return;
+  }
+  if (ttsState.playing) return;
+
+  if (ttsState.pauseTimeout) {
+    clearTimeout(ttsState.pauseTimeout);
+    ttsState.pauseTimeout = null;
+  }
+
+  ttsState.playing = true;
+  requestTtsWakeLock();
+  startTtsWatchdog();
+
+  if (ttsState.mode === 'audio' && ttsState.audioPlayer && ttsState.audioPlayer.src) {
+    ttsState.audioPlayer.play().catch(() => {
       ttsSpeakItem(ttsState.currentIndex);
-    }
+    });
+    updateTtsUI();
+    updateMediaSessionStatus();
+  } else if (window.speechSynthesis && window.speechSynthesis.paused) {
+    try { window.speechSynthesis.resume(); } catch (e) {}
+    updateTtsUI();
+    updateMediaSessionStatus();
+  } else {
+    ttsSpeakItem(ttsState.currentIndex);
+  }
+}
+
+/**
+ * Toggles play and pause state of the current speech.
+ */
+function ttsTogglePlayPause() {
+  if (!ttsState.active) {
+    toggleTtsPlayer();
+    return;
+  }
+  if (ttsState.playing) {
+    ttsPause();
+  } else {
+    ttsPlay();
   }
 }
 
