@@ -1,1868 +1,792 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en" data-color-mode="light" data-light-theme="light">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-    />
-    <meta name="color-scheme" content="light" />
-    <meta
-      name="description"
-      content="Mobile-First GitHub Markdown Explorer & Offline Reader"
-    />
-    <meta name="theme-color" content="#24292f" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="MD Reader" />
-    <title>GitHub Markdown Explorer</title>
-
-    <!-- Web App Manifest & App Icons -->
-    <link rel="manifest" href="./manifest.webmanifest?v=41" />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="192x192"
-      href="./icons/icon-192.png"
-    />
-    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
-
-    <!-- GitHub Markdown CSS (Pure Light Mode) -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown-light.min.css"
-    />
-
-    <!-- Highlight.js GitHub theme -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css"
-    />
-
-    <!-- KaTeX Math Rendering CSS -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"
-    />
-
-    <!-- Custom Mobile-First GitHub Primer Styles -->
-    <link rel="stylesheet" href="./styles.css?v=47" />
-  </head>
-  <body class="mobile-app">
-    <!-- Header Bar -->
-    <header class="gh-header">
-      <div class="gh-header-left">
-        <!-- Header Back Button -->
-        <button
-          id="btnHeaderBack"
-          class="gh-btn gh-btn-sm btn-back hidden"
-          onclick="handleHeaderBack()"
-          aria-label="Back"
-        >
-          <svg
-            class="octicon octicon-chevron-left"
-            viewBox="0 0 16 16"
-            width="16"
-            height="16"
-            fill="currentColor"
-          >
-            <path
-              d="M9.78 12.78a.75.75 0 0 1-1.06 0L4.47 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L6.06 8l3.72 3.72a.75.75 0 0 1 0 1.06Z"
-            ></path>
-          </svg>
-          <span>Back</span>
-        </button>
-
-        <div class="gh-header-brand" id="headerBrand">
-          <img
-            src="icon.jpeg"
-            alt="Logo"
-            class="gh-header-logo"
-            width="24"
-            height="24"
-          />
-          <span class="gh-header-title">GH Explorer</span>
-        </div>
-
-        <!-- Reader Title & Sync Button on Top Bar (shown in Reader view) -->
-        <div id="headerViewerGroup" class="gh-header-viewer-group hidden">
-          <div id="headerViewerTitle" class="header-viewer-title-box">
-            <span class="header-viewer-filename">Select a file</span>
-          </div>
-          <button
-            id="btnSyncCurrentFile"
-            class="btn-header-sync"
-            onclick="syncCurrentFile()"
-            title="Sync file"
-            aria-label="Sync file"
-          >
-            <svg
-              class="octicon octicon-sync"
-              viewBox="0 0 16 16"
-              width="15"
-              height="15"
-              fill="currentColor"
-            >
-              <path
-                d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"
-              ></path>
-            </svg>
-          </button>
-          <button
-            id="btnHeaderToc"
-            class="btn-header-sync"
-            onclick="toggleTocModal()"
-            title="Seek Headings (H1 & H2)"
-            aria-label="Table of Contents"
-          >
-            <svg
-              class="octicon octicon-list-unordered"
-              viewBox="0 0 16 16"
-              width="15"
-              height="15"
-              fill="currentColor"
-            >
-              <path
-                d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
-              ></path>
-            </svg>
-          </button>
-          <button
-            id="btnHeaderTts"
-            class="btn-header-sync"
-            onclick="toggleTtsPlayer()"
-            title="Đọc bài viết (TTS)"
-            aria-label="Đọc bài viết"
-          >
-            <svg
-              class="octicon octicon-unmute"
-              viewBox="0 0 16 16"
-              width="15"
-              height="15"
-              fill="currentColor"
-            >
-              <path
-                d="M7.559 1.198a.75.75 0 0 1 .441.68v12.244a.75.75 0 0 1-1.22.583L3.25 11.5H1.75A1.75 1.75 0 0 1 0 9.75v-3.5C0 5.284.784 4.5 1.75 4.5h1.5l3.53-3.205a.75.75 0 0 1 .779-.1zM11.55 4.45a.75.75 0 0 1 1.06 0 5.002 5.002 0 0 1 0 7.1a.75.75 0 0 1-1.06-1.06 3.502 3.502 0 0 0 0-4.98.75.75 0 0 1 0-1.06zm2.83-2.83a.75.75 0 0 1 1.06 0 9.004 9.004 0 0 1 0 12.76.75.75 0 0 1-1.06-1.06 7.504 7.504 0 0 0 0-10.64.75.75 0 0 1 0-1.06z"
-              ></path>
-            </svg>
-          </button>
-          <button
-            id="btnHeaderEdit"
-            class="btn-header-sync"
-            onclick="enterEditMode()"
-            title="Chỉnh sửa & Push lên GitHub"
-            aria-label="Chỉnh sửa bài viết"
-          >
-            <svg
-              class="octicon octicon-pencil"
-              viewBox="0 0 16 16"
-              width="15"
-              height="15"
-              fill="currentColor"
-            >
-              <path
-                d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"
-              ></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="gh-header-actions">
-        <!-- PWA Install Button (PWA Standards Rule 6) -->
-        <button
-          id="btnInstall"
-          class="gh-btn gh-btn-sm btn-install hidden"
-          aria-label="Cài đặt ứng dụng"
-          title="Cài đặt ứng dụng"
-        >
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          <span>Cài đặt</span>
-        </button>
-
-        <!-- Help Button -->
-        <button
-          id="btnOpenHelp"
-          class="gh-btn gh-btn-icon"
-          onclick="toggleGuideModal(true, 'pat')"
-          title="Help & PAT Guide"
-          aria-label="Help & PAT Guide"
-        >
-          <svg
-            class="octicon octicon-question"
-            viewBox="0 0 16 16"
-            width="18"
-            height="18"
-            fill="currentColor"
-          >
-            <path
-              d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085c.081-.57.552-.985 1.17-.985.644 0 1.16.477 1.16 1.066 0 .445-.244.757-.666 1.066l-.326.237c-.524.38-.858.883-.858 1.531v.5a.75.75 0 0 0 1.5 0v-.354c0-.285.127-.514.475-.767l.325-.236c.692-.503 1.15-1.189 1.15-2.046 0-1.408-1.205-2.466-2.76-2.466-1.503 0-2.658 1.002-2.784 2.378a.75.75 0 0 0 1.488.136ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"
-            ></path>
-          </svg>
-        </button>
-
-        <!-- Settings Button -->
-        <button
-          id="btnSettings"
-          class="gh-btn gh-btn-icon hidden"
-          title="Settings & Disconnect"
-          aria-label="Settings & Disconnect"
-        >
-          <svg
-            class="octicon octicon-gear"
-            viewBox="0 0 16 16"
-            width="18"
-            height="18"
-            fill="currentColor"
-          >
-            <path
-              d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm6.5-2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"
-            ></path>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Media Control Header Bar (Dark Style Overlay for Reader Page) -->
-      <div
-        id="ttsControlBar"
-        class="tts-player-bar hidden"
-        role="region"
-        aria-label="Trình phát giọng đọc"
-      >
-        <div class="tts-player-left">
-          <div class="tts-soundwave" id="ttsSoundwave">
-            <span></span><span></span><span></span>
-          </div>
-          <div class="tts-info-box">
-            <div style="display: flex; align-items: center; gap: 6px">
-              <button
-                id="btnTtsChangeLang"
-                class="tts-lang-badge"
-                onclick="showTtsLanguageModal()"
-                title="Đổi ngôn ngữ đọc"
-                aria-label="Đổi ngôn ngữ đọc"
-              >
-                <span id="ttsLangBadgeText">🇻🇳 VI</span>
-              </button>
-              <div class="tts-voice-role" id="ttsVoiceRoleBadge">H1 (Nữ)</div>
-            </div>
-            <div class="tts-progress-text" id="ttsProgressText">
-              Đoạn 1 / 10
-            </div>
-          </div>
-        </div>
-
-        <div class="tts-controls-group">
-          <button
-            id="btnTtsPlayPause"
-            class="gh-btn gh-btn-sm gh-btn-primary tts-btn-control btn-tts-playpause"
-            onclick="ttsTogglePlayPause()"
-            title="Tạm dừng / Tiếp tục"
-            aria-label="Tạm dừng hoặc tiếp tục"
-          >
-            <svg
-              id="ttsPlayPauseIcon"
-              viewBox="0 0 16 16"
-              width="13"
-              height="13"
-              fill="currentColor"
-            >
-              <path
-                d="M4.5 3.25A.75.75 0 0 1 5.25 4v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Zm7 0a.75.75 0 0 1 .75v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Z"
-              ></path>
-            </svg>
-            <span id="ttsPlayPauseText">Tạm dừng</span>
-          </button>
-
-          <button
-            id="btnTtsStop"
-            class="gh-btn gh-btn-sm tts-btn-control btn-tts-stop"
-            onclick="ttsStop()"
-            title="Dừng đọc"
-            aria-label="Dừng đọc"
-          >
-            <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
-              <path d="M3.25 3.25h9.5v9.5h-9.5z"></path>
-            </svg>
-            <span id="ttsStopBtnText">Dừng</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Markdown Editor Header Bar (Dark Style Overlay while Editing) -->
-      <div
-        id="editorControlBar"
-        class="editor-header-bar hidden"
-        role="region"
-        aria-label="Chế độ chỉnh sửa Markdown"
-      >
-        <div class="editor-header-left">
-          <span class="editor-mode-icon" aria-hidden="true">
-            <svg
-              class="octicon octicon-pencil"
-              viewBox="0 0 16 16"
-              width="14"
-              height="14"
-              fill="currentColor"
-            >
-              <path
-                d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"
-              ></path>
-            </svg>
-          </span>
-          <div class="editor-header-info">
-            <div class="editor-header-filename" id="editorHeaderFileName">
-              document.md
-            </div>
-            <div class="editor-header-status" id="editorDirtyBadge">
-              Đang chỉnh sửa
-            </div>
-          </div>
-        </div>
-        <div class="editor-header-actions">
-          <button
-            id="btnEditorCancel"
-            type="button"
-            class="gh-btn gh-btn-sm editor-btn-cancel"
-            onclick="cancelEditMode()"
-            title="Hủy chỉnh sửa"
-          >
-            <span>Hủy</span>
-          </button>
-          <button
-            id="btnEditorPush"
-            type="button"
-            class="gh-btn gh-btn-sm gh-btn-primary editor-btn-push"
-            onclick="openCommitPushModal()"
-            title="Commit & Push thay đổi lên GitHub"
-          >
-            <svg
-              class="octicon octicon-repo-push"
-              viewBox="0 0 16 16"
-              width="13"
-              height="13"
-              fill="currentColor"
-            >
-              <path
-                d="M1 2.5A2.5 2.5 0 0 1 3.5 0h8.75a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V1.5h-8a1 1 0 0 0-1 1v6.708A2.493 2.493 0 0 1 3.5 9h3.25a.75.75 0 0 1 0 1.5H3.5a1 1 0 0 0 0 2h5.75a.75.75 0 0 1 0 1.5H3.5A2.5 2.5 0 0 1 1 11.5Zm13.23 7.79h-.001l-1.224-1.224v6.184a.75.75 0 0 1-1.5 0V9.066L10.28 10.29a.75.75 0 0 1-1.06-1.061l2.505-2.504a.75.75 0 0 1 1.06 0L15.29 9.23a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018Z"
-              ></path>
-            </svg>
-            <span>Push</span>
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <!-- PWA In-App Update Banner (PWA Standards Rule 6D) -->
-    <div id="pwaUpdateBanner" class="pwa-update-banner hidden" role="alert">
-      <div class="pwa-update-text">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-          <path
-            d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"
-          ></path>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Mobile-First GitHub Markdown Explorer & Offline Reader">
+  <meta name="theme-color" content="#24292f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MD Reader">
+  <title>GitHub Markdown Explorer</title>
+  
+  <!-- Web App Manifest & App Icons -->
+  <link rel="manifest" href="./manifest.webmanifest?v=41">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  
+  <!-- GitHub Markdown CSS (Pure Light Mode) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown-light.min.css">
+  
+  <!-- Highlight.js GitHub theme -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+  
+  <!-- KaTeX Math Rendering CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+  
+  <!-- Custom Mobile-First GitHub Primer Styles -->
+  <link rel="stylesheet" href="./styles.css?v=47">
+</head>
+<body class="mobile-app">
+  <!-- Header Bar -->
+  <header class="gh-header">
+    <div class="gh-header-left">
+      <!-- Header Back Button -->
+      <button id="btnHeaderBack" class="gh-btn gh-btn-sm btn-back hidden" onclick="handleHeaderBack()" aria-label="Back">
+        <svg class="octicon octicon-chevron-left" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+          <path d="M9.78 12.78a.75.75 0 0 1-1.06 0L4.47 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L6.06 8l3.72 3.72a.75.75 0 0 1 0 1.06Z"></path>
         </svg>
-        <span>Đã có bản cập nhật mới.</span>
+        <span>Back</span>
+      </button>
+
+      <div class="gh-header-brand" id="headerBrand">
+        <img src="icon.jpeg" alt="Logo" class="gh-header-logo" width="24" height="24">
+        <span class="gh-header-title">GH Explorer</span>
       </div>
-      <div class="pwa-update-actions">
-        <button id="btnPwaReload" class="gh-btn gh-btn-sm gh-btn-primary">
-          Tải lại
+
+      <!-- Reader Title & Sync Button on Top Bar (shown in Reader view) -->
+      <div id="headerViewerGroup" class="gh-header-viewer-group hidden">
+        <div id="headerViewerTitle" class="header-viewer-title-box">
+          <span class="header-viewer-filename">Select a file</span>
+        </div>
+        <button id="btnSyncCurrentFile" class="btn-header-sync" onclick="syncCurrentFile()" title="Sync file" aria-label="Sync file">
+          <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
+          </svg>
         </button>
-        <button id="btnPwaDismiss" class="gh-btn gh-btn-sm" aria-label="Đóng">
-          &times;
+        <button id="btnHeaderToc" class="btn-header-sync" onclick="toggleTocModal()" title="Seek Headings (H1 & H2)" aria-label="Table of Contents">
+          <svg class="octicon octicon-list-unordered" viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path>
+          </svg>
+        </button>
+        <button id="btnHeaderTts" class="btn-header-sync" onclick="toggleTtsPlayer()" title="Đọc bài viết (TTS)" aria-label="Đọc bài viết">
+          <svg class="octicon octicon-unmute" viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path d="M7.559 1.198a.75.75 0 0 1 .441.68v12.244a.75.75 0 0 1-1.22.583L3.25 11.5H1.75A1.75 1.75 0 0 1 0 9.75v-3.5C0 5.284.784 4.5 1.75 4.5h1.5l3.53-3.205a.75.75 0 0 1 .779-.1zM11.55 4.45a.75.75 0 0 1 1.06 0 5.002 5.002 0 0 1 0 7.1a.75.75 0 0 1-1.06-1.06 3.502 3.502 0 0 0 0-4.98.75.75 0 0 1 0-1.06zm2.83-2.83a.75.75 0 0 1 1.06 0 9.004 9.004 0 0 1 0 12.76.75.75 0 0 1-1.06-1.06 7.504 7.504 0 0 0 0-10.64.75.75 0 0 1 0-1.06z"></path>
+          </svg>
+        </button>
+        <button id="btnHeaderEdit" class="btn-header-sync" onclick="enterEditMode()" title="Chỉnh sửa & Push lên GitHub" aria-label="Chỉnh sửa bài viết">
+          <svg class="octicon octicon-pencil" viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <div class="gh-header-actions">
+      <!-- PWA Install Button (PWA Standards Rule 6) -->
+      <button id="btnInstall" class="gh-btn gh-btn-sm btn-install hidden" aria-label="Cài đặt ứng dụng" title="Cài đặt ứng dụng">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>Cài đặt</span>
+      </button>
+
+      <!-- Help Button -->
+      <button id="btnOpenHelp" class="gh-btn gh-btn-icon" onclick="toggleGuideModal(true, 'pat')" title="Help & PAT Guide" aria-label="Help & PAT Guide">
+        <svg class="octicon octicon-question" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+          <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085c.081-.57.552-.985 1.17-.985.644 0 1.16.477 1.16 1.066 0 .445-.244.757-.666 1.066l-.326.237c-.524.38-.858.883-.858 1.531v.5a.75.75 0 0 0 1.5 0v-.354c0-.285.127-.514.475-.767l.325-.236c.692-.503 1.15-1.189 1.15-2.046 0-1.408-1.205-2.466-2.76-2.466-1.503 0-2.658 1.002-2.784 2.378a.75.75 0 0 0 1.488.136ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path>
+        </svg>
+      </button>
+
+      <!-- Settings Button -->
+      <button id="btnSettings" class="gh-btn gh-btn-icon hidden" title="Settings & Disconnect" aria-label="Settings & Disconnect">
+        <svg class="octicon octicon-gear" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+          <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm6.5-2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Media Control Header Bar (Dark Style Overlay for Reader Page) -->
+    <div id="ttsControlBar" class="tts-player-bar hidden" role="region" aria-label="Trình phát giọng đọc">
+      <div class="tts-player-left">
+        <div class="tts-soundwave" id="ttsSoundwave">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="tts-info-box">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button id="btnTtsChangeLang" class="tts-lang-badge" onclick="showTtsLanguageModal()" title="Đổi ngôn ngữ đọc" aria-label="Đổi ngôn ngữ đọc">
+              <span id="ttsLangBadgeText">🇻🇳 VI</span>
+            </button>
+            <div class="tts-voice-role" id="ttsVoiceRoleBadge">H1 (Nữ)</div>
+          </div>
+          <div class="tts-progress-text" id="ttsProgressText">Đoạn 1 / 10</div>
+        </div>
+      </div>
+      
+      <div class="tts-controls-group">
+        <button id="btnTtsPlayPause" class="gh-btn gh-btn-sm gh-btn-primary tts-btn-control btn-tts-playpause" onclick="ttsTogglePlayPause()" title="Tạm dừng / Tiếp tục" aria-label="Tạm dừng hoặc tiếp tục">
+          <svg id="ttsPlayPauseIcon" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+            <path d="M4.5 3.25A.75.75 0 0 1 5.25 4v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Zm7 0a.75.75 0 0 1 .75v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Z"></path>
+          </svg>
+          <span id="ttsPlayPauseText">Tạm dừng</span>
+        </button>
+
+        <button id="btnTtsStop" class="gh-btn gh-btn-sm tts-btn-control btn-tts-stop" onclick="ttsStop()" title="Dừng đọc" aria-label="Dừng đọc">
+          <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+            <path d="M3.25 3.25h9.5v9.5h-9.5z"></path>
+          </svg>
+          <span id="ttsStopBtnText">Dừng</span>
         </button>
       </div>
     </div>
 
-    <!-- Flash Alert Container -->
-    <div id="flashContainer" class="gh-flash-container"></div>
-
-    <!-- Main Container -->
-    <main class="gh-container">
-      <!-- PAT Entry Card -->
-      <section id="patEntryCard" class="gh-box pat-card-box">
-        <div class="gh-box-header">
-          <h2 class="gh-box-title">Connect GitHub PAT</h2>
+    <!-- Markdown Editor Header Bar (Dark Style Overlay while Editing) -->
+    <div id="editorControlBar" class="editor-header-bar hidden" role="region" aria-label="Chế độ chỉnh sửa Markdown">
+      <div class="editor-header-left">
+        <span class="editor-mode-icon" aria-hidden="true">
+          <svg class="octicon octicon-pencil" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+            <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"></path>
+          </svg>
+        </span>
+        <div class="editor-header-info">
+          <div class="editor-header-filename" id="editorHeaderFileName">document.md</div>
+          <div class="editor-header-status" id="editorDirtyBadge">Đang chỉnh sửa</div>
         </div>
-        <div class="gh-box-body">
-          <p class="pat-intro-text">
-            Enter your Personal Access Token (PAT) to access Favorite Pages,
-            Favorite Repos, and All Repos.
-          </p>
+      </div>
+      <div class="editor-header-actions">
+        <button id="btnEditorCancel" type="button" class="gh-btn gh-btn-sm editor-btn-cancel" onclick="cancelEditMode()" title="Hủy chỉnh sửa">
+          <span>Hủy</span>
+        </button>
+        <button id="btnEditorPush" type="button" class="gh-btn gh-btn-sm gh-btn-primary editor-btn-push" onclick="openCommitPushModal()" title="Commit & Push thay đổi lên GitHub">
+          <svg class="octicon octicon-repo-push" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+            <path d="M1 2.5A2.5 2.5 0 0 1 3.5 0h8.75a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V1.5h-8a1 1 0 0 0-1 1v6.708A2.493 2.493 0 0 1 3.5 9h3.25a.75.75 0 0 1 0 1.5H3.5a1 1 0 0 0 0 2h5.75a.75.75 0 0 1 0 1.5H3.5A2.5 2.5 0 0 1 1 11.5Zm13.23 7.79h-.001l-1.224-1.224v6.184a.75.75 0 0 1-1.5 0V9.066L10.28 10.29a.75.75 0 0 1-1.06-1.061l2.505-2.504a.75.75 0 0 1 1.06 0L15.29 9.23a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018Z"></path>
+          </svg>
+          <span>Push</span>
+        </button>
+      </div>
+    </div>
+  </header>
 
-          <form
-            id="patForm"
-            onsubmit="
-              event.preventDefault();
-              connectWithToken();
-            "
-          >
-            <div class="form-group">
-              <label for="patInput" class="form-label"
-                >Personal Access Token</label
-              >
-              <div class="input-group">
-                <input
-                  type="password"
-                  id="patInput"
-                  class="form-control"
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                  autocomplete="current-password"
-                  required
-                />
-                <button
-                  type="submit"
-                  id="btnConnect"
-                  class="gh-btn gh-btn-primary"
-                >
-                  Connect
-                </button>
-              </div>
-              <div id="patError" class="form-error hidden"></div>
+  <!-- PWA In-App Update Banner (PWA Standards Rule 6D) -->
+  <div id="pwaUpdateBanner" class="pwa-update-banner hidden" role="alert">
+    <div class="pwa-update-text">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+        <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
+      </svg>
+      <span>Đã có bản cập nhật mới.</span>
+    </div>
+    <div class="pwa-update-actions">
+      <button id="btnPwaReload" class="gh-btn gh-btn-sm gh-btn-primary">Tải lại</button>
+      <button id="btnPwaDismiss" class="gh-btn gh-btn-sm" aria-label="Đóng">&times;</button>
+    </div>
+  </div>
+
+  <!-- Flash Alert Container -->
+  <div id="flashContainer" class="gh-flash-container"></div>
+
+  <!-- Main Container -->
+  <main class="gh-container">
+    
+    <!-- PAT Entry Card -->
+    <section id="patEntryCard" class="gh-box pat-card-box">
+      <div class="gh-box-header">
+        <h2 class="gh-box-title">Connect GitHub PAT</h2>
+      </div>
+      <div class="gh-box-body">
+        <p class="pat-intro-text">
+          Enter your Personal Access Token (PAT) to access Favorite Pages, Favorite Repos, and All Repos.
+        </p>
+        
+        <form id="patForm" onsubmit="event.preventDefault(); connectWithToken();">
+          <div class="form-group">
+            <label for="patInput" class="form-label">Personal Access Token</label>
+            <div class="input-group">
+              <input type="password" id="patInput" class="form-control" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="current-password" required>
+              <button type="submit" id="btnConnect" class="gh-btn gh-btn-primary">Connect</button>
             </div>
-          </form>
+            <div id="patError" class="form-error hidden"></div>
+          </div>
+        </form>
 
-          <div class="pat-help-footer">
-            <svg
-              class="octicon octicon-info"
-              viewBox="0 0 16 16"
-              width="16"
-              height="16"
-              fill="currentColor"
-            >
-              <path
-                d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25V8.5h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"
-              ></path>
-            </svg>
-            <button
-              type="button"
-              class="btn-link"
-              onclick="toggleGuideModal(true, 'pat')"
-            >
-              Step-by-step PAT creation guide
+        <div class="pat-help-footer">
+          <svg class="octicon octicon-info" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+            <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25V8.5h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path>
+          </svg>
+          <button type="button" class="btn-link" onclick="toggleGuideModal(true, 'pat')">Step-by-step PAT creation guide</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- App Shell Mobile Layout -->
+    <div id="appShell" class="gh-app-layout hidden">
+      
+      <!-- TAB 1: FAVORITE PAGES VIEW -->
+      <section id="viewFavPages" class="mobile-view-panel">
+        <div class="view-panel-header flex-row-header">
+          <h3 class="view-panel-title">Favorite Pages</h3>
+          <div class="header-actions flex-row" style="gap: 6px;">
+            <button id="btnDeleteActiveFavGroup" class="gh-btn gh-btn-sm gh-btn-danger hidden" onclick="deleteCurrentActiveFavGroup()" title="Delete active group">
+              <svg class="octicon octicon-trash" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a1.75 1.75 0 0 0 1.744 1.475h2.2c.905 0 1.66-.69 1.744-1.475l.66-6.6a.75.75 0 0 0-1.492-.15l-.66 6.6a.25.25 0 0 1-.248.21h-2.2a.25.25 0 0 1-.248-.21l-.66-6.6a.75.75 0 0 0-1.496.15ZM6.5 1.5h3a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"></path>
+              </svg>
+              <span>Delete Group</span>
             </button>
+            <button id="btnSyncAll" class="gh-btn gh-btn-sm" onclick="syncAllFavorites()">
+              <svg class="octicon octicon-sync" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
+              </svg>
+              <span>Sync All</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Groups Bar -->
+        <div id="favGroupsBar" class="fav-groups-bar"></div>
+
+        <div id="favFilesContainer" class="gh-action-list mobile-list">
+          <div class="empty-state">No favorite pages yet.</div>
+        </div>
+      </section>
+
+      <!-- TAB 2: FAVORITE REPOS VIEW -->
+      <section id="viewFavRepos" class="mobile-view-panel hidden">
+        <div class="view-panel-header">
+          <h3 class="view-panel-title">Favorite Repos</h3>
+        </div>
+
+        <div id="favReposContainer" class="gh-action-list mobile-list">
+          <div class="empty-state">No favorite repos yet.</div>
+        </div>
+      </section>
+
+      <!-- TAB 3: ALL REPOS VIEW -->
+      <section id="viewAllRepos" class="mobile-view-panel hidden">
+        <div class="view-panel-header">
+          <h3 class="view-panel-title">All Repos</h3>
+          <div class="search-box">
+            <input type="text" class="form-control form-control-sm" placeholder="Search repositories..." oninput="filterList(this.value)">
+          </div>
+        </div>
+
+        <div id="repoListContainer" class="gh-action-list mobile-list">
+          <div class="loading-state">Loading repositories...</div>
+        </div>
+      </section>
+
+      <!-- TAB 4: HISTORY VIEW -->
+      <section id="viewHistory" class="mobile-view-panel hidden">
+        <div class="view-panel-header flex-row-header">
+          <h3 class="view-panel-title">History</h3>
+          <button id="btnClearHistory" class="gh-btn gh-btn-sm" onclick="clearHistory()">
+            <svg class="octicon octicon-trash" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+              <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6A1.75 1.75 0 0 0 6.899 15h2.202a1.75 1.75 0 0 0 1.743-1.725l.66-6.6a.75.75 0 0 0-1.492-.15l-.66 6.6a.25.25 0 0 1-.249.246H6.899a.25.25 0 0 1-.249-.246l-.66-6.6a.75.75 0 0 0-1.494.15Z"></path>
+            </svg>
+            <span>Clear</span>
+          </button>
+        </div>
+
+        <div id="historyFilesContainer" class="gh-action-list mobile-list">
+          <div class="empty-state">No reading history yet.</div>
+        </div>
+      </section>
+
+      <!-- TREE VIEW (Folder Explorer) -->
+      <section id="viewTree" class="mobile-view-panel hidden">
+        <div class="view-panel-header flex-row-header">
+          <div id="breadcrumb" class="gh-breadcrumb">
+            <span class="text-muted">No repository selected</span>
+          </div>
+          <button id="btnFavCurrentRepo" class="btn-star-icon hidden" onclick="toggleCurrentRepoFavorite()" title="Favorite Repo">
+            <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+              <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
+            </svg>
+          </button>
+        </div>
+        <div id="fileTreeContainer" class="file-tree-list mobile-list">
+          <div class="blankslate">
+            <h3>No repository selected</h3>
+            <p>Click a repository from All Repos or Favorite Repos to browse files.</p>
           </div>
         </div>
       </section>
 
-      <!-- App Shell Mobile Layout -->
-      <div id="appShell" class="gh-app-layout hidden">
-        <!-- TAB 1: FAVORITE PAGES VIEW -->
-        <section id="viewFavPages" class="mobile-view-panel">
-          <div class="view-panel-header flex-row-header">
-            <h3 class="view-panel-title">Favorite Pages</h3>
-            <div class="header-actions flex-row" style="gap: 6px">
-              <button
-                id="btnDeleteActiveFavGroup"
-                class="gh-btn gh-btn-sm gh-btn-danger hidden"
-                onclick="deleteCurrentActiveFavGroup()"
-                title="Delete active group"
-              >
-                <svg
-                  class="octicon octicon-trash"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a1.75 1.75 0 0 0 1.744 1.475h2.2c.905 0 1.66-.69 1.744-1.475l.66-6.6a.75.75 0 0 0-1.492-.15l-.66 6.6a.25.25 0 0 1-.248.21h-2.2a.25.25 0 0 1-.248-.21l-.66-6.6a.75.75 0 0 0-1.496.15ZM6.5 1.5h3a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"
-                  ></path>
+      <!-- MARKDOWN VIEWER VIEW (Reader) -->
+      <section id="viewViewer" class="mobile-view-panel hidden">
+        <div class="viewer-mobile-header">
+          <div class="mobile-reader-toolbar">
+            <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+              <button id="btnFavCurrentFile" class="btn-star-icon" onclick="toggleCurrentFileFavorite()" title="Toggle Favorite">
+                <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+                  <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
                 </svg>
-                <span>Delete Group</span>
               </button>
-              <button
-                id="btnSyncAll"
-                class="gh-btn gh-btn-sm"
-                onclick="syncAllFavorites()"
-              >
-                <svg
-                  class="octicon octicon-sync"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"
-                  ></path>
+              <button id="btnManageGroupsCurrentFile" class="btn-group-manage-icon" onclick="manageCurrentFileGroups()" title="Manage Groups">
+                <svg class="octicon octicon-tag" viewBox="0 0 16 16" width="17" height="17" fill="currentColor">
+                  <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path>
                 </svg>
-                <span>Sync All</span>
               </button>
             </div>
-          </div>
 
-          <!-- Groups Bar -->
-          <div id="favGroupsBar" class="fav-groups-bar"></div>
+            <!-- Network Dot Indicator (Positioned here as requested) -->
+            <span id="networkBadge" class="gh-badge gh-badge-success" title="Connection Status">
+              <span class="badge-dot"></span> <span class="badge-text">Online</span>
+            </span>
 
-          <div id="favFilesContainer" class="gh-action-list mobile-list">
-            <div class="empty-state">No favorite pages yet.</div>
-          </div>
-        </section>
+            <!-- File Sync Status Badge -->
+            <span id="fileSyncBadge" class="gh-badge gh-badge-secondary">🟢 Synced</span>
 
-        <!-- TAB 2: FAVORITE REPOS VIEW -->
-        <section id="viewFavRepos" class="mobile-view-panel hidden">
-          <div class="view-panel-header">
-            <h3 class="view-panel-title">Favorite Repos</h3>
-          </div>
-
-          <div id="favReposContainer" class="gh-action-list mobile-list">
-            <div class="empty-state">No favorite repos yet.</div>
-          </div>
-        </section>
-
-        <!-- TAB 3: ALL REPOS VIEW -->
-        <section id="viewAllRepos" class="mobile-view-panel hidden">
-          <div class="view-panel-header">
-            <h3 class="view-panel-title">All Repos</h3>
-            <div class="search-box">
-              <input
-                type="text"
-                class="form-control form-control-sm"
-                placeholder="Search repositories..."
-                oninput="filterList(this.value)"
-              />
+            <!-- Zoom -->
+            <div class="zoom-controls">
+              <button class="gh-btn gh-btn-sm" onclick="changeFontScale(-10)">-</button>
+              <button id="zoomScaleBadge" class="gh-btn gh-btn-sm btn-scale-badge" onclick="changeFontScale(100)">100%</button>
+              <button class="gh-btn gh-btn-sm" onclick="changeFontScale(10)">+</button>
             </div>
-          </div>
 
-          <div id="repoListContainer" class="gh-action-list mobile-list">
-            <div class="loading-state">Loading repositories...</div>
-          </div>
-        </section>
-
-        <!-- TAB 4: HISTORY VIEW -->
-        <section id="viewHistory" class="mobile-view-panel hidden">
-          <div class="view-panel-header flex-row-header">
-            <h3 class="view-panel-title">History</h3>
-            <button
-              id="btnClearHistory"
-              class="gh-btn gh-btn-sm"
-              onclick="clearHistory()"
-            >
-              <svg
-                class="octicon octicon-trash"
-                viewBox="0 0 16 16"
-                width="14"
-                height="14"
-                fill="currentColor"
-              >
-                <path
-                  d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6A1.75 1.75 0 0 0 6.899 15h2.202a1.75 1.75 0 0 0 1.743-1.725l.66-6.6a.75.75 0 0 0-1.492-.15l-.66 6.6a.25.25 0 0 1-.249.246H6.899a.25.25 0 0 1-.249-.246l-.66-6.6a.75.75 0 0 0-1.494.15Z"
-                ></path>
+            <!-- Lock Selection Toggle -->
+            <button id="btnToggleLockSelect" class="gh-btn gh-btn-sm" onclick="toggleLockSelect()" title="Lock/Unlock Text Selection">
+              <svg id="lockSelectIcon" class="octicon octicon-lock" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8 2V4a2 2 0 1 0-4 0v2ZM3.5 7.75v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Z"></path>
               </svg>
-              <span>Clear</span>
+              <span id="lockSelectText">Lock</span>
             </button>
-          </div>
 
-          <div id="historyFilesContainer" class="gh-action-list mobile-list">
-            <div class="empty-state">No reading history yet.</div>
-          </div>
-        </section>
-
-        <!-- TREE VIEW (Folder Explorer) -->
-        <section id="viewTree" class="mobile-view-panel hidden">
-          <div class="view-panel-header flex-row-header">
-            <div id="breadcrumb" class="gh-breadcrumb">
-              <span class="text-muted">No repository selected</span>
-            </div>
-            <button
-              id="btnFavCurrentRepo"
-              class="btn-star-icon hidden"
-              onclick="toggleCurrentRepoFavorite()"
-              title="Favorite Repo"
-            >
-              <svg
-                class="octicon octicon-star"
-                viewBox="0 0 16 16"
-                width="18"
-                height="18"
-                fill="currentColor"
-              >
-                <path
-                  d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
-                ></path>
+            <!-- Outline / TOC Quick Seek -->
+            <button id="btnToggleToc" class="gh-btn gh-btn-sm btn-toc" onclick="toggleTocModal()" title="Seek Headings (H1 & H2)" aria-label="Table of Contents">
+              <svg class="octicon octicon-list-unordered" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path>
               </svg>
+              <span>Outline</span>
             </button>
+
+            <!-- Text-to-Speech (TTS) Toggle -->
+            <button id="btnToggleTts" class="gh-btn gh-btn-sm btn-tts" onclick="toggleTtsPlayer()" title="Đọc bài viết (TTS)" aria-label="Đọc bài viết">
+              <svg class="octicon octicon-unmute" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M7.559 1.198a.75.75 0 0 1 .441.68v12.244a.75.75 0 0 1-1.22.583L3.25 11.5H1.75A1.75 1.75 0 0 1 0 9.75v-3.5C0 5.284.784 4.5 1.75 4.5h1.5l3.53-3.205a.75.75 0 0 1 .779-.1zM11.55 4.45a.75.75 0 0 1 1.06 0 5.002 5.002 0 0 1 0 7.1a.75.75 0 0 1-1.06-1.06 3.502 3.502 0 0 0 0-4.98.75.75 0 0 1 0-1.06zm2.83-2.83a.75.75 0 0 1 1.06 0 9.004 9.004 0 0 1 0 12.76.75.75 0 0 1-1.06-1.06 7.504 7.504 0 0 0 0-10.64.75.75 0 0 1 0-1.06z"></path>
+              </svg>
+              <span id="ttsBtnLabel">Đọc</span>
+            </button>
+
+            <!-- Edit Markdown -->
+            <button id="btnEditMarkdown" class="gh-btn gh-btn-sm btn-edit-md" onclick="enterEditMode()" title="Chỉnh sửa và Push lên GitHub" aria-label="Chỉnh sửa bài viết">
+              <svg class="octicon octicon-pencil" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"></path>
+              </svg>
+              <span>Edit</span>
+            </button>
+
+            <!-- Raw Toggle -->
+            <button id="btnToggleRaw" class="gh-btn gh-btn-sm" onclick="toggleRawView()">Raw</button>
+
+            <!-- Copy All Markdown -->
+            <button id="btnCopyAllMarkdown" class="gh-btn gh-btn-sm" onclick="copyAllMarkdown()" title="Copy entire Markdown to Clipboard">
+              <svg class="octicon octicon-copy" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+              </svg>
+              <span>Copy</span>
+            </button>
+
+            <!-- Download Markdown -->
+            <button id="btnDownloadMarkdown" class="gh-btn gh-btn-sm" onclick="downloadCurrentMarkdownFile()" title="Download Markdown file">
+              <svg class="octicon octicon-download" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z"></path><path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"></path>
+              </svg>
+              <span>Download</span>
+            </button>
+
+            <a id="linkOpenGithub" href="#" target="_blank" rel="noopener noreferrer" class="gh-btn gh-btn-sm" title="GitHub">
+              <span>GH</span>
+            </a>
           </div>
-          <div id="fileTreeContainer" class="file-tree-list mobile-list">
+        </div>
+
+        <div class="viewer-body">
+          <div id="markdownViewerPanel" class="markdown-body">
             <div class="blankslate">
-              <h3>No repository selected</h3>
-              <p>
-                Click a repository from All Repos or Favorite Repos to browse
-                files.
-              </p>
+              <h3>No document selected</h3>
+              <p>Select a Markdown file to read.</p>
             </div>
           </div>
-        </section>
+          <pre id="rawMarkdownPanel" class="raw-content-panel hidden"></pre>
 
-        <!-- MARKDOWN VIEWER VIEW (Reader) -->
-        <section id="viewViewer" class="mobile-view-panel hidden">
-          <div class="viewer-mobile-header">
-            <div class="mobile-reader-toolbar">
-              <div
-                style="
-                  display: flex;
-                  align-items: center;
-                  gap: 4px;
-                  flex-shrink: 0;
-                "
-              >
-                <button
-                  id="btnFavCurrentFile"
-                  class="btn-star-icon"
-                  onclick="toggleCurrentFileFavorite()"
-                  title="Toggle Favorite"
-                >
-                  <svg
-                    class="octicon octicon-star"
-                    viewBox="0 0 16 16"
-                    width="18"
-                    height="18"
-                    fill="currentColor"
-                  >
-                    <path
-                      d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
-                    ></path>
+          <!-- Integrated Markdown Editor Container -->
+          <div id="markdownEditorContainer" class="markdown-editor-container hidden">
+            <div class="editor-toolbar">
+              <div class="editor-tabs" role="tablist" aria-label="Chế độ hiển thị trình sửa">
+                <button type="button" id="btnEditorTabWrite" class="editor-tab active" role="tab" aria-selected="true" onclick="switchEditorTab('write')">
+                  <svg class="octicon octicon-code" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+                    <path d="m11.28 3.22 4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L13.94 8l-3.72-3.72a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215Zm-6.56 0a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L2.06 8l3.72 3.72a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L.47 8.53a.75.75 0 0 1 0-1.06Z"></path>
                   </svg>
+                  <span>Soạn thảo</span>
                 </button>
-                <button
-                  id="btnManageGroupsCurrentFile"
-                  class="btn-group-manage-icon"
-                  onclick="manageCurrentFileGroups()"
-                  title="Manage Groups"
-                >
-                  <svg
-                    class="octicon octicon-tag"
-                    viewBox="0 0 16 16"
-                    width="17"
-                    height="17"
-                    fill="currentColor"
-                  >
-                    <path
-                      d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"
-                    ></path>
+                <button type="button" id="btnEditorTabPreview" class="editor-tab" role="tab" aria-selected="false" onclick="switchEditorTab('preview')">
+                  <svg class="octicon octicon-eye" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+                    <path d="M8 2c1.981 0 3.671.992 4.933 2.274 1.255 1.275 2.015 2.827 2.057 3.003.048.204.048.442 0 .646-.042.176-.802 1.728-2.057 3.003C11.671 12.008 9.981 13 8 13c-1.981 0-3.671-.992-4.933-2.274C1.812 9.451 1.052 7.899 1.01 7.723a.755.755 0 0 1 0-.646C1.052 6.901 1.812 5.349 3.067 4.074 4.329 2.792 6.019 2 8 2ZM2.502 7.4c.264.444.838 1.3 1.737 2.213C5.23 10.608 6.548 11.5 8 11.5c1.452 0 2.77-.892 3.761-1.887.899-.913 1.473-1.769 1.737-2.213-.264-.444-.838-1.3-1.737-2.213C10.77 4.192 9.452 3.3 8 3.3c-1.452 0-2.77.892-3.761 1.887C3.34 6.1 2.766 6.956 2.502 7.4ZM8 5.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"></path>
                   </svg>
+                  <span>Xem trước</span>
                 </button>
               </div>
 
-              <!-- Network Dot Indicator (Positioned here as requested) -->
-              <span
-                id="networkBadge"
-                class="gh-badge gh-badge-success"
-                title="Connection Status"
-              >
-                <span class="badge-dot"></span>
-                <span class="badge-text">Online</span>
-              </span>
-
-              <!-- File Sync Status Badge -->
-              <span id="fileSyncBadge" class="gh-badge gh-badge-secondary"
-                >🟢 Synced</span
-              >
-
-              <!-- Zoom -->
-              <div class="zoom-controls">
-                <button class="gh-btn gh-btn-sm" onclick="changeFontScale(-10)">
-                  -
-                </button>
-                <button
-                  id="zoomScaleBadge"
-                  class="gh-btn gh-btn-sm btn-scale-badge"
-                  onclick="changeFontScale(100)"
-                >
-                  100%
-                </button>
-                <button class="gh-btn gh-btn-sm" onclick="changeFontScale(10)">
-                  +
-                </button>
+              <div id="editorFormatTools" class="editor-format-tools" aria-label="Công cụ định dạng nhanh">
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('h1')" title="Heading 1">H1</button>
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('h2')" title="Heading 2">H2</button>
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('bold')" title="In đậm"><strong>B</strong></button>
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('italic')" title="In nghiêng"><em>I</em></button>
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('code')" title="Inline Code">&lt;/&gt;</button>
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('codeblock')" title="Code Block">```</button>
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('list')" title="Danh sách">• List</button>
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('task')" title="Checklist">☑ Task</button>
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('quote')" title="Trích dẫn">&gt; Quote</button>
+                <button type="button" class="editor-fmt-btn" onclick="insertEditorMarkdown('link')" title="Chèn liên kết">🔗 Link</button>
               </div>
+            </div>
 
-              <!-- Lock Selection Toggle -->
-              <button
-                id="btnToggleLockSelect"
-                class="gh-btn gh-btn-sm"
-                onclick="toggleLockSelect()"
-                title="Lock/Unlock Text Selection"
-              >
-                <svg
-                  id="lockSelectIcon"
-                  class="octicon octicon-lock"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8 2V4a2 2 0 1 0-4 0v2ZM3.5 7.75v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Z"
-                  ></path>
+            <div id="markdownEditorWritePane" class="editor-write-pane">
+              <textarea id="markdownEditorTextarea" class="markdown-editor-textarea" placeholder="Nhập nội dung Markdown tại đây..." spellcheck="false" autocapitalize="sentences"></textarea>
+            </div>
+
+            <div id="markdownEditorPreviewPane" class="markdown-body editor-preview-pane hidden"></div>
+          </div>
+        </div>
+
+        <!-- HTML5 Audio Element for Background / Lock Screen Playback (Screen-Off Resistant) -->
+        <audio id="ttsAudioPlayer" playsinline preload="auto" style="display:none; width:0; height:0;"></audio>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- FIXED BOTTOM NAVIGATION BAR WITH TABS -->
+  <nav id="mobileBottomNav" class="mobile-bottom-nav hidden">
+    <button id="navBtnFavPages" class="nav-item active" onclick="switchMobileView('favPages')">
+      <svg class="octicon octicon-file-code" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+        <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
+      </svg>
+      <span>Fav Pages</span>
+    </button>
+
+    <button id="navBtnFavRepos" class="nav-item" onclick="switchMobileView('favRepos')">
+      <svg class="octicon octicon-star" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+        <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
+      </svg>
+      <span>Fav Repos</span>
+    </button>
+
+    <button id="navBtnAllRepos" class="nav-item" onclick="switchMobileView('allRepos')">
+      <svg class="octicon octicon-repo" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+        <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-3.5a.25.25 0 0 1-.25-.25Z"></path>
+      </svg>
+      <span>All Repos</span>
+    </button>
+
+    <button id="navBtnHistory" class="nav-item" onclick="switchMobileView('history')">
+      <svg class="octicon octicon-history" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+        <path d="m.427 1.927 1.215 1.215a8.002 8.002 0 1 1-1.6 5.685.75.75 0 1 1 1.493-.154 6.5 6.5 0 1 0 1.3-4.623l1.393 1.393a.75.75 0 0 1-.53 1.284H.75A.75.75 0 0 1 0 5.927V3.18a.75.75 0 0 1 1.28-.53l-.853-.723ZM8 4.5a.75.75 0 0 1 .75.75v3.19l2.22 2.22a.75.75 0 0 1-1.06 1.06l-2.5-2.5A.75.75 0 0 1 7.25 8.5V5.25A.75.75 0 0 1 8 4.5Z"></path>
+      </svg>
+      <span>History</span>
+    </button>
+
+    <button id="navBtnReader" class="nav-item" onclick="switchMobileView('reader')">
+      <svg class="octicon octicon-eye" viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+        <path d="M8 2c1.981 0 3.671.992 4.933 2.274 1.255 1.275 2.015 2.827 2.057 3.003.048.204.048.442 0 .646-.042.176-.802 1.728-2.057 3.003C11.671 12.008 9.981 13 8 13c-1.981 0-3.671-.992-4.933-2.274C1.812 9.451 1.052 7.899 1.01 7.723a.755.755 0 0 1 0-.646C1.052 6.901 1.812 5.349 3.067 4.074 4.329 2.792 6.019 2 8 2ZM2.502 7.4c.264.444.838 1.3 1.737 2.213C5.23 10.608 6.548 11.5 8 11.5c1.452 0 2.77-.892 3.761-1.887.899-.913 1.473-1.769 1.737-2.213-.264-.444-.838-1.3-1.737-2.213C10.77 4.192 9.452 3.3 8 3.3c-1.452 0-2.77.892-3.761 1.887C3.34 6.1 2.766 6.956 2.502 7.4ZM8 5.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"></path>
+      </svg>
+      <span>Reader</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: Help & Guide -->
+  <div id="helpGuideModal" class="gh-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="helpGuideTitle">
+    <div class="gh-modal">
+      <div class="gh-modal-header">
+        <h3 class="gh-modal-title" id="helpGuideTitle">Help & Guide</h3>
+        <button class="gh-modal-close" onclick="toggleGuideModal(false)" aria-label="Close">&times;</button>
+      </div>
+
+      <nav class="gh-modal-tabs">
+        <button id="tabGuidePat" class="gh-modal-tab active" onclick="switchGuideTab('pat')">Create PAT</button>
+        <button id="tabGuideFeatures" class="gh-modal-tab" onclick="switchGuideTab('features')">Features</button>
+        <button id="tabGuideBackup" class="gh-modal-tab" onclick="switchGuideTab('backup')">Backup & Protection</button>
+      </nav>
+
+      <div class="gh-modal-body">
+        <!-- Tab Content 1: PAT Guide -->
+        <div id="guidePatContent" class="guide-tab-content">
+          <h4>How to create a GitHub Personal Access Token (PAT)</h4>
+          <p>A PAT enables a secure connection to the GitHub API.</p>
+          
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="step-details">
+              <strong>Create Token on GitHub:</strong>
+              <p>Click below to open the token creation page with pre-filled scopes:</p>
+              <a href="https://github.com/settings/tokens/new?scopes=repo,gist&description=GitHub-Markdown-Explorer" target="_blank" rel="noopener noreferrer" class="gh-btn gh-btn-primary" style="margin-top: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                <svg class="octicon octicon-link-external" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                  <path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.75.75 0 0 1 .75.75v4.146a.75.75 0 0 1-1.5 0V3.56L8.28 9.28a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l5.72-5.72h-2.29a.75.75 0 0 1 0-1.5Z"></path>
                 </svg>
-                <span id="lockSelectText">Lock</span>
-              </button>
-
-              <!-- Outline / TOC Quick Seek -->
-              <button
-                id="btnToggleToc"
-                class="gh-btn gh-btn-sm btn-toc"
-                onclick="toggleTocModal()"
-                title="Seek Headings (H1 & H2)"
-                aria-label="Table of Contents"
-              >
-                <svg
-                  class="octicon octicon-list-unordered"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
-                  ></path>
-                </svg>
-                <span>Outline</span>
-              </button>
-
-              <!-- Text-to-Speech (TTS) Toggle -->
-              <button
-                id="btnToggleTts"
-                class="gh-btn gh-btn-sm btn-tts"
-                onclick="toggleTtsPlayer()"
-                title="Đọc bài viết (TTS)"
-                aria-label="Đọc bài viết"
-              >
-                <svg
-                  class="octicon octicon-unmute"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M7.559 1.198a.75.75 0 0 1 .441.68v12.244a.75.75 0 0 1-1.22.583L3.25 11.5H1.75A1.75 1.75 0 0 1 0 9.75v-3.5C0 5.284.784 4.5 1.75 4.5h1.5l3.53-3.205a.75.75 0 0 1 .779-.1zM11.55 4.45a.75.75 0 0 1 1.06 0 5.002 5.002 0 0 1 0 7.1a.75.75 0 0 1-1.06-1.06 3.502 3.502 0 0 0 0-4.98.75.75 0 0 1 0-1.06zm2.83-2.83a.75.75 0 0 1 1.06 0 9.004 9.004 0 0 1 0 12.76.75.75 0 0 1-1.06-1.06 7.504 7.504 0 0 0 0-10.64.75.75 0 0 1 0-1.06z"
-                  ></path>
-                </svg>
-                <span id="ttsBtnLabel">Đọc</span>
-              </button>
-
-              <!-- Edit Markdown -->
-              <button
-                id="btnEditMarkdown"
-                class="gh-btn gh-btn-sm btn-edit-md"
-                onclick="enterEditMode()"
-                title="Chỉnh sửa và Push lên GitHub"
-                aria-label="Chỉnh sửa bài viết"
-              >
-                <svg
-                  class="octicon octicon-pencil"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"
-                  ></path>
-                </svg>
-                <span>Edit</span>
-              </button>
-
-              <!-- Raw Toggle -->
-              <button
-                id="btnToggleRaw"
-                class="gh-btn gh-btn-sm"
-                onclick="toggleRawView()"
-              >
-                Raw
-              </button>
-
-              <!-- Copy All Markdown -->
-              <button
-                id="btnCopyAllMarkdown"
-                class="gh-btn gh-btn-sm"
-                onclick="copyAllMarkdown()"
-                title="Copy entire Markdown to Clipboard"
-              >
-                <svg
-                  class="octicon octicon-copy"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"
-                  ></path>
-                  <path
-                    d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"
-                  ></path>
-                </svg>
-                <span>Copy</span>
-              </button>
-
-              <!-- Download Markdown -->
-              <button
-                id="btnDownloadMarkdown"
-                class="gh-btn gh-btn-sm"
-                onclick="downloadCurrentMarkdownFile()"
-                title="Download Markdown file"
-              >
-                <svg
-                  class="octicon octicon-download"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z"
-                  ></path>
-                  <path
-                    d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"
-                  ></path>
-                </svg>
-                <span>Download</span>
-              </button>
-
-              <a
-                id="linkOpenGithub"
-                href="#"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="gh-btn gh-btn-sm"
-                title="GitHub"
-              >
-                <span>GH</span>
+                <span>Open GitHub PAT Creation Page</span>
               </a>
             </div>
           </div>
 
-          <div class="viewer-body">
-            <div id="markdownViewerPanel" class="markdown-body">
-              <div class="blankslate">
-                <h3>No document selected</h3>
-                <p>Select a Markdown file to read.</p>
-              </div>
-            </div>
-            <pre id="rawMarkdownPanel" class="raw-content-panel hidden"></pre>
-
-            <!-- Integrated Markdown Editor Container -->
-            <div
-              id="markdownEditorContainer"
-              class="markdown-editor-container hidden"
-            >
-              <div class="editor-toolbar">
-                <div
-                  class="editor-tabs"
-                  role="tablist"
-                  aria-label="Chế độ hiển thị trình sửa"
-                >
-                  <button
-                    type="button"
-                    id="btnEditorTabWrite"
-                    class="editor-tab active"
-                    role="tab"
-                    aria-selected="true"
-                    onclick="switchEditorTab('write')"
-                  >
-                    <svg
-                      class="octicon octicon-code"
-                      viewBox="0 0 16 16"
-                      width="13"
-                      height="13"
-                      fill="currentColor"
-                    >
-                      <path
-                        d="m11.28 3.22 4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L13.94 8l-3.72-3.72a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215Zm-6.56 0a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L2.06 8l3.72 3.72a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L.47 8.53a.75.75 0 0 1 0-1.06Z"
-                      ></path>
-                    </svg>
-                    <span>Soạn thảo</span>
-                  </button>
-                  <button
-                    type="button"
-                    id="btnEditorTabPreview"
-                    class="editor-tab"
-                    role="tab"
-                    aria-selected="false"
-                    onclick="switchEditorTab('preview')"
-                  >
-                    <svg
-                      class="octicon octicon-eye"
-                      viewBox="0 0 16 16"
-                      width="13"
-                      height="13"
-                      fill="currentColor"
-                    >
-                      <path
-                        d="M8 2c1.981 0 3.671.992 4.933 2.274 1.255 1.275 2.015 2.827 2.057 3.003.048.204.048.442 0 .646-.042.176-.802 1.728-2.057 3.003C11.671 12.008 9.981 13 8 13c-1.981 0-3.671-.992-4.933-2.274C1.812 9.451 1.052 7.899 1.01 7.723a.755.755 0 0 1 0-.646C1.052 6.901 1.812 5.349 3.067 4.074 4.329 2.792 6.019 2 8 2ZM2.502 7.4c.264.444.838 1.3 1.737 2.213C5.23 10.608 6.548 11.5 8 11.5c1.452 0 2.77-.892 3.761-1.887.899-.913 1.473-1.769 1.737-2.213-.264-.444-.838-1.3-1.737-2.213C10.77 4.192 9.452 3.3 8 3.3c-1.452 0-2.77.892-3.761 1.887C3.34 6.1 2.766 6.956 2.502 7.4ZM8 5.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"
-                      ></path>
-                    </svg>
-                    <span>Xem trước</span>
-                  </button>
-                </div>
-
-                <div
-                  id="editorFormatTools"
-                  class="editor-format-tools"
-                  aria-label="Công cụ định dạng nhanh"
-                >
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('h1')"
-                    title="Heading 1"
-                  >
-                    H1
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('h2')"
-                    title="Heading 2"
-                  >
-                    H2
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('bold')"
-                    title="In đậm"
-                  >
-                    <strong>B</strong>
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('italic')"
-                    title="In nghiêng"
-                  >
-                    <em>I</em>
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('code')"
-                    title="Inline Code"
-                  >
-                    &lt;/&gt;
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('codeblock')"
-                    title="Code Block"
-                  >
-                    ```
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('list')"
-                    title="Danh sách"
-                  >
-                    • List
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('task')"
-                    title="Checklist"
-                  >
-                    ☑ Task
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('quote')"
-                    title="Trích dẫn"
-                  >
-                    &gt; Quote
-                  </button>
-                  <button
-                    type="button"
-                    class="editor-fmt-btn"
-                    onclick="insertEditorMarkdown('link')"
-                    title="Chèn liên kết"
-                  >
-                    🔗 Link
-                  </button>
-                </div>
-              </div>
-
-              <div id="markdownEditorWritePane" class="editor-write-pane">
-                <textarea
-                  id="markdownEditorTextarea"
-                  class="markdown-editor-textarea"
-                  placeholder="Nhập nội dung Markdown tại đây..."
-                  spellcheck="false"
-                  autocapitalize="sentences"
-                ></textarea>
-              </div>
-
-              <div
-                id="markdownEditorPreviewPane"
-                class="markdown-body editor-preview-pane hidden"
-              ></div>
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="step-details">
+              <strong>Select Permissions (Scopes):</strong>
+              <p>Check the <code>repo</code> scope (for private repos) and <code>gist</code> scope (for cloud backups).</p>
             </div>
           </div>
 
-          <!-- HTML5 Audio Element for Background / Lock Screen Playback (Screen-Off Resistant) -->
-          <audio
-            id="ttsAudioPlayer"
-            playsinline
-            preload="auto"
-            style="display: none; width: 0; height: 0"
-          ></audio>
-        </section>
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="step-details">
+              <strong>Copy Token:</strong>
+              <p>Scroll down and click <strong>Generate token</strong>, then copy and paste the token string into the app.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Content 2: Feature Guide -->
+        <div id="guideFeaturesContent" class="guide-tab-content hidden">
+          <h4>Core App Features</h4>
+          <div class="feature-item">
+            <h5>📄 Favorite Pages</h5>
+            <p>Manage favorited Markdown pages, read offline with auto-cache, and sync with one tap.</p>
+          </div>
+          <div class="feature-item">
+            <h5>⭐ Favorite Repos</h5>
+            <p>Quickly access starred repositories you frequently work with.</p>
+          </div>
+          <div class="feature-item">
+            <h5>📁 All Repos</h5>
+            <p>Explore all your GitHub repositories with favorite repos pinned on top.</p>
+          </div>
+        </div>
+
+        <!-- Tab Content 3: Data Protection & Anti-Clear Solutions -->
+        <div id="guideBackupContent" class="guide-tab-content hidden">
+          <h4>Data Protection & Anti-Clear Solutions</h4>
+          <p>Prevent data loss from browser cache clearing with 3 protection layers:</p>
+          
+          <div class="step-card" style="flex-direction: column; gap: 8px; align-items: flex-start;">
+            <strong>1. Browser Persistent Storage API</strong>
+            <p id="storageProtectionStatus">Checking storage status...</p>
+            <button class="gh-btn gh-btn-sm" onclick="requestPersistentStorage()">Enable Persistent Storage</button>
+          </div>
+
+          <div class="step-card" style="flex-direction: column; gap: 8px; align-items: flex-start;">
+            <strong>2. Offline Backup File (JSON Export & Import)</strong>
+            <p>Save all favorites, history, and offline cached pages into a <code>.json</code> file on your device.</p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="gh-btn gh-btn-primary gh-btn-sm" onclick="exportAppData()">Export Backup (.json)</button>
+              <button class="gh-btn gh-btn-sm" onclick="document.getElementById('importBackupInput').click()">Import Backup (.json)</button>
+              <input type="file" id="importBackupInput" accept=".json" class="hidden" onchange="handleImportBackupFile(event)">
+            </div>
+          </div>
+
+          <div class="step-card" style="flex-direction: column; gap: 8px; align-items: flex-start;">
+            <strong>3. GitHub Private Gist Cloud Backup</strong>
+            <p>Sync all favorites and cached pages directly to a private Gist on your GitHub account (Auto-syncs every 1 minute).</p>
+            <div id="gistAutoSyncStatus" style="font-size: 13px; color: var(--gh-text-secondary); background: var(--gh-bg-secondary, #f6f8fa); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--gh-border-color); width: 100%; box-sizing: border-box;">
+              Checking auto-sync status...
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="gh-btn gh-btn-sm" onclick="backupToGist()">Backup to GitHub Gist Now</button>
+              <button class="gh-btn gh-btn-sm" onclick="restoreFromGist()">Restore from GitHub Gist</button>
+            </div>
+          </div>
+        </div>
       </div>
-    </main>
 
-    <!-- FIXED BOTTOM NAVIGATION BAR WITH TABS -->
-    <nav id="mobileBottomNav" class="mobile-bottom-nav hidden">
-      <button
-        id="navBtnFavPages"
-        class="nav-item active"
-        onclick="switchMobileView('favPages')"
-      >
-        <svg
-          class="octicon octicon-file-code"
-          viewBox="0 0 16 16"
-          width="20"
-          height="20"
-          fill="currentColor"
-        >
-          <path
-            d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"
-          ></path>
-        </svg>
-        <span>Fav Pages</span>
-      </button>
-
-      <button
-        id="navBtnFavRepos"
-        class="nav-item"
-        onclick="switchMobileView('favRepos')"
-      >
-        <svg
-          class="octicon octicon-star"
-          viewBox="0 0 16 16"
-          width="20"
-          height="20"
-          fill="currentColor"
-        >
-          <path
-            d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
-          ></path>
-        </svg>
-        <span>Fav Repos</span>
-      </button>
-
-      <button
-        id="navBtnAllRepos"
-        class="nav-item"
-        onclick="switchMobileView('allRepos')"
-      >
-        <svg
-          class="octicon octicon-repo"
-          viewBox="0 0 16 16"
-          width="20"
-          height="20"
-          fill="currentColor"
-        >
-          <path
-            d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-3.5a.25.25 0 0 1-.25-.25Z"
-          ></path>
-        </svg>
-        <span>All Repos</span>
-      </button>
-
-      <button
-        id="navBtnHistory"
-        class="nav-item"
-        onclick="switchMobileView('history')"
-      >
-        <svg
-          class="octicon octicon-history"
-          viewBox="0 0 16 16"
-          width="20"
-          height="20"
-          fill="currentColor"
-        >
-          <path
-            d="m.427 1.927 1.215 1.215a8.002 8.002 0 1 1-1.6 5.685.75.75 0 1 1 1.493-.154 6.5 6.5 0 1 0 1.3-4.623l1.393 1.393a.75.75 0 0 1-.53 1.284H.75A.75.75 0 0 1 0 5.927V3.18a.75.75 0 0 1 1.28-.53l-.853-.723ZM8 4.5a.75.75 0 0 1 .75.75v3.19l2.22 2.22a.75.75 0 0 1-1.06 1.06l-2.5-2.5A.75.75 0 0 1 7.25 8.5V5.25A.75.75 0 0 1 8 4.5Z"
-          ></path>
-        </svg>
-        <span>History</span>
-      </button>
-
-      <button
-        id="navBtnReader"
-        class="nav-item"
-        onclick="switchMobileView('reader')"
-      >
-        <svg
-          class="octicon octicon-eye"
-          viewBox="0 0 16 16"
-          width="20"
-          height="20"
-          fill="currentColor"
-        >
-          <path
-            d="M8 2c1.981 0 3.671.992 4.933 2.274 1.255 1.275 2.015 2.827 2.057 3.003.048.204.048.442 0 .646-.042.176-.802 1.728-2.057 3.003C11.671 12.008 9.981 13 8 13c-1.981 0-3.671-.992-4.933-2.274C1.812 9.451 1.052 7.899 1.01 7.723a.755.755 0 0 1 0-.646C1.052 6.901 1.812 5.349 3.067 4.074 4.329 2.792 6.019 2 8 2ZM2.502 7.4c.264.444.838 1.3 1.737 2.213C5.23 10.608 6.548 11.5 8 11.5c1.452 0 2.77-.892 3.761-1.887.899-.913 1.473-1.769 1.737-2.213-.264-.444-.838-1.3-1.737-2.213C10.77 4.192 9.452 3.3 8 3.3c-1.452 0-2.77.892-3.761 1.887C3.34 6.1 2.766 6.956 2.502 7.4ZM8 5.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"
-          ></path>
-        </svg>
-        <span>Reader</span>
-      </button>
-    </nav>
-
-    <!-- MODAL: Help & Guide -->
-    <div
-      id="helpGuideModal"
-      class="gh-modal-backdrop hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="helpGuideTitle"
-    >
-      <div class="gh-modal">
-        <div class="gh-modal-header">
-          <h3 class="gh-modal-title" id="helpGuideTitle">Help & Guide</h3>
-          <button
-            class="gh-modal-close"
-            onclick="toggleGuideModal(false)"
-            aria-label="Close"
-          >
-            &times;
-          </button>
-        </div>
-
-        <nav class="gh-modal-tabs">
-          <button
-            id="tabGuidePat"
-            class="gh-modal-tab active"
-            onclick="switchGuideTab('pat')"
-          >
-            Create PAT
-          </button>
-          <button
-            id="tabGuideFeatures"
-            class="gh-modal-tab"
-            onclick="switchGuideTab('features')"
-          >
-            Features
-          </button>
-          <button
-            id="tabGuideBackup"
-            class="gh-modal-tab"
-            onclick="switchGuideTab('backup')"
-          >
-            Backup & Protection
-          </button>
-        </nav>
-
-        <div class="gh-modal-body">
-          <!-- Tab Content 1: PAT Guide -->
-          <div id="guidePatContent" class="guide-tab-content">
-            <h4>How to create a GitHub Personal Access Token (PAT)</h4>
-            <p>A PAT enables a secure connection to the GitHub API.</p>
-
-            <div class="step-card">
-              <div class="step-number">1</div>
-              <div class="step-details">
-                <strong>Create Token on GitHub:</strong>
-                <p>
-                  Click below to open the token creation page with pre-filled
-                  scopes:
-                </p>
-                <a
-                  href="https://github.com/settings/tokens/new?scopes=repo,gist&description=GitHub-Markdown-Explorer"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="gh-btn gh-btn-primary"
-                  style="
-                    margin-top: 8px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                  "
-                >
-                  <svg
-                    class="octicon octicon-link-external"
-                    viewBox="0 0 16 16"
-                    width="14"
-                    height="14"
-                    fill="currentColor"
-                  >
-                    <path
-                      d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.75.75 0 0 1 .75.75v4.146a.75.75 0 0 1-1.5 0V3.56L8.28 9.28a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l5.72-5.72h-2.29a.75.75 0 0 1 0-1.5Z"
-                    ></path>
-                  </svg>
-                  <span>Open GitHub PAT Creation Page</span>
-                </a>
-              </div>
-            </div>
-
-            <div class="step-card">
-              <div class="step-number">2</div>
-              <div class="step-details">
-                <strong>Select Permissions (Scopes):</strong>
-                <p>
-                  Check the <code>repo</code> scope (for private repos) and
-                  <code>gist</code> scope (for cloud backups).
-                </p>
-              </div>
-            </div>
-
-            <div class="step-card">
-              <div class="step-number">3</div>
-              <div class="step-details">
-                <strong>Copy Token:</strong>
-                <p>
-                  Scroll down and click <strong>Generate token</strong>, then
-                  copy and paste the token string into the app.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab Content 2: Feature Guide -->
-          <div id="guideFeaturesContent" class="guide-tab-content hidden">
-            <h4>Core App Features</h4>
-            <div class="feature-item">
-              <h5>📄 Favorite Pages</h5>
-              <p>
-                Manage favorited Markdown pages, read offline with auto-cache,
-                and sync with one tap.
-              </p>
-            </div>
-            <div class="feature-item">
-              <h5>⭐ Favorite Repos</h5>
-              <p>
-                Quickly access starred repositories you frequently work with.
-              </p>
-            </div>
-            <div class="feature-item">
-              <h5>📁 All Repos</h5>
-              <p>
-                Explore all your GitHub repositories with favorite repos pinned
-                on top.
-              </p>
-            </div>
-          </div>
-
-          <!-- Tab Content 3: Data Protection & Anti-Clear Solutions -->
-          <div id="guideBackupContent" class="guide-tab-content hidden">
-            <h4>Data Protection & Anti-Clear Solutions</h4>
-            <p>
-              Prevent data loss from browser cache clearing with 3 protection
-              layers:
-            </p>
-
-            <div
-              class="step-card"
-              style="flex-direction: column; gap: 8px; align-items: flex-start"
-            >
-              <strong>1. Browser Persistent Storage API</strong>
-              <p id="storageProtectionStatus">Checking storage status...</p>
-              <button
-                class="gh-btn gh-btn-sm"
-                onclick="requestPersistentStorage()"
-              >
-                Enable Persistent Storage
-              </button>
-            </div>
-
-            <div
-              class="step-card"
-              style="flex-direction: column; gap: 8px; align-items: flex-start"
-            >
-              <strong>2. Offline Backup File (JSON Export & Import)</strong>
-              <p>
-                Save all favorites, history, and offline cached pages into a
-                <code>.json</code> file on your device.
-              </p>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap">
-                <button
-                  class="gh-btn gh-btn-primary gh-btn-sm"
-                  onclick="exportAppData()"
-                >
-                  Export Backup (.json)
-                </button>
-                <button
-                  class="gh-btn gh-btn-sm"
-                  onclick="document.getElementById('importBackupInput').click()"
-                >
-                  Import Backup (.json)
-                </button>
-                <input
-                  type="file"
-                  id="importBackupInput"
-                  accept=".json"
-                  class="hidden"
-                  onchange="handleImportBackupFile(event)"
-                />
-              </div>
-            </div>
-
-            <div
-              class="step-card"
-              style="flex-direction: column; gap: 8px; align-items: flex-start"
-            >
-              <strong>3. GitHub Private Gist Cloud Backup</strong>
-              <p>
-                Sync all favorites and cached pages directly to a private Gist
-                on your GitHub account (Auto-syncs every 1 minute).
-              </p>
-              <div
-                id="gistAutoSyncStatus"
-                style="
-                  font-size: 13px;
-                  color: var(--gh-text-secondary);
-                  background: var(--gh-bg-secondary, #f6f8fa);
-                  padding: 8px 12px;
-                  border-radius: 6px;
-                  border: 1px solid var(--gh-border-color);
-                  width: 100%;
-                  box-sizing: border-box;
-                "
-              >
-                Checking auto-sync status...
-              </div>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap">
-                <button class="gh-btn gh-btn-sm" onclick="backupToGist()">
-                  Backup to GitHub Gist Now
-                </button>
-                <button class="gh-btn gh-btn-sm" onclick="restoreFromGist()">
-                  Restore from GitHub Gist
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="gh-modal-footer">
-          <button class="gh-btn" onclick="toggleGuideModal(false)">
-            Close
-          </button>
-        </div>
+      <div class="gh-modal-footer">
+        <button class="gh-btn" onclick="toggleGuideModal(false)">Close</button>
       </div>
     </div>
+  </div>
 
-    <!-- Modal Overlay for Manage Page Groups -->
-    <div
-      id="manageGroupsModal"
-      class="modal-overlay hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="manageGroupsModalTitle"
-      onclick="if (event.target === this) closeManagePageGroupsModal();"
-    >
-      <div class="modal-content">
-        <div class="modal-header">
-          <h4 class="modal-title" id="manageGroupsModalTitle">Manage Groups</h4>
-          <button
-            class="modal-close-btn"
-            onclick="closeManagePageGroupsModal()"
-            aria-label="Close"
-          >
-            &times;
+  <!-- Modal Overlay for Manage Page Groups -->
+  <div id="manageGroupsModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="manageGroupsModalTitle" onclick="if(event.target===this) closeManagePageGroupsModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="manageGroupsModalTitle">Manage Groups</h4>
+        <button class="modal-close-btn" onclick="closeManagePageGroupsModal()" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="manageGroupsModalList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        <div class="modal-create-group-box">
+          <div class="modal-input-wrapper">
+            <svg class="modal-input-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+              <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path>
+            </svg>
+            <input type="text" id="newGroupNameModalInput" class="modal-group-input" placeholder="New group name..." onkeypress="if(event.key==='Enter') createGroupFromModal()" />
+          </div>
+          <button class="modal-btn-add-group" onclick="createGroupFromModal()">
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+              <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path>
+            </svg>
+            <span>Add</span>
           </button>
         </div>
-        <div class="modal-body">
-          <div
-            id="manageGroupsModalList"
-            style="display: flex; flex-direction: column; gap: 8px"
-          ></div>
-          <div class="modal-create-group-box">
-            <div class="modal-input-wrapper">
-              <svg
-                class="modal-input-icon"
-                viewBox="0 0 16 16"
-                width="14"
-                height="14"
-                fill="currentColor"
-              >
-                <path
-                  d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"
-                ></path>
+      </div>
+      <div class="modal-footer">
+        <button class="gh-btn gh-btn-primary gh-btn-sm" onclick="closeManagePageGroupsModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: iOS Safari PWA Install Guide (PWA Standards Rule 6B) -->
+  <div id="iosInstallModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="iosModalTitle" onclick="if(event.target===this) toggleIosInstallModal(false)">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header">
+        <h4 class="modal-title" id="iosModalTitle">Cài đặt trên iOS (Safari)</h4>
+        <button id="btnCloseIosModal" class="modal-close-btn" onclick="toggleIosInstallModal(false)" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <p style="font-size: 0.9375rem; margin-bottom: 16px; color: var(--color-fg-default);">
+          Để cài đặt <strong>GitHub Markdown Reader</strong> lên iPhone hoặc iPad:
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 12px; text-align: left; background: var(--color-canvas-subtle, #f6f8fa); padding: 16px; border-radius: 8px; border: 1px solid var(--color-border-default, #d0d7de); font-size: 13px; line-height: 1.5;">
+          <div>1. Nhấn nút <strong>Chia sẻ (Share)</strong> 
+            <svg style="vertical-align: middle; display: inline-block; margin: 0 2px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> ở thanh công cụ Safari.
+          </div>
+          <div>2. Cuộn xuống và chọn <strong>Thêm vào MH chính (Add to Home Screen)</strong> 
+            <svg style="vertical-align: middle; display: inline-block; margin: 0 2px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>.
+          </div>
+          <div>3. Nhấn <strong>Thêm (Add)</strong> ở góc trên bên phải màn hình để hoàn tất.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnGotItIos" class="gh-btn gh-btn-primary gh-btn-sm" style="width: 100%; min-height: 38px;" onclick="toggleIosInstallModal(false)">Đã hiểu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDE MODAL: Quick TOC / Headings Seek (H1 & H2 only) -->
+  <div id="readerTocModal" class="side-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="readerTocTitle" onclick="if(event.target===this) toggleTocModal(false)">
+    <aside class="side-modal-panel">
+      <div class="side-modal-header">
+        <div class="side-modal-title-group">
+          <svg class="octicon octicon-list-unordered" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+            <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path>
+          </svg>
+          <h3 id="readerTocTitle" class="side-modal-title">Outline (H1 &amp; H2)</h3>
+          <span id="readerTocCount" class="gh-badge gh-badge-secondary">0</span>
+        </div>
+        <button class="modal-close-btn" onclick="toggleTocModal(false)" aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Quick Filter for Headings -->
+      <div class="side-modal-filter">
+        <input type="text" id="tocSearchInput" class="form-control" placeholder="Lọc tiêu đề H1, H2..." oninput="filterTocItems(this.value)" autocomplete="off">
+      </div>
+
+      <!-- TOC Items List -->
+      <nav id="readerTocList" class="side-modal-body" aria-label="Mục lục tiêu đề">
+        <!-- Injected dynamically -->
+      </nav>
+    </aside>
+  </div>
+
+  <!-- MODAL: Choose TTS Reading Language -->
+  <div id="ttsLanguageModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ttsLangModalTitle" onclick="if(event.target===this) closeTtsLanguageModal()">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg class="octicon octicon-unmute" viewBox="0 0 16 16" width="16" height="16" fill="var(--color-accent-fg, #0969da)">
+            <path d="M7.559 1.198a.75.75 0 0 1 .441.68v12.244a.75.75 0 0 1-1.22.583L3.25 11.5H1.75A1.75 1.75 0 0 1 0 9.75v-3.5C0 5.284.784 4.5 1.75 4.5h1.5l3.53-3.205a.75.75 0 0 1 .779-.1zM11.55 4.45a.75.75 0 0 1 1.06 0 5.002 5.002 0 0 1 0 7.1a.75.75 0 0 1-1.06-1.06 3.502 3.502 0 0 0 0-4.98.75.75 0 0 1 0-1.06zm2.83-2.83a.75.75 0 0 1 1.06 0 9.004 9.004 0 0 1 0 12.76.75.75 0 0 1-1.06-1.06 7.504 7.504 0 0 0 0-10.64.75.75 0 0 1 0-1.06z"></path>
+          </svg>
+          <h4 class="modal-title" id="ttsLangModalTitle">Chọn ngôn ngữ đọc</h4>
+        </div>
+        <button class="modal-close-btn" onclick="closeTtsLanguageModal()" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px 20px;">
+        <p style="font-size: 13px; color: var(--color-fg-muted); margin-bottom: 14px; line-height: 1.4;">
+          Chọn ngôn ngữ để trình phát đọc bài viết bằng giọng chuẩn nhất:
+        </p>
+
+        <div class="tts-lang-options-grid">
+          <!-- Option: Tiếng Việt -->
+          <button type="button" class="tts-lang-option-card active" id="ttsOptVi" onclick="selectTtsLanguageAndStart('vi')">
+            <div class="tts-lang-card-flag">🇻🇳</div>
+            <div class="tts-lang-card-info">
+              <div class="tts-lang-card-title">
+                <strong>Tiếng Việt</strong>
+                <span class="gh-badge gh-badge-secondary tts-badge-default">Mặc định</span>
+              </div>
+              <div class="tts-lang-card-desc">H1/H2 giọng nữ trong trẻo • Nội dung giọng nam chuẩn</div>
+            </div>
+            <div class="tts-lang-card-check">
+              <svg class="octicon octicon-check" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
               </svg>
-              <input
-                type="text"
-                id="newGroupNameModalInput"
-                class="modal-group-input"
-                placeholder="New group name..."
-                onkeypress="if (event.key === 'Enter') createGroupFromModal();"
-              />
             </div>
-            <button
-              class="modal-btn-add-group"
-              onclick="createGroupFromModal()"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                width="13"
-                height="13"
-                fill="currentColor"
-              >
-                <path
-                  d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"
-                ></path>
+          </button>
+
+          <!-- Option: English -->
+          <button type="button" class="tts-lang-option-card" id="ttsOptEn" onclick="selectTtsLanguageAndStart('en')">
+            <div class="tts-lang-card-flag">🇬🇧</div>
+            <div class="tts-lang-card-info">
+              <div class="tts-lang-card-title">
+                <strong>English</strong>
+                <span class="gh-badge gh-badge-secondary">Global</span>
+              </div>
+              <div class="tts-lang-card-desc">H1/H2 Female voice • Content Male voice</div>
+            </div>
+            <div class="tts-lang-card-check">
+              <svg class="octicon octicon-check" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
               </svg>
-              <span>Add</span>
-            </button>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button
-            class="gh-btn gh-btn-primary gh-btn-sm"
-            onclick="closeManagePageGroupsModal()"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal: iOS Safari PWA Install Guide (PWA Standards Rule 6B) -->
-    <div
-      id="iosInstallModal"
-      class="modal-overlay hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="iosModalTitle"
-      onclick="if (event.target === this) toggleIosInstallModal(false);"
-    >
-      <div class="modal-content" style="max-width: 420px">
-        <div class="modal-header">
-          <h4 class="modal-title" id="iosModalTitle">
-            Cài đặt trên iOS (Safari)
-          </h4>
-          <button
-            id="btnCloseIosModal"
-            class="modal-close-btn"
-            onclick="toggleIosInstallModal(false)"
-            aria-label="Đóng"
-          >
-            &times;
-          </button>
-        </div>
-        <div class="modal-body" style="text-align: center">
-          <p
-            style="
-              font-size: 0.9375rem;
-              margin-bottom: 16px;
-              color: var(--color-fg-default);
-            "
-          >
-            Để cài đặt <strong>GitHub Markdown Reader</strong> lên iPhone hoặc
-            iPad:
-          </p>
-          <div
-            style="
-              display: flex;
-              flex-direction: column;
-              gap: 12px;
-              text-align: left;
-              background: var(--color-canvas-subtle, #f6f8fa);
-              padding: 16px;
-              border-radius: 8px;
-              border: 1px solid var(--color-border-default, #d0d7de);
-              font-size: 13px;
-              line-height: 1.5;
-            "
-          >
-            <div>
-              1. Nhấn nút <strong>Chia sẻ (Share)</strong>
-              <svg
-                style="
-                  vertical-align: middle;
-                  display: inline-block;
-                  margin: 0 2px;
-                "
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                <polyline points="16 6 12 2 8 6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-              ở thanh công cụ Safari.
             </div>
-            <div>
-              2. Cuộn xuống và chọn
-              <strong>Thêm vào MH chính (Add to Home Screen)</strong>
-              <svg
-                style="
-                  vertical-align: middle;
-                  display: inline-block;
-                  margin: 0 2px;
-                "
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <line x1="12" y1="8" x2="12" y2="16" />
-                <line x1="8" y1="12" x2="16" y2="12" /></svg
-              >.
-            </div>
-            <div>
-              3. Nhấn <strong>Thêm (Add)</strong> ở góc trên bên phải màn hình
-              để hoàn tất.
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button
-            id="btnGotItIos"
-            class="gh-btn gh-btn-primary gh-btn-sm"
-            style="width: 100%; min-height: 38px"
-            onclick="toggleIosInstallModal(false)"
-          >
-            Đã hiểu
           </button>
         </div>
       </div>
-    </div>
-
-    <!-- SIDE MODAL: Quick TOC / Headings Seek (H1 & H2 only) -->
-    <div
-      id="readerTocModal"
-      class="side-modal-overlay hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="readerTocTitle"
-      onclick="if (event.target === this) toggleTocModal(false);"
-    >
-      <aside class="side-modal-panel">
-        <div class="side-modal-header">
-          <div class="side-modal-title-group">
-            <svg
-              class="octicon octicon-list-unordered"
-              viewBox="0 0 16 16"
-              width="16"
-              height="16"
-              fill="currentColor"
-            >
-              <path
-                d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
-              ></path>
-            </svg>
-            <h3 id="readerTocTitle" class="side-modal-title">
-              Outline (H1 &amp; H2)
-            </h3>
-            <span id="readerTocCount" class="gh-badge gh-badge-secondary"
-              >0</span
-            >
-          </div>
-          <button
-            class="modal-close-btn"
-            onclick="toggleTocModal(false)"
-            aria-label="Đóng"
-          >
-            &times;
-          </button>
-        </div>
-
-        <!-- Quick Filter for Headings -->
-        <div class="side-modal-filter">
-          <input
-            type="text"
-            id="tocSearchInput"
-            class="form-control"
-            placeholder="Lọc tiêu đề H1, H2..."
-            oninput="filterTocItems(this.value)"
-            autocomplete="off"
-          />
-        </div>
-
-        <!-- TOC Items List -->
-        <nav
-          id="readerTocList"
-          class="side-modal-body"
-          aria-label="Mục lục tiêu đề"
-        >
-          <!-- Injected dynamically -->
-        </nav>
-      </aside>
-    </div>
-
-    <!-- MODAL: Choose TTS Reading Language -->
-    <div
-      id="ttsLanguageModal"
-      class="modal-overlay hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ttsLangModalTitle"
-      onclick="if (event.target === this) closeTtsLanguageModal();"
-    >
-      <div class="modal-content" style="max-width: 440px">
-        <div class="modal-header">
-          <div style="display: flex; align-items: center; gap: 8px">
-            <svg
-              class="octicon octicon-unmute"
-              viewBox="0 0 16 16"
-              width="16"
-              height="16"
-              fill="var(--color-accent-fg, #0969da)"
-            >
-              <path
-                d="M7.559 1.198a.75.75 0 0 1 .441.68v12.244a.75.75 0 0 1-1.22.583L3.25 11.5H1.75A1.75 1.75 0 0 1 0 9.75v-3.5C0 5.284.784 4.5 1.75 4.5h1.5l3.53-3.205a.75.75 0 0 1 .779-.1zM11.55 4.45a.75.75 0 0 1 1.06 0 5.002 5.002 0 0 1 0 7.1a.75.75 0 0 1-1.06-1.06 3.502 3.502 0 0 0 0-4.98.75.75 0 0 1 0-1.06zm2.83-2.83a.75.75 0 0 1 1.06 0 9.004 9.004 0 0 1 0 12.76.75.75 0 0 1-1.06-1.06 7.504 7.504 0 0 0 0-10.64.75.75 0 0 1 0-1.06z"
-              ></path>
-            </svg>
-            <h4 class="modal-title" id="ttsLangModalTitle">
-              Chọn ngôn ngữ đọc
-            </h4>
-          </div>
-          <button
-            class="modal-close-btn"
-            onclick="closeTtsLanguageModal()"
-            aria-label="Đóng"
-          >
-            &times;
-          </button>
-        </div>
-        <div class="modal-body" style="padding: 16px 20px">
-          <p
-            style="
-              font-size: 13px;
-              color: var(--color-fg-muted);
-              margin-bottom: 14px;
-              line-height: 1.4;
-            "
-          >
-            Chọn ngôn ngữ để trình phát đọc bài viết bằng giọng chuẩn nhất:
-          </p>
-
-          <div class="tts-lang-options-grid">
-            <!-- Option: Tiếng Việt -->
-            <button
-              type="button"
-              class="tts-lang-option-card active"
-              id="ttsOptVi"
-              onclick="selectTtsLanguageAndStart('vi')"
-            >
-              <div class="tts-lang-card-flag">🇻🇳</div>
-              <div class="tts-lang-card-info">
-                <div class="tts-lang-card-title">
-                  <strong>Tiếng Việt</strong>
-                  <span class="gh-badge gh-badge-secondary tts-badge-default"
-                    >Mặc định</span
-                  >
-                </div>
-                <div class="tts-lang-card-desc">
-                  H1/H2 giọng nữ trong trẻo • Nội dung giọng nam chuẩn
-                </div>
-              </div>
-              <div class="tts-lang-card-check">
-                <svg
-                  class="octicon octicon-check"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"
-                  ></path>
-                </svg>
-              </div>
-            </button>
-
-            <!-- Option: English -->
-            <button
-              type="button"
-              class="tts-lang-option-card"
-              id="ttsOptEn"
-              onclick="selectTtsLanguageAndStart('en')"
-            >
-              <div class="tts-lang-card-flag">🇬🇧</div>
-              <div class="tts-lang-card-info">
-                <div class="tts-lang-card-title">
-                  <strong>English</strong>
-                  <span class="gh-badge gh-badge-secondary">Global</span>
-                </div>
-                <div class="tts-lang-card-desc">
-                  H1/H2 Female voice • Content Male voice
-                </div>
-              </div>
-              <div class="tts-lang-card-check">
-                <svg
-                  class="octicon octicon-check"
-                  viewBox="0 0 16 16"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"
-                  ></path>
-                </svg>
-              </div>
-            </button>
-          </div>
-        </div>
-        <div
-          class="modal-footer"
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 20px;
-          "
-        >
-          <span style="font-size: 11px; color: var(--color-fg-muted)"
-            >Lựa chọn được ghi nhớ tự động</span
-          >
-          <button class="gh-btn gh-btn-sm" onclick="closeTtsLanguageModal()">
-            Hủy
-          </button>
-        </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
+        <span style="font-size: 11px; color: var(--color-fg-muted);">Lựa chọn được ghi nhớ tự động</span>
+        <button class="gh-btn gh-btn-sm" onclick="closeTtsLanguageModal()">Hủy</button>
       </div>
     </div>
+  </div>
 
-    <!-- MODAL: Commit & Push Markdown Changes to GitHub -->
-    <div
-      id="commitPushModal"
-      class="modal-overlay hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="commitPushModalTitle"
-      onclick="if (event.target === this) closeCommitPushModal();"
-    >
-      <div class="modal-content" style="max-width: 460px">
-        <div class="modal-header">
-          <div style="display: flex; align-items: center; gap: 8px">
-            <svg
-              class="octicon octicon-git-commit"
-              viewBox="0 0 16 16"
-              width="16"
-              height="16"
-              fill="var(--color-success-fg, #1a7f37)"
-            >
-              <path
-                d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"
-              ></path>
-            </svg>
-            <h4 class="modal-title" id="commitPushModalTitle">
-              Commit &amp; Push lên GitHub
-            </h4>
-          </div>
-          <button
-            id="btnCloseCommitModal"
-            class="modal-close-btn"
-            onclick="closeCommitPushModal()"
-            aria-label="Đóng"
-          >
-            &times;
-          </button>
+  <!-- MODAL: Commit & Push Markdown Changes to GitHub -->
+  <div id="commitPushModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="commitPushModalTitle" onclick="if(event.target===this) closeCommitPushModal()">
+    <div class="modal-content" style="max-width: 460px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg class="octicon octicon-git-commit" viewBox="0 0 16 16" width="16" height="16" fill="var(--color-success-fg, #1a7f37)">
+            <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
+          </svg>
+          <h4 class="modal-title" id="commitPushModalTitle">Commit &amp; Push lên GitHub</h4>
         </div>
-        <div class="modal-body" style="padding: 16px 18px">
-          <div id="commitTargetInfo" class="commit-target-pill"></div>
+        <button id="btnCloseCommitModal" class="modal-close-btn" onclick="closeCommitPushModal()" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px 18px;">
+        <div id="commitTargetInfo" class="commit-target-pill"></div>
 
-          <div class="form-group" style="margin-bottom: 12px">
-            <label for="commitMessageInput" class="form-label"
-              >Tiêu đề Commit
-              <span style="color: var(--color-danger-fg)">*</span></label
-            >
-            <input
-              type="text"
-              id="commitMessageInput"
-              class="form-control commit-msg-input"
-              placeholder="Update document.md"
-              maxlength="200"
-              autocomplete="off"
-            />
-          </div>
-
-          <div class="form-group" style="margin-bottom: 0">
-            <label for="commitDescriptionInput" class="form-label"
-              >Mô tả chi tiết
-              <span class="text-muted" style="font-weight: 400"
-                >(tùy chọn)</span
-              ></label
-            >
-            <textarea
-              id="commitDescriptionInput"
-              class="form-control commit-desc-textarea"
-              rows="3"
-              placeholder="Ghi chú thêm về thay đổi này..."
-            ></textarea>
-          </div>
-
-          <div
-            id="commitPushError"
-            class="commit-push-error hidden"
-            role="alert"
-          ></div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="commitMessageInput" class="form-label">Tiêu đề Commit <span style="color: var(--color-danger-fg);">*</span></label>
+          <input type="text" id="commitMessageInput" class="form-control commit-msg-input" placeholder="Update document.md" maxlength="200" autocomplete="off">
         </div>
-        <div
-          class="modal-footer"
-          style="
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            padding: 12px 18px;
-          "
-        >
-          <button
-            type="button"
-            id="btnCancelCommitModal"
-            class="gh-btn gh-btn-sm"
-            onclick="closeCommitPushModal()"
-          >
-            Hủy
-          </button>
-          <button
-            type="button"
-            id="btnConfirmPush"
-            class="gh-btn gh-btn-primary gh-btn-sm"
-            onclick="executeCommitAndPush()"
-          >
-            <svg
-              class="octicon octicon-repo-push"
-              viewBox="0 0 16 16"
-              width="13"
-              height="13"
-              fill="currentColor"
-            >
-              <path
-                d="M1 2.5A2.5 2.5 0 0 1 3.5 0h8.75a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V1.5h-8a1 1 0 0 0-1 1v6.708A2.493 2.493 0 0 1 3.5 9h3.25a.75.75 0 0 1 0 1.5H3.5a1 1 0 0 0 0 2h5.75a.75.75 0 0 1 0 1.5H3.5A2.5 2.5 0 0 1 1 11.5Zm13.23 7.79h-.001l-1.224-1.224v6.184a.75.75 0 0 1-1.5 0V9.066L10.28 10.29a.75.75 0 0 1-1.06-1.061l2.505-2.504a.75.75 0 0 1 1.06 0L15.29 9.23a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018Z"
-              ></path>
-            </svg>
-            <span>Commit &amp; Push</span>
-          </button>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="commitDescriptionInput" class="form-label">Mô tả chi tiết <span class="text-muted" style="font-weight: 400;">(tùy chọn)</span></label>
+          <textarea id="commitDescriptionInput" class="form-control commit-desc-textarea" rows="3" placeholder="Ghi chú thêm về thay đổi này..."></textarea>
         </div>
+
+        <div id="commitPushError" class="commit-push-error hidden" role="alert"></div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px;">
+        <button type="button" id="btnCancelCommitModal" class="gh-btn gh-btn-sm" onclick="closeCommitPushModal()">Hủy</button>
+        <button type="button" id="btnConfirmPush" class="gh-btn gh-btn-primary gh-btn-sm" onclick="executeCommitAndPush()">
+          <svg class="octicon octicon-repo-push" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+            <path d="M1 2.5A2.5 2.5 0 0 1 3.5 0h8.75a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V1.5h-8a1 1 0 0 0-1 1v6.708A2.493 2.493 0 0 1 3.5 9h3.25a.75.75 0 0 1 0 1.5H3.5a1 1 0 0 0 0 2h5.75a.75.75 0 0 1 0 1.5H3.5A2.5 2.5 0 0 1 1 11.5Zm13.23 7.79h-.001l-1.224-1.224v6.184a.75.75 0 0 1-1.5 0V9.066L10.28 10.29a.75.75 0 0 1-1.06-1.061l2.505-2.504a.75.75 0 0 1 1.06 0L15.29 9.23a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018Z"></path>
+          </svg>
+          <span>Commit &amp; Push</span>
+        </button>
       </div>
     </div>
+  </div>
 
-    <!-- CDN Dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
+  <!-- CDN Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
 
-    <!-- Application Logic -->
-    <script src="./app.js?v=47"></script>
-  </body>
+  <!-- Application Logic -->
+  <script src="./app.js?v=47"></script>
+</body>
 </html>
