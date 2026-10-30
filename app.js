@@ -24,6 +24,24 @@ function base64ToUtf8(base64Str) {
   }
 }
 
+// --- HELPER: UTF-8 to Base64 Encoder (Vietnamese & Unicode support) ---
+function utf8ToBase64(str) {
+  if (!str) return '';
+  try {
+    const bytes = new TextEncoder().encode(str);
+    let binaryStr = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binaryStr += String.fromCharCode.apply(null, chunk);
+    }
+    return btoa(binaryStr);
+  } catch (e) {
+    console.error('Base64 encode error:', e);
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+}
+
 function getParentDirPath(filePath) {
   if (!filePath) return '/';
   const parts = filePath.split('/');
@@ -209,6 +227,11 @@ const appState = {
   currentTreeEntries: [], // All entries from recursive tree fetch
   currentFile: null, // { owner, name, path }
   currentFileContent: null, // Raw markdown string
+  currentFileSha: null, // GitHub blob SHA of currently opened file
+  isEditing: false,
+  editorTab: 'write', // 'write' | 'preview'
+  editorOriginalContent: '',
+  isPushingCommit: false,
   favGroups: JSON.parse(localStorage.getItem('gh_fav_groups') || '["All"]'),
   activeFavGroup: 'All',
   favoriteRepos: JSON.parse(localStorage.getItem('gh_favorite_repos') || '[]'),
@@ -327,10 +350,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Handle Browser Back Button & Swipe-Back Gestures
   window.addEventListener('popstate', (event) => {
+    if (appState.isEditing) {
+      if (!confirmDiscardEditorChanges()) {
+        try {
+          history.pushState({ view: 'viewer', pathLength: appState.currentPath.length }, '', '#/viewer');
+        } catch (e) {}
+        return;
+      }
+      exitEditModeUI();
+      try {
+        history.pushState({ view: 'viewer', pathLength: appState.currentPath.length }, '', '#/viewer');
+      } catch (e) {}
+      return;
+    }
     if (appState.mobileView === 'viewer' || appState.mobileView === 'tree' || appState.currentPath.length > 0) {
       handleHeaderBack(true);
     } else if (event.state && event.state.view) {
       switchMobileView(event.state.view, true);
+    }
+  });
+
+  // Warn before closing/reloading browser tab if editor has unsaved edits
+  window.addEventListener('beforeunload', (e) => {
+    if (appState.isEditing && hasEditorUnsavedChanges()) {
+      e.preventDefault();
+      e.returnValue = '';
     }
   });
 
@@ -379,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize PWA Install Flow (Rule 6)
   initPWAInstallFlow();
 
-  // Global Escape key listener to close modals (Rule 10)
+  // Global Escape & Ctrl/Cmd+S key listener (Rule 10)
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       toggleGuideModal(false);
@@ -387,8 +431,16 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleIosInstallModal(false);
       toggleTocModal(false);
       closeTtsLanguageModal();
+      closeCommitPushModal();
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+      if (appState.isEditing) {
+        e.preventDefault();
+        openCommitPushModal();
+      }
     }
   });
+
+  initMarkdownEditorListeners();
 
   applyFontScale(appState.fontScale);
   applyLockSelect();
@@ -466,6 +518,13 @@ function switchMobileView(targetView, skipPushState = false) {
   if (targetView === 'favorites') targetView = 'favPages';
   if (targetView === 'repos') targetView = 'allRepos';
   if (targetView === 'reader') targetView = 'viewer';
+
+  if (targetView !== 'viewer' && appState.isEditing) {
+    if (!confirmDiscardEditorChanges()) {
+      return;
+    }
+    exitEditModeUI();
+  }
 
   if (targetView !== 'viewer' && typeof ttsStop === 'function' && typeof ttsState !== 'undefined' && ttsState.active) {
     ttsStop();
@@ -707,7 +766,11 @@ function showAppShell() {
 
 // --- LOGIC 11: Disconnect PAT ---
 function disconnectToken() {
+  if (appState.isEditing && !confirmDiscardEditorChanges()) {
+    return;
+  }
   if (confirm('Are you sure you want to disconnect PAT? Favorites and Cache will be preserved.')) {
+    if (appState.isEditing) exitEditModeUI();
     appState.token = null;
     localStorage.removeItem('gh_pat_token');
     localStorage.removeItem('gh_last_location_state');
@@ -715,6 +778,7 @@ function disconnectToken() {
     appState.currentRepo = null;
     appState.currentFile = null;
     appState.currentFileContent = null;
+    appState.currentFileSha = null;
     showPatCard();
     showFlash('Token disconnected.', 'info');
   }
@@ -1107,12 +1171,15 @@ async function checkAndUpdatePageIfModified(owner, name, path, cached) {
       markStateDirty();
 
       if (appState.currentFile && appState.currentFile.owner === owner && appState.currentFile.name === name && appState.currentFile.path === path) {
-        appState.currentFileContent = rawContent;
-        renderMarkdown(rawContent);
-        updateFileSyncBadge('synced', Date.now());
+        appState.currentFileSha = data.sha || null;
+        if (!appState.isEditing) {
+          appState.currentFileContent = rawContent;
+          renderMarkdown(rawContent);
+          updateFileSyncBadge('synced', Date.now());
 
-        const commitTimeStr = formatCommitTime(updatedCache.lastCommitDate);
-        showFlash(`Trang đã được cập nhật mới (Commit gần nhất: ${commitTimeStr})`, 'success', 500);
+          const commitTimeStr = formatCommitTime(updatedCache.lastCommitDate);
+          showFlash(`Trang đã được cập nhật mới (Commit gần nhất: ${commitTimeStr})`, 'success', 500);
+        }
       }
     } else {
       updateFileSyncBadge('cached', cached.lastSyncedAt);
@@ -1125,7 +1192,14 @@ async function checkAndUpdatePageIfModified(owner, name, path, cached) {
 
 // --- LOGIC 6: Open Markdown File ---
 async function openMarkdownFile(owner, name, path) {
+  if (appState.isEditing) {
+    if (!confirmDiscardEditorChanges()) {
+      return;
+    }
+    exitEditModeUI();
+  }
   appState.currentFile = { owner, name, path };
+  appState.currentFileSha = null;
   appState.isSelectionLocked = true; // Always default to locked for each new page opened
   applyLockSelect();
   saveCurrentLocationState();
@@ -1187,6 +1261,7 @@ async function openMarkdownFile(owner, name, path) {
   }
 
   if (cached && typeof cached.content === 'string') {
+    appState.currentFileSha = cached.sha || null;
     renderMarkdown(cached.content);
     updateFileSyncBadge('cached', cached.lastSyncedAt);
 
@@ -1222,6 +1297,7 @@ async function openMarkdownFile(owner, name, path) {
       const data = await res.json();
       const rawContent = await resolveFileRawContent(data, owner, name, path);
 
+      appState.currentFileSha = data.sha || null;
       appState.currentFileContent = rawContent;
       renderMarkdown(rawContent);
 
@@ -1298,7 +1374,13 @@ function renderMarkdown(rawContent) {
           <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
         </svg>
         <h3 style="font-size: 15px; font-weight: 600; margin: 0 0 6px 0; color: var(--color-fg-default);">Tài liệu trống</h3>
-        <p style="font-size: 13px; margin: 0;">Tệp tin này hiện chưa có nội dung (0 bytes).</p>
+        <p style="font-size: 13px; margin: 0 0 16px 0;">Tệp tin này hiện chưa có nội dung (0 bytes).</p>
+        <button type="button" class="gh-btn gh-btn-sm gh-btn-primary" onclick="enterEditMode()">
+          <svg class="octicon octicon-pencil" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+            <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"></path>
+          </svg>
+          <span>Bắt đầu viết nội dung</span>
+        </button>
       </div>
     `;
     if (rawPanel) rawPanel.textContent = '';
@@ -2156,6 +2238,10 @@ function setSyncSpinning(isSpinning) {
 
 async function syncCurrentFile() {
   if (!appState.currentFile) return;
+  if (appState.isEditing) {
+    if (!confirmDiscardEditorChanges()) return;
+    exitEditModeUI();
+  }
   const { owner, name, path } = appState.currentFile;
   await syncFavoriteFile(owner, name, path);
 }
@@ -2183,8 +2269,11 @@ async function syncFavoriteFile(owner, name, path) {
       
       await cacheFavoriteFile(owner, name, path, rawContent, data.sha);
       
-      if (appState.currentFile && appState.currentFile.path === path) {
-        renderMarkdown(rawContent);
+      if (appState.currentFile && appState.currentFile.owner === owner && appState.currentFile.name === name && appState.currentFile.path === path) {
+        appState.currentFileSha = data.sha || null;
+        if (!appState.isEditing) {
+          renderMarkdown(rawContent);
+        }
       }
       
       updateFileSyncBadge('synced', Date.now());
@@ -4198,6 +4287,687 @@ function ttsStop() {
 function ttsClose() {
   ttsStop();
 }
+
+/* ==========================================================================
+   MARKDOWN EDITOR & GITHUB COMMIT / PUSH MODULE
+   ========================================================================== */
+
+/**
+ * Attaches input and keyboard listeners for the Markdown editor and commit modal.
+ */
+function initMarkdownEditorListeners() {
+  const textarea = document.getElementById('markdownEditorTextarea');
+  if (textarea) {
+    textarea.addEventListener('input', () => {
+      updateEditorDirtyUI();
+    });
+
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+        textarea.value = val.substring(0, start) + '  ' + val.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+        updateEditorDirtyUI();
+      }
+    });
+  }
+
+  const commitMsgInput = document.getElementById('commitMessageInput');
+  if (commitMsgInput) {
+    commitMsgInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        executeCommitAndPush();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const descInput = document.getElementById('commitDescriptionInput');
+        if (descInput) descInput.focus();
+      }
+    });
+  }
+
+  const commitDescInput = document.getElementById('commitDescriptionInput');
+  if (commitDescInput) {
+    commitDescInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        executeCommitAndPush();
+      }
+    });
+  }
+}
+
+/**
+ * Checks whether the editor currently holds unsaved modifications.
+ */
+function hasEditorUnsavedChanges() {
+  if (!appState.isEditing) return false;
+  const textarea = document.getElementById('markdownEditorTextarea');
+  if (!textarea) return false;
+  return textarea.value !== appState.editorOriginalContent;
+}
+
+/**
+ * Prompts confirmation before discarding unsaved editor modifications.
+ */
+function confirmDiscardEditorChanges() {
+  if (!hasEditorUnsavedChanges()) return true;
+  return confirm('Bạn có thay đổi chưa được push lên GitHub.\nBạn có chắc chắn muốn hủy bỏ các thay đổi này không?');
+}
+
+/**
+ * Updates the editor header status text and Push button state.
+ */
+function updateEditorDirtyUI() {
+  const dirtyBadge = document.getElementById('editorDirtyBadge');
+  const btnPush = document.getElementById('btnEditorPush');
+  const isDirty = hasEditorUnsavedChanges();
+
+  if (dirtyBadge) {
+    if (isDirty) {
+      dirtyBadge.textContent = '● Đã thay đổi (Chưa push)';
+      dirtyBadge.classList.add('is-dirty');
+    } else {
+      dirtyBadge.textContent = 'Đang chỉnh sửa (Chưa sửa)';
+      dirtyBadge.classList.remove('is-dirty');
+    }
+  }
+
+  if (btnPush) {
+    btnPush.disabled = !isDirty;
+  }
+}
+
+/**
+ * Enters Markdown Edit Mode for the currently opened file.
+ */
+function enterEditMode() {
+  if (!appState.currentFile) {
+    showFlash('Vui lòng mở một tệp Markdown trước khi chỉnh sửa.', 'info');
+    return;
+  }
+
+  if (appState.currentFileContent === null || appState.currentFileContent === undefined) {
+    showFlash('Tài liệu đang tải, vui lòng thử lại sau giây lát.', 'info');
+    return;
+  }
+
+  if (!appState.token) {
+    showFlash('Cần kết nối GitHub PAT để chỉnh sửa và push lên repo.', 'error');
+    return;
+  }
+
+  if (typeof ttsStop === 'function' && typeof ttsState !== 'undefined' && ttsState.active) {
+    ttsStop();
+  }
+  toggleTocModal(false);
+
+  appState.isEditing = true;
+  appState.editorTab = 'write';
+  appState.editorOriginalContent = appState.currentFileContent || '';
+
+  const fileName = appState.currentFile.path.split('/').pop() || 'document.md';
+  const headerFileNameEl = document.getElementById('editorHeaderFileName');
+  if (headerFileNameEl) {
+    headerFileNameEl.textContent = fileName;
+  }
+
+  const editorBar = document.getElementById('editorControlBar');
+  if (editorBar) editorBar.classList.remove('hidden');
+
+  const viewerMobileHeader = document.querySelector('#viewViewer .viewer-mobile-header');
+  if (viewerMobileHeader) viewerMobileHeader.classList.add('hidden');
+
+  const viewerBody = document.querySelector('#viewViewer .viewer-body');
+  if (viewerBody) viewerBody.classList.add('is-editing');
+
+  const viewerPanel = document.getElementById('markdownViewerPanel');
+  const rawPanel = document.getElementById('rawMarkdownPanel');
+  const editorContainer = document.getElementById('markdownEditorContainer');
+
+  if (viewerPanel) viewerPanel.classList.add('hidden');
+  if (rawPanel) rawPanel.classList.add('hidden');
+  if (editorContainer) editorContainer.classList.remove('hidden');
+
+  const textarea = document.getElementById('markdownEditorTextarea');
+  if (textarea) {
+    textarea.value = appState.editorOriginalContent;
+  }
+
+  switchEditorTab('write');
+  updateEditorDirtyUI();
+
+  if (textarea) {
+    setTimeout(() => {
+      textarea.focus();
+    }, 50);
+  }
+}
+
+/**
+ * Cancels editing (with confirmation if dirty) and restores Reader mode.
+ */
+function cancelEditMode() {
+  if (!confirmDiscardEditorChanges()) {
+    return;
+  }
+  exitEditModeUI();
+}
+
+/**
+ * Restores Reader view UI from Edit mode without prompting.
+ */
+function exitEditModeUI() {
+  appState.isEditing = false;
+  appState.editorTab = 'write';
+
+  closeCommitPushModal();
+
+  const editorBar = document.getElementById('editorControlBar');
+  if (editorBar) editorBar.classList.add('hidden');
+
+  const viewerMobileHeader = document.querySelector('#viewViewer .viewer-mobile-header');
+  if (viewerMobileHeader) viewerMobileHeader.classList.remove('hidden');
+
+  const viewerBody = document.querySelector('#viewViewer .viewer-body');
+  if (viewerBody) viewerBody.classList.remove('is-editing');
+
+  const editorContainer = document.getElementById('markdownEditorContainer');
+  if (editorContainer) editorContainer.classList.add('hidden');
+
+  const viewerPanel = document.getElementById('markdownViewerPanel');
+  const rawPanel = document.getElementById('rawMarkdownPanel');
+
+  if (appState.isRawView) {
+    if (viewerPanel) viewerPanel.classList.add('hidden');
+    if (rawPanel) rawPanel.classList.remove('hidden');
+  } else {
+    if (viewerPanel) viewerPanel.classList.remove('hidden');
+    if (rawPanel) rawPanel.classList.add('hidden');
+  }
+}
+
+/**
+ * Switches between 'write' (Textarea) and 'preview' (Rendered Markdown) inside Edit Mode.
+ */
+function switchEditorTab(tab) {
+  appState.editorTab = tab;
+
+  const btnWrite = document.getElementById('btnEditorTabWrite');
+  const btnPreview = document.getElementById('btnEditorTabPreview');
+  const writePane = document.getElementById('markdownEditorWritePane');
+  const previewPane = document.getElementById('markdownEditorPreviewPane');
+  const formatTools = document.getElementById('editorFormatTools');
+  const textarea = document.getElementById('markdownEditorTextarea');
+
+  if (tab === 'preview') {
+    if (btnWrite) {
+      btnWrite.classList.remove('active');
+      btnWrite.setAttribute('aria-selected', 'false');
+    }
+    if (btnPreview) {
+      btnPreview.classList.add('active');
+      btnPreview.setAttribute('aria-selected', 'true');
+    }
+    if (writePane) writePane.classList.add('hidden');
+    if (formatTools) formatTools.classList.add('hidden');
+    if (previewPane) {
+      previewPane.classList.remove('hidden');
+      renderEditorPreviewContent(textarea ? textarea.value : '', previewPane);
+    }
+  } else {
+    if (btnWrite) {
+      btnWrite.classList.add('active');
+      btnWrite.setAttribute('aria-selected', 'true');
+    }
+    if (btnPreview) {
+      btnPreview.classList.remove('active');
+      btnPreview.setAttribute('aria-selected', 'false');
+    }
+    if (previewPane) previewPane.classList.add('hidden');
+    if (writePane) writePane.classList.remove('hidden');
+    if (formatTools) formatTools.classList.remove('hidden');
+  }
+}
+
+/**
+ * Renders live Markdown preview inside the Editor Preview pane (GFM, Mermaid, PlantUML, KaTeX, Highlight.js).
+ */
+function renderEditorPreviewContent(rawText, targetPanel) {
+  if (!targetPanel) return;
+
+  if (!rawText || !rawText.trim()) {
+    targetPanel.innerHTML = '<div class="blankslate"><p class="text-muted">Chưa có nội dung để xem trước.</p></div>';
+    return;
+  }
+
+  const renderer = new marked.Renderer();
+  renderer.code = function(codeOrObj, languageStr) {
+    let code = '';
+    let lang = '';
+    if (typeof codeOrObj === 'object' && codeOrObj !== null) {
+      code = codeOrObj.text || '';
+      lang = codeOrObj.lang || '';
+    } else {
+      code = codeOrObj || '';
+      lang = languageStr || '';
+    }
+    lang = (lang || '').toLowerCase().trim();
+
+    if (lang === 'mermaid') {
+      const cleanMermaid = code
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .trim();
+      return `<div class="mermaid">${cleanMermaid}</div>`;
+    } else if (lang === 'plantuml' || lang === 'puml') {
+      const encoded = encodePlantUML(code);
+      const url = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+      return `<div class="plantuml-diagram"><img src="${url}" alt="PlantUML Diagram"></div>`;
+    }
+
+    const escapedCode = escapeHtml(code);
+    return `<div class="code-block-wrapper"><pre><code class="hljs language-${lang}">${escapedCode}</code></pre></div>`;
+  };
+
+  marked.setOptions({ renderer });
+  const rawHtml = marked.parse(rawText);
+  const cleanHtml = DOMPurify.sanitize(rawHtml, {
+    ADD_TAGS: ['div', 'img', 'button', 'span', 'svg', 'path'],
+    ADD_ATTR: ['src', 'alt', 'class', 'type', 'title', 'aria-label', 'viewBox', 'width', 'height', 'fill', 'd']
+  });
+
+  targetPanel.innerHTML = cleanHtml;
+
+  if (window.renderMathInElement) {
+    try {
+      renderMathInElement(targetPanel, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true }
+        ],
+        throwOnError: false,
+        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      });
+    } catch (e) {}
+  }
+
+  if (window.mermaid) {
+    try {
+      const mNodes = targetPanel.querySelectorAll('.mermaid');
+      if (mNodes.length > 0) {
+        mermaid.run({ nodes: Array.from(mNodes) }).catch(() => {});
+      }
+    } catch (e) {}
+  }
+
+  targetPanel.querySelectorAll('pre code').forEach((block) => {
+    if (window.hljs && typeof window.hljs.highlightElement === 'function') {
+      try { window.hljs.highlightElement(block); } catch (e) {}
+    }
+  });
+}
+
+/**
+ * Inserts or wraps Markdown syntax at the current cursor selection in the editor textarea.
+ */
+function insertEditorMarkdown(type) {
+  const textarea = document.getElementById('markdownEditorTextarea');
+  if (!textarea) return;
+
+  if (appState.editorTab !== 'write') {
+    switchEditorTab('write');
+  }
+
+  textarea.focus();
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const val = textarea.value;
+  const selected = val.substring(start, end);
+
+  let before = '';
+  let middle = selected;
+  let after = '';
+
+  const needsNewlinePrefix = start > 0 && val[start - 1] !== '\n';
+
+  switch (type) {
+    case 'h1':
+      before = (needsNewlinePrefix ? '\n' : '') + '# ';
+      middle = selected || 'Tiêu đề 1';
+      break;
+    case 'h2':
+      before = (needsNewlinePrefix ? '\n' : '') + '## ';
+      middle = selected || 'Tiêu đề 2';
+      break;
+    case 'bold':
+      before = '**';
+      middle = selected || 'văn bản in đậm';
+      after = '**';
+      break;
+    case 'italic':
+      before = '*';
+      middle = selected || 'văn bản in nghiêng';
+      after = '*';
+      break;
+    case 'code':
+      before = '`';
+      middle = selected || 'code';
+      after = '`';
+      break;
+    case 'codeblock':
+      before = (needsNewlinePrefix ? '\n' : '') + '```\n';
+      middle = selected || '// code';
+      after = '\n```\n';
+      break;
+    case 'list':
+      before = (needsNewlinePrefix ? '\n' : '') + '- ';
+      middle = selected || 'Mục danh sách';
+      break;
+    case 'task':
+      before = (needsNewlinePrefix ? '\n' : '') + '- [ ] ';
+      middle = selected || 'Công việc cần làm';
+      break;
+    case 'quote':
+      before = (needsNewlinePrefix ? '\n' : '') + '> ';
+      middle = selected || 'Trích dẫn';
+      break;
+    case 'link':
+      before = '[';
+      middle = selected || 'tiêu đề liên kết';
+      after = '](https://)';
+      break;
+    default:
+      return;
+  }
+
+  const replacement = before + middle + after;
+  textarea.setRangeText(replacement, start, end, 'select');
+  textarea.selectionStart = start + before.length;
+  textarea.selectionEnd = start + before.length + middle.length;
+  updateEditorDirtyUI();
+}
+
+/**
+ * Opens the Commit & Push confirmation modal.
+ */
+function openCommitPushModal() {
+  if (!appState.isEditing || !appState.currentFile) return;
+
+  if (!hasEditorUnsavedChanges()) {
+    showFlash('Nội dung chưa có thay đổi nào để push lên GitHub.', 'info');
+    return;
+  }
+
+  if (!navigator.onLine || appState.isOffline) {
+    showFlash('Bạn đang ngoại tuyến (Offline). Vui lòng kết nối mạng để push thay đổi.', 'error', 4000);
+    return;
+  }
+
+  if (!appState.token) {
+    showFlash('Cần kết nối GitHub PAT để thực hiện push.', 'error');
+    return;
+  }
+
+  const { owner, name, path } = appState.currentFile;
+  const fileName = path.split('/').pop() || 'document.md';
+  const targetBranch = (appState.currentRepo && appState.currentRepo.owner === owner && appState.currentRepo.name === name && appState.currentRepo.defaultBranch)
+    ? appState.currentRepo.defaultBranch
+    : 'default branch';
+
+  const targetInfoEl = document.getElementById('commitTargetInfo');
+  if (targetInfoEl) {
+    targetInfoEl.innerHTML = `
+      <div><span class="text-muted">Repo:</span> <strong>${escapeHtml(owner)}/${escapeHtml(name)}</strong> <span class="text-muted">(${escapeHtml(targetBranch)})</span></div>
+      <div><span class="text-muted">Tệp:</span> <code>${escapeHtml(path)}</code></div>
+    `;
+  }
+
+  const msgInput = document.getElementById('commitMessageInput');
+  if (msgInput) {
+    msgInput.value = `Update ${fileName}`;
+  }
+
+  const descInput = document.getElementById('commitDescriptionInput');
+  if (descInput) {
+    descInput.value = '';
+  }
+
+  const errEl = document.getElementById('commitPushError');
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  setCommitPushLoadingState(false);
+
+  const modal = document.getElementById('commitPushModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    if (msgInput) {
+      setTimeout(() => {
+        msgInput.focus();
+        msgInput.select();
+      }, 60);
+    }
+  }
+}
+
+/**
+ * Closes the Commit & Push confirmation modal.
+ */
+function closeCommitPushModal() {
+  if (appState.isPushingCommit) return;
+  const modal = document.getElementById('commitPushModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+/**
+ * Toggles loading spinner and button disabled states during GitHub API push.
+ */
+function setCommitPushLoadingState(isLoading) {
+  appState.isPushingCommit = isLoading;
+  const btnConfirm = document.getElementById('btnConfirmPush');
+  const btnCancel = document.getElementById('btnCancelCommitModal');
+  const btnClose = document.getElementById('btnCloseCommitModal');
+  const msgInput = document.getElementById('commitMessageInput');
+  const descInput = document.getElementById('commitDescriptionInput');
+
+  if (btnCancel) btnCancel.disabled = isLoading;
+  if (btnClose) btnClose.disabled = isLoading;
+  if (msgInput) msgInput.disabled = isLoading;
+  if (descInput) descInput.disabled = isLoading;
+
+  if (btnConfirm) {
+    btnConfirm.disabled = isLoading;
+    if (isLoading) {
+      btnConfirm.innerHTML = `
+        <svg class="octicon octicon-sync is-spinning" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+          <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
+        </svg>
+        <span>Đang push...</span>
+      `;
+    } else {
+      btnConfirm.innerHTML = `
+        <svg class="octicon octicon-repo-push" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+          <path d="M1 2.5A2.5 2.5 0 0 1 3.5 0h8.75a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V1.5h-8a1 1 0 0 0-1 1v6.708A2.493 2.493 0 0 1 3.5 9h3.25a.75.75 0 0 1 0 1.5H3.5a1 1 0 0 0 0 2h5.75a.75.75 0 0 1 0 1.5H3.5A2.5 2.5 0 0 1 1 11.5Zm13.23 7.79h-.001l-1.224-1.224v6.184a.75.75 0 0 1-1.5 0V9.066L10.28 10.29a.75.75 0 0 1-1.06-1.061l2.505-2.504a.75.75 0 0 1 1.06 0L15.29 9.23a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018Z"></path>
+        </svg>
+        <span>Commit &amp; Push</span>
+      `;
+    }
+  }
+}
+
+/**
+ * Executes GitHub REST API PUT /repos/{owner}/{repo}/contents/{path} to commit & push changes.
+ */
+async function executeCommitAndPush() {
+  if (appState.isPushingCommit || !appState.currentFile) return;
+
+  const textarea = document.getElementById('markdownEditorTextarea');
+  const msgInput = document.getElementById('commitMessageInput');
+  const descInput = document.getElementById('commitDescriptionInput');
+  const errEl = document.getElementById('commitPushError');
+
+  if (!textarea || !msgInput) return;
+
+  const newContent = textarea.value;
+  const fileName = appState.currentFile.path.split('/').pop() || 'document.md';
+  const commitSummary = msgInput.value.trim() || `Update ${fileName}`;
+  const commitDesc = descInput ? descInput.value.trim() : '';
+  const fullCommitMessage = commitDesc ? `${commitSummary}\n\n${commitDesc}` : commitSummary;
+
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  if (!navigator.onLine || appState.isOffline) {
+    if (errEl) {
+      errEl.textContent = 'Không có kết nối mạng. Vui lòng kiểm tra kết nối Internet và thử lại.';
+      errEl.classList.remove('hidden');
+    }
+    return;
+  }
+
+  setCommitPushLoadingState(true);
+
+  const { owner, name, path } = appState.currentFile;
+  const targetBranch = (appState.currentRepo && appState.currentRepo.owner === owner && appState.currentRepo.name === name && appState.currentRepo.defaultBranch)
+    ? appState.currentRepo.defaultBranch
+    : null;
+
+  try {
+    // 1. Fetch latest remote file metadata to ensure accurate blob SHA and detect external changes
+    let targetSha = appState.currentFileSha || null;
+    const branchQuery = targetBranch ? `?ref=${encodeURIComponent(targetBranch)}` : '';
+    const metaRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}${branchQuery}`, {
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      },
+      cache: 'no-store'
+    });
+
+    if (metaRes.status === 200) {
+      const metaData = await metaRes.json();
+      if (appState.currentFileSha && metaData.sha && metaData.sha !== appState.currentFileSha) {
+        const proceedOverwrite = confirm(
+          '⚠️ Tệp tin này trên GitHub vừa có commit mới từ một thiết bị/nguồn khác kể từ khi bạn mở trang.\n\n' +
+          'Bạn có muốn tiếp tục push và ghi đè nội dung mới của bạn lên phiên bản trên GitHub không?'
+        );
+        if (!proceedOverwrite) {
+          setCommitPushLoadingState(false);
+          return;
+        }
+      }
+      targetSha = metaData.sha;
+    } else if (metaRes.status === 404) {
+      // File does not exist yet on remote branch -> GitHub API creates it when sha is omitted
+      targetSha = null;
+    } else if (metaRes.status === 401 || metaRes.status === 403) {
+      throw new Error('GitHub PAT không hợp lệ hoặc không có quyền truy cập repository này.');
+    }
+
+    // 2. Build PUT payload with UTF-8 safe Base64 content
+    const payload = {
+      message: fullCommitMessage,
+      content: utf8ToBase64(newContent)
+    };
+    if (targetSha) {
+      payload.sha = targetSha;
+    }
+    if (targetBranch) {
+      payload.branch = targetBranch;
+    }
+
+    const putRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!putRes.ok) {
+      let apiMsg = '';
+      try {
+        const errData = await putRes.json();
+        apiMsg = errData.message || '';
+      } catch (e) {}
+
+      if (putRes.status === 401) {
+        throw new Error('GitHub PAT đã hết hạn hoặc không hợp lệ (HTTP 401).');
+      } else if (putRes.status === 403 || putRes.status === 404) {
+        throw new Error(
+          `Không đủ quyền ghi lên repository (HTTP ${putRes.status}). Hãy đảm bảo PAT của bạn có quyền "repo" (Classic PAT) hoặc "Contents: Read and write" (Fine-grained PAT).${apiMsg ? ` Chi tiết: ${apiMsg}` : ''}`
+        );
+      } else if (putRes.status === 409) {
+        throw new Error('Xung đột phiên bản SHA trên GitHub (HTTP 409). Vui lòng nhấn Commit & Push lại để đồng bộ.');
+      } else {
+        throw new Error(`Push thất bại (HTTP ${putRes.status})${apiMsg ? `: ${apiMsg}` : '.'}`);
+      }
+    }
+
+    const putData = await putRes.json();
+    const newBlobSha = (putData.content && putData.content.sha) ? putData.content.sha : targetSha;
+    const newCommitSha = (putData.commit && putData.commit.sha) ? putData.commit.sha : newBlobSha;
+    const newCommitDate = (putData.commit && (putData.commit.committer?.date || putData.commit.author?.date))
+      ? (putData.commit.committer?.date || putData.commit.author?.date)
+      : new Date().toISOString();
+
+    // 3. Update local appState & IndexedDB offline cache
+    appState.currentFileContent = newContent;
+    appState.currentFileSha = newBlobSha;
+    appState.editorOriginalContent = newContent;
+
+    const fileKey = `${owner}/${name}/${path}`;
+    const updatedCache = {
+      fileKey,
+      owner,
+      name,
+      path,
+      content: newContent,
+      sha: newBlobSha,
+      lastCommitSha: newCommitSha,
+      lastCommitDate: newCommitDate,
+      lastSyncedAt: Date.now()
+    };
+    await getIdb().set(fileKey, updatedCache);
+
+    const favFile = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+    if (favFile) {
+      favFile.lastModified = Date.now();
+      localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    }
+    markStateDirty();
+
+    // 4. Close modal, exit Edit mode, re-render Markdown & show confirmation
+    setCommitPushLoadingState(false);
+    exitEditModeUI();
+    renderMarkdown(newContent);
+    updateFileSyncBadge('synced', Date.now());
+    renderFavoritesList();
+
+    showFlash(`Đã commit & push "${fileName}" lên GitHub thành công!`, 'success', 3500);
+  } catch (err) {
+    console.error('Commit & Push error:', err);
+    setCommitPushLoadingState(false);
+    if (errEl) {
+      errEl.textContent = err.message || 'Đã xảy ra lỗi khi push lên GitHub.';
+      errEl.classList.remove('hidden');
+    }
+  }
+}
+
 
 
 
