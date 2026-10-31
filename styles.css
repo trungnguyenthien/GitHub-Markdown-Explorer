@@ -2433,6 +2433,138 @@ h2.tts-active-reading {
   word-break: break-word;
 }
 
+/* --------------------------------------------------------------------------
+   TREE EXPLORER HEADER & CREATE NEW FILE MODAL STYLES
+   -------------------------------------------------------------------------- */
+
+.tree-panel-header {
+  gap: 10px;
+  align-items: center;
+}
+
+.gh-breadcrumb {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.crumb-link {
+  color: var(--color-accent-fg, #0969da);
+  cursor: pointer;
+}
+
+.crumb-link:hover {
+  text-decoration: underline;
+}
+
+.tree-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-new-file {
+  min-height: 34px;
+  padding: 5px 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.form-field-hint {
+  display: block;
+  font-size: 11.5px;
+  color: var(--color-fg-muted, #656d76);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.form-field-hint code {
+  background-color: var(--color-canvas-subtle, #f6f8fa);
+  border: 1px solid var(--color-border-default, #d0d7de);
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+}
+
+.new-file-input {
+  width: 100%;
+  font-size: 16px;
+  font-family: var(--font-family-mono);
+}
+
+.new-file-input:focus {
+  border-color: var(--color-accent-fg, #0969da);
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.18);
+}
+
+/* Deferred validation after user interaction (:user-invalid) */
+.new-file-input:user-invalid {
+  border-color: var(--color-danger-fg, #cf222e);
+  background-color: #fff8f8;
+}
+
+.new-file-input:user-valid {
+  border-color: var(--color-success-fg, #1a7f37);
+}
+
+.field-validation-msg {
+  display: none;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-danger-fg, #cf222e);
+  line-height: 1.4;
+}
+
+.new-file-input:user-invalid + .field-validation-msg {
+  display: block;
+}
+
+.new-file-resolved-preview {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: rgba(9, 105, 218, 0.06);
+  border: 1px solid rgba(9, 105, 218, 0.2);
+  color: var(--color-fg-default, #1f2328);
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.new-file-resolved-preview code {
+  font-family: var(--font-family-mono);
+  color: var(--color-accent-fg, #0969da);
+  font-weight: 600;
+}
+
+.create-file-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: var(--color-canvas-subtle, #f6f8fa);
+  border: 1px solid var(--color-border-default, #d0d7de);
+  font-size: 13px;
+  color: var(--color-fg-default, #1f2328);
+  cursor: pointer;
+  user-select: none;
+}
+
+.create-file-checkbox-row input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: #1f883d;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 
 
 

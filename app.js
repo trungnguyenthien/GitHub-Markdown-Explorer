@@ -4,32 +4,32 @@
 
 // --- HELPER: Base64 UTF-8 Decoder (Vietnamese & Unicode support) ---
 function base64ToUtf8(base64Str) {
-  if (!base64Str) return '';
+  if (!base64Str) return "";
   try {
-    const cleanB64 = base64Str.replace(/\s/g, '');
+    const cleanB64 = base64Str.replace(/\s/g, "");
     const binaryStr = atob(cleanB64);
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) {
       bytes[i] = binaryStr.charCodeAt(i);
     }
-    return new TextDecoder('utf-8').decode(bytes);
+    return new TextDecoder("utf-8").decode(bytes);
   } catch (e) {
-    console.error('Base64 decode error:', e);
+    console.error("Base64 decode error:", e);
     try {
-      return decodeURIComponent(escape(atob(base64Str.replace(/\s/g, ''))));
+      return decodeURIComponent(escape(atob(base64Str.replace(/\s/g, ""))));
     } catch (fallbackErr) {
-      console.error('Fallback decode error:', fallbackErr);
-      return '';
+      console.error("Fallback decode error:", fallbackErr);
+      return "";
     }
   }
 }
 
 // --- HELPER: UTF-8 to Base64 Encoder (Vietnamese & Unicode support) ---
 function utf8ToBase64(str) {
-  if (!str) return '';
+  if (!str) return "";
   try {
     const bytes = new TextEncoder().encode(str);
-    let binaryStr = '';
+    let binaryStr = "";
     const chunkSize = 8192;
     for (let i = 0; i < bytes.length; i += chunkSize) {
       const chunk = bytes.subarray(i, i + chunkSize);
@@ -37,34 +37,43 @@ function utf8ToBase64(str) {
     }
     return btoa(binaryStr);
   } catch (e) {
-    console.error('Base64 encode error:', e);
+    console.error("Base64 encode error:", e);
     return btoa(unescape(encodeURIComponent(str)));
   }
 }
 
 function getParentDirPath(filePath) {
-  if (!filePath) return '/';
-  const parts = filePath.split('/');
-  if (parts.length <= 1) return '/';
+  if (!filePath) return "/";
+  const parts = filePath.split("/");
+  if (parts.length <= 1) return "/";
   parts.pop();
-  return parts.join('/');
+  return parts.join("/");
 }
 
 // --- HELPER: Safely encode path segments for GitHub REST API (preserving directory slashes) ---
 function encodeGitPath(path) {
-  if (!path) return '';
-  return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  if (!path) return "";
+  return path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
 }
 
 // --- HELPER: Detect if a text string is actually raw GitHub API JSON metadata ---
 function isGitHubApiJson(text) {
-  if (typeof text !== 'string') return false;
+  if (typeof text !== "string") return false;
   const trimmed = text.trim();
-  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return false;
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return false;
   try {
     const obj = JSON.parse(trimmed);
-    if (obj && typeof obj === 'object') {
-      if (obj.sha && (obj.download_url !== undefined || obj.git_url !== undefined || obj.html_url !== undefined || obj.type === 'file')) {
+    if (obj && typeof obj === "object") {
+      if (
+        obj.sha &&
+        (obj.download_url !== undefined ||
+          obj.git_url !== undefined ||
+          obj.html_url !== undefined ||
+          obj.type === "file")
+      ) {
         return true;
       }
     }
@@ -74,27 +83,27 @@ function isGitHubApiJson(text) {
 
 // --- HELPER: Extract genuine file content from GitHub API response or fallback ---
 async function resolveFileRawContent(data, owner, name, path) {
-  if (!data) return '';
+  if (!data) return "";
 
   // 1. If file has size 0 or empty base64 content, it is legitimately empty (0 bytes)
-  if (data.size === 0 || (data.content === '' && data.encoding === 'base64')) {
-    return '';
+  if (data.size === 0 || (data.content === "" && data.encoding === "base64")) {
+    return "";
   }
 
   // 2. Standard GitHub contents API (files <= 1MB) returns base64 content
-  if (typeof data.content === 'string' && data.content.length > 0) {
+  if (typeof data.content === "string" && data.content.length > 0) {
     return base64ToUtf8(data.content);
   }
 
   // 3. For large files (> 1MB) or if content was omitted by GitHub:
-  let rawContent = '';
+  let rawContent = "";
 
   // 3a. Try fetching directly from download_url (raw.githubusercontent.com)
   if (data.download_url) {
     try {
       const headers = {};
       if (appState.token) {
-        headers['Authorization'] = `Bearer ${appState.token}`;
+        headers["Authorization"] = `Bearer ${appState.token}`;
       }
       const dlRes = await fetch(data.download_url, { headers });
       if (dlRes.ok) {
@@ -104,19 +113,22 @@ async function resolveFileRawContent(data, owner, name, path) {
         }
       }
     } catch (e) {
-      console.warn('Fallback download_url failed:', e);
+      console.warn("Fallback download_url failed:", e);
     }
   }
 
   // 3b. Try fetching blob directly via Git Data Blobs API (supports up to 100MB)
   if (data.sha) {
     try {
-      const blobRes = await fetch(`https://api.github.com/repos/${owner}/${name}/git/blobs/${data.sha}`, {
-        headers: {
-          'Authorization': `Bearer ${appState.token}`,
-          'Accept': 'application/vnd.github.v3.raw'
-        }
-      });
+      const blobRes = await fetch(
+        `https://api.github.com/repos/${owner}/${name}/git/blobs/${data.sha}`,
+        {
+          headers: {
+            Authorization: `Bearer ${appState.token}`,
+            Accept: "application/vnd.github.v3.raw",
+          },
+        },
+      );
       if (blobRes.ok) {
         const text = await blobRes.text();
         if (!isGitHubApiJson(text)) {
@@ -124,18 +136,21 @@ async function resolveFileRawContent(data, owner, name, path) {
         }
       }
     } catch (e) {
-      console.warn('Fallback blob raw failed:', e);
+      console.warn("Fallback blob raw failed:", e);
     }
   }
 
   // 3c. Try fetching contents API with raw Accept header
   try {
-    const rawRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3.raw'
-      }
-    });
+    const rawRes = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3.raw",
+        },
+      },
+    );
     if (rawRes.ok) {
       const text = await rawRes.text();
       if (!isGitHubApiJson(text)) {
@@ -143,12 +158,12 @@ async function resolveFileRawContent(data, owner, name, path) {
       }
       try {
         const parsed = JSON.parse(text);
-        if (parsed.size === 0) return '';
+        if (parsed.size === 0) return "";
         if (parsed.content) return base64ToUtf8(parsed.content);
       } catch (e) {}
     }
   } catch (rawErr) {
-    console.warn('Fallback contents raw failed:', rawErr);
+    console.warn("Fallback contents raw failed:", rawErr);
   }
 
   return rawContent;
@@ -160,8 +175,8 @@ const miniIdb = {
   getDb() {
     if (!this.dbPromise) {
       this.dbPromise = new Promise((resolve, reject) => {
-        const req = indexedDB.open('gh_md_explorer_db', 1);
-        req.onupgradeneeded = () => req.result.createObjectStore('cache');
+        const req = indexedDB.open("gh_md_explorer_db", 1);
+        req.onupgradeneeded = () => req.result.createObjectStore("cache");
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
       });
@@ -172,19 +187,21 @@ const miniIdb = {
     try {
       const db = await this.getDb();
       return new Promise((resolve) => {
-        const tx = db.transaction('cache', 'readonly');
-        const req = tx.objectStore('cache').get(key);
+        const tx = db.transaction("cache", "readonly");
+        const req = tx.objectStore("cache").get(key);
         req.onsuccess = () => resolve(req.result || null);
         req.onerror = () => resolve(null);
       });
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   },
   async set(key, val) {
     try {
       const db = await this.getDb();
       return new Promise((resolve) => {
-        const tx = db.transaction('cache', 'readwrite');
-        tx.objectStore('cache').put(val, key);
+        const tx = db.transaction("cache", "readwrite");
+        tx.objectStore("cache").put(val, key);
         tx.oncomplete = () => resolve();
         tx.onerror = () => resolve();
       });
@@ -194,8 +211,8 @@ const miniIdb = {
     try {
       const db = await this.getDb();
       return new Promise((resolve) => {
-        const tx = db.transaction('cache', 'readwrite');
-        tx.objectStore('cache').delete(key);
+        const tx = db.transaction("cache", "readwrite");
+        tx.objectStore("cache").delete(key);
         tx.oncomplete = () => resolve();
         tx.onerror = () => resolve();
       });
@@ -205,13 +222,15 @@ const miniIdb = {
     try {
       const db = await this.getDb();
       return new Promise((resolve) => {
-        const tx = db.transaction('cache', 'readonly');
-        const req = tx.objectStore('cache').getAll();
+        const tx = db.transaction("cache", "readonly");
+        const req = tx.objectStore("cache").getAll();
         req.onsuccess = () => resolve(req.result || []);
         req.onerror = () => resolve([]);
       });
-    } catch (e) { return []; }
-  }
+    } catch (e) {
+      return [];
+    }
+  },
 };
 
 function getIdb() {
@@ -220,7 +239,7 @@ function getIdb() {
 
 // --- GLOBAL APPLICATION STATE ---
 const appState = {
-  token: localStorage.getItem('gh_pat_token') || null,
+  token: localStorage.getItem("gh_pat_token") || null,
   repos: [],
   currentRepo: null, // { owner, name, defaultBranch }
   currentPath: [], // Array of folder names
@@ -229,62 +248,68 @@ const appState = {
   currentFileContent: null, // Raw markdown string
   currentFileSha: null, // GitHub blob SHA of currently opened file
   isEditing: false,
-  editorTab: 'write', // 'write' | 'preview'
-  editorOriginalContent: '',
+  editorTab: "write", // 'write' | 'preview'
+  editorOriginalContent: "",
   isPushingCommit: false,
-  favGroups: JSON.parse(localStorage.getItem('gh_fav_groups') || '["All"]'),
-  activeFavGroup: 'All',
-  favoriteRepos: JSON.parse(localStorage.getItem('gh_favorite_repos') || '[]'),
-  favoriteFiles: JSON.parse(localStorage.getItem('gh_favorite_files') || '[]'),
-  readingHistory: JSON.parse(localStorage.getItem('gh_reading_history') || '[]'),
-  mobileView: 'favPages', // 'favPages' | 'favRepos' | 'allRepos' | 'history' | 'reader' | 'tree' | 'viewer'
-  previousView: 'favPages',
+  isCreatingFile: false,
+  favGroups: JSON.parse(localStorage.getItem("gh_fav_groups") || '["All"]'),
+  activeFavGroup: "All",
+  favoriteRepos: JSON.parse(localStorage.getItem("gh_favorite_repos") || "[]"),
+  favoriteFiles: JSON.parse(localStorage.getItem("gh_favorite_files") || "[]"),
+  readingHistory: JSON.parse(
+    localStorage.getItem("gh_reading_history") || "[]",
+  ),
+  mobileView: "favPages", // 'favPages' | 'favRepos' | 'allRepos' | 'history' | 'reader' | 'tree' | 'viewer'
+  previousView: "favPages",
   isOffline: !navigator.onLine,
-  fontScale: parseInt(localStorage.getItem('gh_font_scale') || '100', 10),
+  fontScale: parseInt(localStorage.getItem("gh_font_scale") || "100", 10),
   isSelectionLocked: true,
   isGuideOpen: false,
-  activeGuideTab: 'pat',
+  activeGuideTab: "pat",
   isRawView: false,
   syncStatus: {},
   hasUnsavedChanges: false,
-  lastGistBackupTime: localStorage.getItem('gh_last_gist_backup_time') || null,
+  lastGistBackupTime: localStorage.getItem("gh_last_gist_backup_time") || null,
   autoGistBackupTimer: null,
-  readerHeadings: []
+  readerHeadings: [],
 };
 
 function escapeHtml(str) {
-  if (!str) return '';
+  if (!str) return "";
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function sanitizeFavGroups() {
   if (!Array.isArray(appState.favGroups) || appState.favGroups.length === 0) {
-    appState.favGroups = ['All'];
+    appState.favGroups = ["All"];
   }
-  if (!appState.favGroups.includes('All')) {
-    appState.favGroups.unshift('All');
+  if (!appState.favGroups.includes("All")) {
+    appState.favGroups.unshift("All");
   }
-  localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+  localStorage.setItem("gh_fav_groups", JSON.stringify(appState.favGroups));
 
   let filesChanged = false;
   if (Array.isArray(appState.favoriteFiles)) {
-    appState.favoriteFiles.forEach(file => {
+    appState.favoriteFiles.forEach((file) => {
       if (!Array.isArray(file.groups) || file.groups.length === 0) {
-        file.groups = ['All'];
+        file.groups = ["All"];
         filesChanged = true;
-      } else if (!file.groups.includes('All')) {
-        file.groups.unshift('All');
+      } else if (!file.groups.includes("All")) {
+        file.groups.unshift("All");
         filesChanged = true;
       }
     });
   }
   if (filesChanged) {
-    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    localStorage.setItem(
+      "gh_favorite_files",
+      JSON.stringify(appState.favoriteFiles),
+    );
   }
 }
 sanitizeFavGroups();
@@ -295,15 +320,16 @@ function markStateDirty() {
 }
 
 function updateGistAutoSyncStatus(statusMsg = null) {
-  const el = document.getElementById('gistAutoSyncStatus');
+  const el = document.getElementById("gistAutoSyncStatus");
   if (!el) return;
 
   if (!appState.token) {
-    el.innerHTML = '<span style="color: var(--gh-text-muted);">Auto Sync: Disabled (PAT required)</span>';
+    el.innerHTML =
+      '<span style="color: var(--gh-text-muted);">Auto Sync: Disabled (PAT required)</span>';
     return;
   }
 
-  let timeStr = 'Never';
+  let timeStr = "Never";
   if (appState.lastGistBackupTime) {
     try {
       const date = new Date(appState.lastGistBackupTime);
@@ -311,13 +337,17 @@ function updateGistAutoSyncStatus(statusMsg = null) {
     } catch (e) {}
   }
 
-  let statusBadge = '<span style="color: #2da44e; font-weight: 600;">Active (Every 1 min)</span>';
-  if (statusMsg === 'Syncing...') {
-    statusBadge = '<span style="color: #0969da; font-weight: 600;">Syncing...</span>';
-  } else if (statusMsg === 'Failed') {
-    statusBadge = '<span style="color: #cf222e; font-weight: 600;">Failed (Check PAT gist scope)</span>';
-  } else if (statusMsg === 'Offline') {
-    statusBadge = '<span style="color: #9a6700; font-weight: 600;">Paused (Offline)</span>';
+  let statusBadge =
+    '<span style="color: #2da44e; font-weight: 600;">Active (Every 1 min)</span>';
+  if (statusMsg === "Syncing...") {
+    statusBadge =
+      '<span style="color: #0969da; font-weight: 600;">Syncing...</span>';
+  } else if (statusMsg === "Failed") {
+    statusBadge =
+      '<span style="color: #cf222e; font-weight: 600;">Failed (Check PAT gist scope)</span>';
+  } else if (statusMsg === "Offline") {
+    statusBadge =
+      '<span style="color: #9a6700; font-weight: 600;">Paused (Offline)</span>';
   }
 
   let dirtyBadge = appState.hasUnsavedChanges
@@ -342,28 +372,40 @@ function initAutoGistBackup() {
 }
 
 // --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
-  window.addEventListener('online', handleNetworkChange);
-  window.addEventListener('offline', handleNetworkChange);
+document.addEventListener("DOMContentLoaded", () => {
+  window.addEventListener("online", handleNetworkChange);
+  window.addEventListener("offline", handleNetworkChange);
   handleNetworkChange();
   requestPersistentStorage();
 
   // Handle Browser Back Button & Swipe-Back Gestures
-  window.addEventListener('popstate', (event) => {
+  window.addEventListener("popstate", (event) => {
     if (appState.isEditing) {
       if (!confirmDiscardEditorChanges()) {
         try {
-          history.pushState({ view: 'viewer', pathLength: appState.currentPath.length }, '', '#/viewer');
+          history.pushState(
+            { view: "viewer", pathLength: appState.currentPath.length },
+            "",
+            "#/viewer",
+          );
         } catch (e) {}
         return;
       }
       exitEditModeUI();
       try {
-        history.pushState({ view: 'viewer', pathLength: appState.currentPath.length }, '', '#/viewer');
+        history.pushState(
+          { view: "viewer", pathLength: appState.currentPath.length },
+          "",
+          "#/viewer",
+        );
       } catch (e) {}
       return;
     }
-    if (appState.mobileView === 'viewer' || appState.mobileView === 'tree' || appState.currentPath.length > 0) {
+    if (
+      appState.mobileView === "viewer" ||
+      appState.mobileView === "tree" ||
+      appState.currentPath.length > 0
+    ) {
       handleHeaderBack(true);
     } else if (event.state && event.state.view) {
       switchMobileView(event.state.view, true);
@@ -371,48 +413,54 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Warn before closing/reloading browser tab if editor has unsaved edits
-  window.addEventListener('beforeunload', (e) => {
+  window.addEventListener("beforeunload", (e) => {
     if (appState.isEditing && hasEditorUnsavedChanges()) {
       e.preventDefault();
-      e.returnValue = '';
+      e.returnValue = "";
     }
   });
 
   // Register PWA Service Worker & Handle Updates (PWA Standards Rule 3, 5, 6D)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js', { scope: './' }).then((reg) => {
-      console.log('[PWA] Service Worker registered:', reg.scope);
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("./sw.js", { scope: "./" })
+      .then((reg) => {
+        console.log("[PWA] Service Worker registered:", reg.scope);
 
-      // If a worker is already waiting, show update banner
-      if (reg.waiting) {
-        promptPwaUpdate(reg.waiting);
-      }
-
-      // Listen for new worker installing
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              promptPwaUpdate(newWorker);
-            }
-          });
+        // If a worker is already waiting, show update banner
+        if (reg.waiting) {
+          promptPwaUpdate(reg.waiting);
         }
-      });
 
-      // Auto-check for updates on load, tab focus, and visibility change
-      reg.update();
-      window.addEventListener('focus', () => reg.update());
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') reg.update();
+        // Listen for new worker installing
+        reg.addEventListener("updatefound", () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
+                promptPwaUpdate(newWorker);
+              }
+            });
+          }
+        });
+
+        // Auto-check for updates on load, tab focus, and visibility change
+        reg.update();
+        window.addEventListener("focus", () => reg.update());
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") reg.update();
+        });
+      })
+      .catch((err) => {
+        console.warn("[PWA] Service Worker registration failed:", err);
       });
-    }).catch((err) => {
-      console.warn('[PWA] Service Worker registration failed:', err);
-    });
 
     // Reload page when a new Service Worker takes control after user confirmation
     let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (!refreshing) {
         refreshing = true;
         window.location.reload();
@@ -424,15 +472,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initPWAInstallFlow();
 
   // Global Escape & Ctrl/Cmd+S key listener (Rule 10)
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
       toggleGuideModal(false);
       closeManagePageGroupsModal();
       toggleIosInstallModal(false);
       toggleTocModal(false);
       closeTtsLanguageModal();
       closeCommitPushModal();
-    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+      closeCreateFileModal();
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
       if (appState.isEditing) {
         e.preventDefault();
         openCommitPushModal();
@@ -441,13 +490,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   initMarkdownEditorListeners();
+  initCreateFileModalListeners();
 
   applyFontScale(appState.fontScale);
   applyLockSelect();
 
   // Code Block Copy Button Listener (Event Delegation)
-  document.addEventListener('click', (e) => {
-    const copyBtn = e.target.closest('.btn-copy-code');
+  document.addEventListener("click", (e) => {
+    const copyBtn = e.target.closest(".btn-copy-code");
     if (copyBtn) {
       e.preventDefault();
       e.stopPropagation();
@@ -459,14 +509,14 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       mermaid.initialize({
         startOnLoad: false,
-        securityLevel: 'loose',
-        theme: 'default',
+        securityLevel: "loose",
+        theme: "default",
         fontSize: 14,
         flowchart: { htmlLabels: true },
-        sequence: { showSequenceNumbers: false }
+        sequence: { showSequenceNumbers: false },
       });
     } catch (e) {
-      console.warn('Mermaid init error:', e);
+      console.warn("Mermaid init error:", e);
     }
   }
 
@@ -480,16 +530,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- UI NOTIFICATION FLASH ALERTS ---
-function showFlash(message, type = 'info', duration = 3000) {
-  const container = document.getElementById('flashContainer');
-  const flash = document.createElement('div');
+function showFlash(message, type = "info", duration = 3000) {
+  const container = document.getElementById("flashContainer");
+  const flash = document.createElement("div");
   flash.className = `gh-flash gh-flash-${type}`;
   flash.textContent = message;
   container.appendChild(flash);
 
   setTimeout(() => {
-    flash.style.opacity = '0';
-    flash.style.transition = 'opacity 0.3s ease';
+    flash.style.opacity = "0";
+    flash.style.transition = "opacity 0.3s ease";
     setTimeout(() => flash.remove(), 300);
   }, duration);
 }
@@ -497,17 +547,22 @@ function showFlash(message, type = 'info', duration = 3000) {
 // --- NETWORK STATE HANDLING ---
 function handleNetworkChange() {
   appState.isOffline = !navigator.onLine;
-  const badge = document.getElementById('networkBadge');
-  const btnSyncAll = document.getElementById('btnSyncAll');
+  const badge = document.getElementById("networkBadge");
+  const btnSyncAll = document.getElementById("btnSyncAll");
 
   if (appState.isOffline) {
-    badge.className = 'gh-badge gh-badge-secondary';
-    badge.innerHTML = '<span class="badge-dot"></span> <span class="badge-text">Offline</span>';
-    showFlash('You are offline (Offline Mode). Displaying cached version.', 'info');
+    badge.className = "gh-badge gh-badge-secondary";
+    badge.innerHTML =
+      '<span class="badge-dot"></span> <span class="badge-text">Offline</span>';
+    showFlash(
+      "You are offline (Offline Mode). Displaying cached version.",
+      "info",
+    );
     if (btnSyncAll) btnSyncAll.disabled = true;
   } else {
-    badge.className = 'gh-badge gh-badge-success';
-    badge.innerHTML = '<span class="badge-dot"></span> <span class="badge-text">Online</span>';
+    badge.className = "gh-badge gh-badge-success";
+    badge.innerHTML =
+      '<span class="badge-dot"></span> <span class="badge-text">Online</span>';
     if (btnSyncAll) btnSyncAll.disabled = false;
   }
 }
@@ -515,18 +570,23 @@ function handleNetworkChange() {
 // --- MOBILE VIEW SWITCHING & HEADER BACK BUTTON ---
 function switchMobileView(targetView, skipPushState = false) {
   // Alias mapping for backward compatibility
-  if (targetView === 'favorites') targetView = 'favPages';
-  if (targetView === 'repos') targetView = 'allRepos';
-  if (targetView === 'reader') targetView = 'viewer';
+  if (targetView === "favorites") targetView = "favPages";
+  if (targetView === "repos") targetView = "allRepos";
+  if (targetView === "reader") targetView = "viewer";
 
-  if (targetView !== 'viewer' && appState.isEditing) {
+  if (targetView !== "viewer" && appState.isEditing) {
     if (!confirmDiscardEditorChanges()) {
       return;
     }
     exitEditModeUI();
   }
 
-  if (targetView !== 'viewer' && typeof ttsStop === 'function' && typeof ttsState !== 'undefined' && ttsState.active) {
+  if (
+    targetView !== "viewer" &&
+    typeof ttsStop === "function" &&
+    typeof ttsState !== "undefined" &&
+    ttsState.active
+  ) {
     ttsStop();
   }
 
@@ -537,60 +597,64 @@ function switchMobileView(targetView, skipPushState = false) {
 
   if (!skipPushState) {
     try {
-      history.pushState({ view: targetView, pathLength: appState.currentPath.length }, '', '#/' + targetView);
+      history.pushState(
+        { view: targetView, pathLength: appState.currentPath.length },
+        "",
+        "#/" + targetView,
+      );
     } catch (e) {}
   }
 
-  const viewFavPages = document.getElementById('viewFavPages');
-  const viewFavRepos = document.getElementById('viewFavRepos');
-  const viewAllRepos = document.getElementById('viewAllRepos');
-  const viewHistory = document.getElementById('viewHistory');
-  const viewTree = document.getElementById('viewTree');
-  const viewViewer = document.getElementById('viewViewer');
+  const viewFavPages = document.getElementById("viewFavPages");
+  const viewFavRepos = document.getElementById("viewFavRepos");
+  const viewAllRepos = document.getElementById("viewAllRepos");
+  const viewHistory = document.getElementById("viewHistory");
+  const viewTree = document.getElementById("viewTree");
+  const viewViewer = document.getElementById("viewViewer");
 
-  const navFavPages = document.getElementById('navBtnFavPages');
-  const navFavRepos = document.getElementById('navBtnFavRepos');
-  const navAllRepos = document.getElementById('navBtnAllRepos');
-  const navHistory = document.getElementById('navBtnHistory');
-  const navReader = document.getElementById('navBtnReader');
+  const navFavPages = document.getElementById("navBtnFavPages");
+  const navFavRepos = document.getElementById("navBtnFavRepos");
+  const navAllRepos = document.getElementById("navBtnAllRepos");
+  const navHistory = document.getElementById("navBtnHistory");
+  const navReader = document.getElementById("navBtnReader");
 
   // Hide all view panels
-  if (viewFavPages) viewFavPages.classList.add('hidden');
-  if (viewFavRepos) viewFavRepos.classList.add('hidden');
-  if (viewAllRepos) viewAllRepos.classList.add('hidden');
-  if (viewHistory) viewHistory.classList.add('hidden');
-  if (viewTree) viewTree.classList.add('hidden');
-  if (viewViewer) viewViewer.classList.add('hidden');
+  if (viewFavPages) viewFavPages.classList.add("hidden");
+  if (viewFavRepos) viewFavRepos.classList.add("hidden");
+  if (viewAllRepos) viewAllRepos.classList.add("hidden");
+  if (viewHistory) viewHistory.classList.add("hidden");
+  if (viewTree) viewTree.classList.add("hidden");
+  if (viewViewer) viewViewer.classList.add("hidden");
 
   // Remove active state from all bottom nav items
-  if (navFavPages) navFavPages.classList.remove('active');
-  if (navFavRepos) navFavRepos.classList.remove('active');
-  if (navAllRepos) navAllRepos.classList.remove('active');
-  if (navHistory) navHistory.classList.remove('active');
-  if (navReader) navReader.classList.remove('active');
+  if (navFavPages) navFavPages.classList.remove("active");
+  if (navFavRepos) navFavRepos.classList.remove("active");
+  if (navAllRepos) navAllRepos.classList.remove("active");
+  if (navHistory) navHistory.classList.remove("active");
+  if (navReader) navReader.classList.remove("active");
 
   // Activate target panel & bottom nav tab
-  if (targetView === 'favPages') {
-    if (viewFavPages) viewFavPages.classList.remove('hidden');
-    if (navFavPages) navFavPages.classList.add('active');
+  if (targetView === "favPages") {
+    if (viewFavPages) viewFavPages.classList.remove("hidden");
+    if (navFavPages) navFavPages.classList.add("active");
     renderFavoritesList();
-  } else if (targetView === 'favRepos') {
-    if (viewFavRepos) viewFavRepos.classList.remove('hidden');
-    if (navFavRepos) navFavRepos.classList.add('active');
+  } else if (targetView === "favRepos") {
+    if (viewFavRepos) viewFavRepos.classList.remove("hidden");
+    if (navFavRepos) navFavRepos.classList.add("active");
     renderFavoritesList();
-  } else if (targetView === 'allRepos') {
-    if (viewAllRepos) viewAllRepos.classList.remove('hidden');
-    if (navAllRepos) navAllRepos.classList.add('active');
+  } else if (targetView === "allRepos") {
+    if (viewAllRepos) viewAllRepos.classList.remove("hidden");
+    if (navAllRepos) navAllRepos.classList.add("active");
     renderRepoList();
-  } else if (targetView === 'history') {
-    if (viewHistory) viewHistory.classList.remove('hidden');
-    if (navHistory) navHistory.classList.add('active');
+  } else if (targetView === "history") {
+    if (viewHistory) viewHistory.classList.remove("hidden");
+    if (navHistory) navHistory.classList.add("active");
     renderHistoryList();
-  } else if (targetView === 'viewer') {
-    if (viewViewer) viewViewer.classList.remove('hidden');
-    if (navReader) navReader.classList.add('active');
-  } else if (targetView === 'tree') {
-    if (viewTree) viewTree.classList.remove('hidden');
+  } else if (targetView === "viewer") {
+    if (viewViewer) viewViewer.classList.remove("hidden");
+    if (navReader) navReader.classList.add("active");
+  } else if (targetView === "tree") {
+    if (viewTree) viewTree.classList.remove("hidden");
   }
 
   updateHeaderBackButton();
@@ -599,33 +663,40 @@ function switchMobileView(targetView, skipPushState = false) {
 }
 
 function updateHeaderBackButton() {
-  const btnBack = document.getElementById('btnHeaderBack');
-  const headerBrand = document.getElementById('headerBrand');
-  const headerViewerGroup = document.getElementById('headerViewerGroup');
+  const btnBack = document.getElementById("btnHeaderBack");
+  const headerBrand = document.getElementById("headerBrand");
+  const headerViewerGroup = document.getElementById("headerViewerGroup");
 
-  if (appState.mobileView === 'viewer') {
-    btnBack.classList.remove('hidden');
-    headerBrand.classList.add('hidden');
-    if (headerViewerGroup) headerViewerGroup.classList.remove('hidden');
+  if (appState.mobileView === "viewer") {
+    btnBack.classList.remove("hidden");
+    headerBrand.classList.add("hidden");
+    if (headerViewerGroup) headerViewerGroup.classList.remove("hidden");
     if (appState.currentFile) {
       const { name, path } = appState.currentFile;
-      const cleanRepoName = (name || '').includes('/') ? name.split('/').pop() : name;
-      const fileName = path ? path.split('/').pop() : 'Document';
-      const parentPath = getParentDirPath(path || '');
-      const repoPathDesc = parentPath ? `[${cleanRepoName}]:[${parentPath}]` : `[${cleanRepoName}]`;
-      const headerViewerTitleEl = document.getElementById('headerViewerTitle');
+      const cleanRepoName = (name || "").includes("/")
+        ? name.split("/").pop()
+        : name;
+      const fileName = path ? path.split("/").pop() : "Document";
+      const parentPath = getParentDirPath(path || "");
+      const repoPathDesc = parentPath
+        ? `[${cleanRepoName}]:[${parentPath}]`
+        : `[${cleanRepoName}]`;
+      const headerViewerTitleEl = document.getElementById("headerViewerTitle");
       if (headerViewerTitleEl) {
         headerViewerTitleEl.innerHTML = `<div class="header-viewer-repo">${escapeHtml(repoPathDesc)}</div><div class="header-viewer-filename">${escapeHtml(fileName)}</div>`;
       }
     }
-  } else if (appState.mobileView === 'tree' || appState.currentPath.length > 0) {
-    btnBack.classList.remove('hidden');
-    headerBrand.classList.add('hidden');
-    if (headerViewerGroup) headerViewerGroup.classList.add('hidden');
+  } else if (
+    appState.mobileView === "tree" ||
+    appState.currentPath.length > 0
+  ) {
+    btnBack.classList.remove("hidden");
+    headerBrand.classList.add("hidden");
+    if (headerViewerGroup) headerViewerGroup.classList.add("hidden");
   } else {
-    btnBack.classList.add('hidden');
-    headerBrand.classList.remove('hidden');
-    if (headerViewerGroup) headerViewerGroup.classList.add('hidden');
+    btnBack.classList.add("hidden");
+    headerBrand.classList.remove("hidden");
+    if (headerViewerGroup) headerViewerGroup.classList.add("hidden");
   }
 }
 
@@ -636,18 +707,24 @@ function handleHeaderBack(isPopState = false) {
     return;
   }
 
-  if (appState.mobileView === 'viewer') {
-    const target = (appState.previousView && appState.previousView !== 'viewer') ? appState.previousView : (appState.currentRepo ? 'tree' : 'favPages');
+  if (appState.mobileView === "viewer") {
+    const target =
+      appState.previousView && appState.previousView !== "viewer"
+        ? appState.previousView
+        : appState.currentRepo
+          ? "tree"
+          : "favPages";
     switchMobileView(target, true);
-  } else if (appState.mobileView === 'tree') {
+  } else if (appState.mobileView === "tree") {
     if (appState.currentPath.length > 0) {
-      navigateFolder('..', true);
+      navigateFolder("..", true);
     } else {
-      const target = (appState.previousView === 'favRepos') ? 'favRepos' : 'allRepos';
+      const target =
+        appState.previousView === "favRepos" ? "favRepos" : "allRepos";
       switchMobileView(target, true);
     }
   } else {
-    switchMobileView('favPages', true);
+    switchMobileView("favPages", true);
   }
 }
 
@@ -657,27 +734,35 @@ function saveCurrentLocationState() {
       view: appState.mobileView,
       currentRepo: appState.currentRepo,
       currentPath: appState.currentPath,
-      currentFile: appState.currentFile
+      currentFile: appState.currentFile,
     };
-    localStorage.setItem('gh_last_location_state', JSON.stringify(state));
+    localStorage.setItem("gh_last_location_state", JSON.stringify(state));
   } catch (e) {}
 }
 
 async function restoreAppLocation() {
   let saved = null;
   try {
-    const str = localStorage.getItem('gh_last_location_state');
+    const str = localStorage.getItem("gh_last_location_state");
     if (str) saved = JSON.parse(str);
   } catch (e) {}
 
-  let hashView = window.location.hash ? window.location.hash.replace('#/', '') : null;
-  if (hashView === 'favorites') hashView = 'favPages';
-  if (hashView === 'repos') hashView = 'allRepos';
-  if (hashView === 'reader') hashView = 'viewer';
+  let hashView = window.location.hash
+    ? window.location.hash.replace("#/", "")
+    : null;
+  if (hashView === "favorites") hashView = "favPages";
+  if (hashView === "repos") hashView = "allRepos";
+  if (hashView === "reader") hashView = "viewer";
 
-  const targetView = (hashView && ['favPages', 'favRepos', 'allRepos', 'history', 'tree', 'viewer'].includes(hashView))
-    ? hashView
-    : (saved ? saved.view : 'favPages');
+  const targetView =
+    hashView &&
+    ["favPages", "favRepos", "allRepos", "history", "tree", "viewer"].includes(
+      hashView,
+    )
+      ? hashView
+      : saved
+        ? saved.view
+        : "favPages";
 
   if (saved) {
     if (saved.currentRepo) appState.currentRepo = saved.currentRepo;
@@ -685,81 +770,88 @@ async function restoreAppLocation() {
     if (saved.currentFile) appState.currentFile = saved.currentFile;
   }
 
-  if (targetView === 'viewer' && appState.currentFile) {
-    switchMobileView('viewer', true);
-    openMarkdownFile(appState.currentFile.owner, appState.currentFile.name, appState.currentFile.path);
-  } else if (targetView === 'tree' && appState.currentRepo) {
-    switchMobileView('tree', true);
+  if (targetView === "viewer" && appState.currentFile) {
+    switchMobileView("viewer", true);
+    openMarkdownFile(
+      appState.currentFile.owner,
+      appState.currentFile.name,
+      appState.currentFile.path,
+    );
+  } else if (targetView === "tree" && appState.currentRepo) {
+    switchMobileView("tree", true);
     openRepo(appState.currentRepo.owner, appState.currentRepo.name, true);
   } else {
-    switchMobileView(targetView || 'favPages', true);
+    switchMobileView(targetView || "favPages", true);
   }
 }
 
 // --- LOGIC 1: PAT Entry & Connect ---
 async function connectWithToken() {
-  const input = document.getElementById('patInput');
-  const errorDiv = document.getElementById('patError');
+  const input = document.getElementById("patInput");
+  const errorDiv = document.getElementById("patError");
   const token = input.value.trim();
 
   if (!token) {
-    errorDiv.textContent = 'Personal Access Token is required.';
-    errorDiv.classList.remove('hidden');
+    errorDiv.textContent = "Personal Access Token is required.";
+    errorDiv.classList.remove("hidden");
     return;
   }
 
-  errorDiv.classList.add('hidden');
-  const btnConnect = document.getElementById('btnConnect');
+  errorDiv.classList.add("hidden");
+  const btnConnect = document.getElementById("btnConnect");
   btnConnect.disabled = true;
-  btnConnect.textContent = 'Connecting...';
+  btnConnect.textContent = "Connecting...";
 
   try {
-    const res = await fetch('https://api.github.com/user', {
+    const res = await fetch("https://api.github.com/user", {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.v3+json",
+      },
     });
 
     if (res.status === 200) {
       const userData = await res.json();
       appState.token = token;
-      localStorage.setItem('gh_pat_token', token);
-      
-      showFlash(`Welcome ${userData.login}! Connected successfully.`, 'success');
+      localStorage.setItem("gh_pat_token", token);
+
+      showFlash(
+        `Welcome ${userData.login}! Connected successfully.`,
+        "success",
+      );
       showAppShell();
       loadRepos();
       initAutoGistBackup();
     } else if (res.status === 401) {
-      errorDiv.textContent = 'Invalid or expired Personal Access Token.';
-      errorDiv.classList.remove('hidden');
+      errorDiv.textContent = "Invalid or expired Personal Access Token.";
+      errorDiv.classList.remove("hidden");
     } else {
       errorDiv.textContent = `Authentication error (HTTP ${res.status}).`;
-      errorDiv.classList.remove('hidden');
+      errorDiv.classList.remove("hidden");
     }
   } catch (err) {
-    console.error('Connect error:', err);
-    errorDiv.textContent = 'Network error. Please check your connection.';
-    errorDiv.classList.remove('hidden');
+    console.error("Connect error:", err);
+    errorDiv.textContent = "Network error. Please check your connection.";
+    errorDiv.classList.remove("hidden");
   } finally {
     btnConnect.disabled = false;
-    btnConnect.textContent = 'Connect';
+    btnConnect.textContent = "Connect";
   }
 }
 
 function showPatCard() {
-  document.getElementById('patEntryCard').classList.remove('hidden');
-  document.getElementById('appShell').classList.add('hidden');
-  document.getElementById('mobileBottomNav').classList.add('hidden');
-  document.getElementById('btnSettings').classList.add('hidden');
+  document.getElementById("patEntryCard").classList.remove("hidden");
+  document.getElementById("appShell").classList.add("hidden");
+  document.getElementById("mobileBottomNav").classList.add("hidden");
+  document.getElementById("btnSettings").classList.add("hidden");
 }
 
 function showAppShell() {
-  document.getElementById('patEntryCard').classList.add('hidden');
-  document.getElementById('appShell').classList.remove('hidden');
-  document.getElementById('mobileBottomNav').classList.remove('hidden');
-  document.getElementById('btnSettings').classList.remove('hidden');
-  document.getElementById('btnSettings').onclick = disconnectToken;
+  document.getElementById("patEntryCard").classList.add("hidden");
+  document.getElementById("appShell").classList.remove("hidden");
+  document.getElementById("mobileBottomNav").classList.remove("hidden");
+  document.getElementById("btnSettings").classList.remove("hidden");
+  document.getElementById("btnSettings").onclick = disconnectToken;
 
   restoreAppLocation();
 }
@@ -769,42 +861,50 @@ function disconnectToken() {
   if (appState.isEditing && !confirmDiscardEditorChanges()) {
     return;
   }
-  if (confirm('Are you sure you want to disconnect PAT? Favorites and Cache will be preserved.')) {
+  if (
+    confirm(
+      "Are you sure you want to disconnect PAT? Favorites and Cache will be preserved.",
+    )
+  ) {
     if (appState.isEditing) exitEditModeUI();
     appState.token = null;
-    localStorage.removeItem('gh_pat_token');
-    localStorage.removeItem('gh_last_location_state');
+    localStorage.removeItem("gh_pat_token");
+    localStorage.removeItem("gh_last_location_state");
     appState.repos = [];
     appState.currentRepo = null;
     appState.currentFile = null;
     appState.currentFileContent = null;
     appState.currentFileSha = null;
     showPatCard();
-    showFlash('Token disconnected.', 'info');
+    showFlash("Token disconnected.", "info");
   }
 }
 
 // --- LOGIC 2: Load Repositories ---
 async function loadRepos() {
-  const container = document.getElementById('repoListContainer');
-  container.innerHTML = '<div class="blankslate"><p>Loading repository list...</p></div>';
+  const container = document.getElementById("repoListContainer");
+  container.innerHTML =
+    '<div class="blankslate"><p>Loading repository list...</p></div>';
 
   try {
-    const res = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const res = await fetch(
+      "https://api.github.com/user/repos?sort=updated&per_page=100",
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
 
     if (res.ok) {
       const data = await res.json();
-      appState.repos = data.map(r => ({
+      appState.repos = data.map((r) => ({
         owner: r.owner.login,
         name: r.name,
-        description: r.description || '',
+        description: r.description || "",
         updatedAt: r.updated_at,
-        isPrivate: r.private
+        isPrivate: r.private,
       }));
 
       renderRepoList();
@@ -813,17 +913,19 @@ async function loadRepos() {
       container.innerHTML = `<div class="blankslate"><p class="text-danger">Unable to load repositories (HTTP ${res.status}).</p></div>`;
     }
   } catch (err) {
-    console.error('Load repos error:', err);
-    container.innerHTML = '<div class="blankslate"><p class="text-danger">Connection error while loading repository list.</p></div>';
+    console.error("Load repos error:", err);
+    container.innerHTML =
+      '<div class="blankslate"><p class="text-danger">Connection error while loading repository list.</p></div>';
   }
 }
 
 function renderRepoList(filteredList = null) {
-  const container = document.getElementById('repoListContainer');
+  const container = document.getElementById("repoListContainer");
   let list = filteredList || appState.repos;
 
   if (list.length === 0) {
-    container.innerHTML = '<div class="blankslate"><p>No repositories found.</p></div>';
+    container.innerHTML =
+      '<div class="blankslate"><p>No repositories found.</p></div>';
     return;
   }
 
@@ -833,16 +935,24 @@ function renderRepoList(filteredList = null) {
     const bFav = isRepoFavorited(b.owner, b.name) ? 1 : 0;
     if (bFav !== aFav) return bFav - aFav;
 
-    const aTime = a.lastModified || (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
-    const bTime = b.lastModified || (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
+    const aTime =
+      a.lastModified || (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
+    const bTime =
+      b.lastModified || (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
     return bTime - aTime;
   });
 
-  container.innerHTML = list.map(repo => {
-    const isFav = isRepoFavorited(repo.owner, repo.name);
-    const activeClass = appState.currentRepo && appState.currentRepo.owner === repo.owner && appState.currentRepo.name === repo.name ? 'active' : '';
-    
-    return `
+  container.innerHTML = list
+    .map((repo) => {
+      const isFav = isRepoFavorited(repo.owner, repo.name);
+      const activeClass =
+        appState.currentRepo &&
+        appState.currentRepo.owner === repo.owner &&
+        appState.currentRepo.name === repo.name
+          ? "active"
+          : "";
+
+      return `
       <div class="gh-action-item ${activeClass}" onclick="openRepo('${repo.owner}', '${repo.name}')">
         <div class="repo-item-main">
           <svg class="octicon octicon-repo text-muted" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
@@ -850,37 +960,56 @@ function renderRepoList(filteredList = null) {
           </svg>
           <div>
             <div class="repo-name">${repo.name}</div>
-            ${repo.description ? `<div class="repo-desc">${repo.description}</div>` : ''}
+            ${repo.description ? `<div class="repo-desc">${repo.description}</div>` : ""}
           </div>
         </div>
-        <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteRepo('${repo.owner}', '${repo.name}')" title="Favorite">
+        <button class="btn-star-icon ${isFav ? "favorited" : ""}" onclick="event.stopPropagation(); toggleFavoriteRepo('${repo.owner}', '${repo.name}')" title="Favorite">
           <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
             <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
           </svg>
         </button>
       </div>
     `;
-  }).join('');
+    })
+    .join("");
 }
 
 // --- LOGIC 3: Favorite Repo Toggles ---
 function isRepoFavorited(owner, name) {
-  return appState.favoriteRepos.some(r => r.owner === owner && r.name === name);
+  return appState.favoriteRepos.some(
+    (r) => r.owner === owner && r.name === name,
+  );
 }
 
 function toggleFavoriteRepo(owner, name) {
-  const index = appState.favoriteRepos.findIndex(r => r.owner === owner && r.name === name);
+  const index = appState.favoriteRepos.findIndex(
+    (r) => r.owner === owner && r.name === name,
+  );
   if (index > -1) {
     appState.favoriteRepos.splice(index, 1);
-    showFlash(`Removed ${owner}/${name} from Favorites.`, 'info');
+    showFlash(`Removed ${owner}/${name} from Favorites.`, "info");
   } else {
-    const repoObj = appState.repos.find(r => r.owner === owner && r.name === name);
-    const updatedAt = repoObj && repoObj.updatedAt ? new Date(repoObj.updatedAt).getTime() : Date.now();
-    appState.favoriteRepos.unshift({ owner, name, updatedAt, lastModified: Date.now(), addedAt: Date.now() });
-    showFlash(`Added ${owner}/${name} to Favorites!`, 'success');
+    const repoObj = appState.repos.find(
+      (r) => r.owner === owner && r.name === name,
+    );
+    const updatedAt =
+      repoObj && repoObj.updatedAt
+        ? new Date(repoObj.updatedAt).getTime()
+        : Date.now();
+    appState.favoriteRepos.unshift({
+      owner,
+      name,
+      updatedAt,
+      lastModified: Date.now(),
+      addedAt: Date.now(),
+    });
+    showFlash(`Added ${owner}/${name} to Favorites!`, "success");
   }
 
-  localStorage.setItem('gh_favorite_repos', JSON.stringify(appState.favoriteRepos));
+  localStorage.setItem(
+    "gh_favorite_repos",
+    JSON.stringify(appState.favoriteRepos),
+  );
   markStateDirty();
   renderRepoList();
   renderFavoritesList();
@@ -894,26 +1023,38 @@ function toggleCurrentRepoFavorite() {
 }
 
 function updateRepoFavoriteStar() {
-  const btn = document.getElementById('btnFavCurrentRepo');
-  if (!btn) return;
+  const btn = document.getElementById("btnFavCurrentRepo");
+  const btnNewFile = document.getElementById('btnCreateNewFile');
 
   if (!appState.currentRepo) {
-    btn.classList.add('hidden');
+    if (btn) btn.classList.add('hidden');
+    if (btnNewFile) btnNewFile.classList.add('hidden');
     return;
   }
 
-  btn.classList.remove('hidden');
-  const isFav = isRepoFavorited(appState.currentRepo.owner, appState.currentRepo.name);
-  if (isFav) btn.classList.add('favorited');
-  else btn.classList.remove('favorited');
+  if (btnNewFile) btnNewFile.classList.remove('hidden');
+
+  if (!btn) return;
+  btn.classList.remove("hidden");
+  const isFav = isRepoFavorited(
+    appState.currentRepo.owner,
+    appState.currentRepo.name,
+  );
+  if (isFav) btn.classList.add("favorited");
+  else btn.classList.remove("favorited");
 }
 
 // --- LOGIC 4: Open Repo & Fetch Tree ---
 async function openRepo(owner, name, keepPath = false) {
-  const favRepo = appState.favoriteRepos.find(r => r.owner === owner && r.name === name);
+  const favRepo = appState.favoriteRepos.find(
+    (r) => r.owner === owner && r.name === name,
+  );
   if (favRepo) {
     favRepo.lastModified = Date.now();
-    localStorage.setItem('gh_favorite_repos', JSON.stringify(appState.favoriteRepos));
+    localStorage.setItem(
+      "gh_favorite_repos",
+      JSON.stringify(appState.favoriteRepos),
+    );
   }
 
   appState.currentRepo = { owner, name };
@@ -922,32 +1063,39 @@ async function openRepo(owner, name, keepPath = false) {
   }
   renderRepoList();
   updateRepoFavoriteStar();
-  
-  switchMobileView('tree');
 
-  const treeContainer = document.getElementById('fileTreeContainer');
-  treeContainer.innerHTML = '<div class="blankslate"><p>Loading repository file tree...</p></div>';
+  switchMobileView("tree");
+
+  const treeContainer = document.getElementById("fileTreeContainer");
+  treeContainer.innerHTML =
+    '<div class="blankslate"><p>Loading repository file tree...</p></div>';
   updateBreadcrumb();
 
   try {
-    const repoRes = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const repoRes = await fetch(
+      `https://api.github.com/repos/${owner}/${name}`,
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
 
     if (!repoRes.ok) throw new Error(`HTTP ${repoRes.status}`);
     const repoData = await repoRes.json();
-    const defaultBranch = repoData.default_branch || 'main';
+    const defaultBranch = repoData.default_branch || "main";
     appState.currentRepo.defaultBranch = defaultBranch;
 
-    const treeRes = await fetch(`https://api.github.com/repos/${owner}/${name}/git/trees/${defaultBranch}?recursive=1`, {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const treeRes = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/git/trees/${defaultBranch}?recursive=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
 
     if (!treeRes.ok) throw new Error(`Tree HTTP ${treeRes.status}`);
     const treeData = await treeRes.json();
@@ -955,44 +1103,55 @@ async function openRepo(owner, name, keepPath = false) {
     appState.currentTreeEntries = treeData.tree || [];
     renderFileTree();
   } catch (err) {
-    console.error('Open repo error:', err);
-    treeContainer.innerHTML = '<div class="blankslate"><p class="text-danger">Unable to load file tree.</p></div>';
+    console.error("Open repo error:", err);
+    treeContainer.innerHTML =
+      '<div class="blankslate"><p class="text-danger">Unable to load file tree.</p></div>';
   }
 }
 
 // --- LOGIC 5: Navigate Folders & Render File Tree ---
 function renderFileTree() {
-  const container = document.getElementById('fileTreeContainer');
-  const currentPathStr = appState.currentPath.join('/');
-  
-  const entries = appState.currentTreeEntries.filter(entry => {
+  const container = document.getElementById("fileTreeContainer");
+  const currentPathStr = appState.currentPath.join("/");
+
+  const entries = appState.currentTreeEntries.filter((entry) => {
     if (!currentPathStr) {
-      return !entry.path.includes('/');
+      return !entry.path.includes("/");
     } else {
-      if (!entry.path.startsWith(currentPathStr + '/')) return false;
+      if (!entry.path.startsWith(currentPathStr + "/")) return false;
       const subPath = entry.path.slice(currentPathStr.length + 1);
-      return !subPath.includes('/');
+      return !subPath.includes("/");
     }
   });
 
   if (entries.length === 0) {
-    container.innerHTML = '<div class="blankslate"><p>This directory is empty.</p></div>';
+    container.innerHTML = `
+      <div class="blankslate">
+        <p style="margin-bottom: 14px;">This directory is empty.</p>
+        <button type="button" class="gh-btn gh-btn-sm gh-btn-primary" onclick="openCreateFileModal()">
+          <svg class="octicon octicon-plus" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+            <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path>
+          </svg>
+          <span>Tạo file mới tại đây</span>
+        </button>
+      </div>
+    `;
     return;
   }
 
   entries.sort((a, b) => {
     if (a.type === b.type) return a.path.localeCompare(b.path);
-    return a.type === 'tree' ? -1 : 1;
+    return a.type === "tree" ? -1 : 1;
   });
 
   container.innerHTML = entries.map(entry => {
     const isFolder = entry.type === 'tree';
-    const isMd = entry.path.endsWith('.md');
+    const isMd = /\.md$/i.test(entry.path);
     const name = entry.path.split('/').pop();
     const isFav = isMd && appState.currentRepo ? isFileFavorited(appState.currentRepo.owner, appState.currentRepo.name, entry.path) : false;
 
-    if (isFolder) {
-      return `
+      if (isFolder) {
+        return `
         <div class="tree-row" onclick="navigateFolder('${name}')">
           <div class="tree-row-left">
             <svg class="octicon octicon-file-directory" viewBox="0 0 16 16" width="18" height="18" fill="#54a3ff">
@@ -1002,41 +1161,54 @@ function renderFileTree() {
           </div>
         </div>
       `;
-    } else {
-      const cleanRepoName = appState.currentRepo ? ((appState.currentRepo.name || '').includes('/') ? appState.currentRepo.name.split('/').pop() : appState.currentRepo.name) : '';
-      return `
-        <div class="tree-row ${isMd ? 'is-md' : ''}" onclick="${isMd ? `openMarkdownFile('${appState.currentRepo.owner}', '${appState.currentRepo.name}', '${entry.path}')` : ''}">
+      } else {
+        const cleanRepoName = appState.currentRepo
+          ? (appState.currentRepo.name || "").includes("/")
+            ? appState.currentRepo.name.split("/").pop()
+            : appState.currentRepo.name
+          : "";
+        return `
+        <div class="tree-row ${isMd ? "is-md" : ""}" onclick="${isMd ? `openMarkdownFile('${appState.currentRepo.owner}', '${appState.currentRepo.name}', '${entry.path}')` : ""}">
           <div class="tree-row-left">
-            <svg class="octicon ${isMd ? 'octicon-file-code' : 'octicon-file'}" viewBox="0 0 16 16" width="18" height="18" fill="${isMd ? '#0969da' : '#656d76'}">
+            <svg class="octicon ${isMd ? "octicon-file-code" : "octicon-file"}" viewBox="0 0 16 16" width="18" height="18" fill="${isMd ? "#0969da" : "#656d76"}">
               <path d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v9.086A1.75 1.75 0 0 1 12.75 16H3.75A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8.5 4.25V1.5Zm6.75.5v2.25c0 .138.112.25.25.25h2.25L10.5 2Z"></path>
             </svg>
             <div>
-              ${isMd ? `<div class="repo-desc" style="font-size: 11px; color: var(--color-fg-muted); margin-bottom: 1px;">[${cleanRepoName}]:[${getParentDirPath(entry.path)}]</div>` : ''}
+              ${isMd ? `<div class="repo-desc" style="font-size: 11px; color: var(--color-fg-muted); margin-bottom: 1px;">[${cleanRepoName}]:[${getParentDirPath(entry.path)}]</div>` : ""}
               <span class="tree-name">${name}</span>
             </div>
           </div>
-          ${isMd ? `
-            <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteFile('${appState.currentRepo.owner}', '${appState.currentRepo.name}', '${entry.path}')" title="Favorite">
+          ${
+            isMd
+              ? `
+            <button class="btn-star-icon ${isFav ? "favorited" : ""}" onclick="event.stopPropagation(); toggleFavoriteFile('${appState.currentRepo.owner}', '${appState.currentRepo.name}', '${entry.path}')" title="Favorite">
               <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
                 <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
               </svg>
             </button>
-          ` : ''}
+          `
+              : ""
+          }
         </div>
       `;
-    }
-  }).join('');
+      }
+    })
+    .join("");
 }
 
 function navigateFolder(folderName, skipPushState = false) {
-  if (folderName === '..') {
+  if (folderName === "..") {
     appState.currentPath.pop();
   } else {
     appState.currentPath.push(folderName);
   }
   if (!skipPushState) {
     try {
-      history.pushState({ view: 'tree', pathLength: appState.currentPath.length }, '', '#/tree');
+      history.pushState(
+        { view: "tree", pathLength: appState.currentPath.length },
+        "",
+        "#/tree",
+      );
     } catch (e) {}
   }
   updateBreadcrumb();
@@ -1046,14 +1218,15 @@ function navigateFolder(folderName, skipPushState = false) {
 }
 
 function updateBreadcrumb() {
-  const container = document.getElementById('breadcrumb');
+  const container = document.getElementById("breadcrumb");
   if (!appState.currentRepo) {
-    container.innerHTML = '<span class="text-muted">No repository selected</span>';
+    container.innerHTML =
+      '<span class="text-muted">No repository selected</span>';
     return;
   }
 
   let html = `<span class="crumb-link" onclick="appState.currentPath=[]; updateBreadcrumb(); renderFileTree(); updateHeaderBackButton();">${appState.currentRepo.name}</span>`;
-  
+
   let accumulatedPath = [];
   appState.currentPath.forEach((segment) => {
     accumulatedPath.push(segment);
@@ -1065,12 +1238,19 @@ function updateBreadcrumb() {
 }
 
 function formatCommitTime(dateInput) {
-  if (!dateInput) return 'vừa xong';
+  if (!dateInput) return "vừa xong";
   try {
     const d = new Date(dateInput);
     if (isNaN(d.getTime())) return String(dateInput);
-    const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = d.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    const timeStr = d.toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     const ago = formatTimeAgo(d.getTime());
     return `${dateStr} ${timeStr} (${ago})`;
   } catch (e) {
@@ -1081,30 +1261,35 @@ function formatCommitTime(dateInput) {
 async function fetchLatestCommitInfo(owner, name, path) {
   if (!appState.token) return null;
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/commits?path=${encodeURIComponent(path)}&page=1&per_page=1`, {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/commits?path=${encodeURIComponent(path)}&page=1&per_page=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         const item = data[0];
         return {
           sha: item.sha,
-          date: item.commit ? (item.commit.committer?.date || item.commit.author?.date) : null
+          date: item.commit
+            ? item.commit.committer?.date || item.commit.author?.date
+            : null,
         };
       }
     }
   } catch (e) {
-    console.warn('Fetch commit info error:', e);
+    console.warn("Fetch commit info error:", e);
   }
   return null;
 }
 
 async function checkAndUpdatePageIfModified(owner, name, path, cached) {
-  updateFileSyncBadge('syncing');
+  updateFileSyncBadge("syncing");
 
   try {
     // 1. Fast API check: fetch latest commit info (~400 bytes)
@@ -1115,21 +1300,24 @@ async function checkAndUpdatePageIfModified(owner, name, path, cached) {
     // 2. Check if file has changed remote
     let hasChanged = false;
     if (cached.lastCommitSha && latestCommitSha) {
-      hasChanged = (cached.lastCommitSha !== latestCommitSha);
+      hasChanged = cached.lastCommitSha !== latestCommitSha;
     } else {
       // Fallback for legacy cache: check If-None-Match header against GitHub
-      const metaRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
-        headers: {
-          'Authorization': `Bearer ${appState.token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'If-None-Match': cached.sha ? `"${cached.sha}"` : ''
-        }
-      });
+      const metaRes = await fetch(
+        `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${appState.token}`,
+            Accept: "application/vnd.github.v3+json",
+            "If-None-Match": cached.sha ? `"${cached.sha}"` : "",
+          },
+        },
+      );
       if (metaRes.status === 304) {
         hasChanged = false;
       } else if (metaRes.ok) {
         const metaData = await metaRes.json();
-        hasChanged = (cached.sha !== metaData.sha);
+        hasChanged = cached.sha !== metaData.sha;
       }
     }
 
@@ -1139,17 +1327,20 @@ async function checkAndUpdatePageIfModified(owner, name, path, cached) {
       if (latestCommitSha) cached.lastCommitSha = latestCommitSha;
       if (lastCommitDate) cached.lastCommitDate = lastCommitDate;
       await getIdb().set(cached.fileKey, cached);
-      updateFileSyncBadge('synced', cached.lastSyncedAt);
+      updateFileSyncBadge("synced", cached.lastSyncedAt);
       return;
     }
 
     // File HAS CHANGED remote! Download new content
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
 
     if (res.ok) {
       const data = await res.json();
@@ -1164,29 +1355,38 @@ async function checkAndUpdatePageIfModified(owner, name, path, cached) {
         sha: data.sha,
         lastCommitSha: latestCommitSha || cached.lastCommitSha || data.sha,
         lastCommitDate: lastCommitDate || cached.lastCommitDate || null,
-        lastSyncedAt: Date.now()
+        lastSyncedAt: Date.now(),
       };
 
       await getIdb().set(cached.fileKey, updatedCache);
       markStateDirty();
 
-      if (appState.currentFile && appState.currentFile.owner === owner && appState.currentFile.name === name && appState.currentFile.path === path) {
+      if (
+        appState.currentFile &&
+        appState.currentFile.owner === owner &&
+        appState.currentFile.name === name &&
+        appState.currentFile.path === path
+      ) {
         appState.currentFileSha = data.sha || null;
         if (!appState.isEditing) {
           appState.currentFileContent = rawContent;
           renderMarkdown(rawContent);
-          updateFileSyncBadge('synced', Date.now());
+          updateFileSyncBadge("synced", Date.now());
 
           const commitTimeStr = formatCommitTime(updatedCache.lastCommitDate);
-          showFlash(`Trang đã được cập nhật mới (Commit gần nhất: ${commitTimeStr})`, 'success', 500);
+          showFlash(
+            `Trang đã được cập nhật mới (Commit gần nhất: ${commitTimeStr})`,
+            "success",
+            500,
+          );
         }
       }
     } else {
-      updateFileSyncBadge('cached', cached.lastSyncedAt);
+      updateFileSyncBadge("cached", cached.lastSyncedAt);
     }
   } catch (err) {
-    console.warn('Check & update page error:', err);
-    updateFileSyncBadge('cached', cached.lastSyncedAt);
+    console.warn("Check & update page error:", err);
+    updateFileSyncBadge("cached", cached.lastSyncedAt);
   }
 }
 
@@ -1205,32 +1405,42 @@ async function openMarkdownFile(owner, name, path) {
   saveCurrentLocationState();
   const fileKey = `${owner}/${name}/${path}`;
 
-  const favFile = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+  const favFile = appState.favoriteFiles.find(
+    (f) => f.owner === owner && f.name === name && f.path === path,
+  );
   if (favFile) {
     favFile.lastModified = Date.now();
-    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    localStorage.setItem(
+      "gh_favorite_files",
+      JSON.stringify(appState.favoriteFiles),
+    );
   }
 
   addToHistory(owner, name, path);
-  switchMobileView('viewer');
+  switchMobileView("viewer");
 
-  const cleanRepoName = (name || '').includes('/') ? name.split('/').pop() : name;
-  const fileName = path.split('/').pop();
+  const cleanRepoName = (name || "").includes("/")
+    ? name.split("/").pop()
+    : name;
+  const fileName = path.split("/").pop();
   const parentPath = getParentDirPath(path);
-  const repoPathDesc = parentPath ? `[${cleanRepoName}]:[${parentPath}]` : `[${cleanRepoName}]`;
+  const repoPathDesc = parentPath
+    ? `[${cleanRepoName}]:[${parentPath}]`
+    : `[${cleanRepoName}]`;
 
-  const headerViewerTitleEl = document.getElementById('headerViewerTitle');
+  const headerViewerTitleEl = document.getElementById("headerViewerTitle");
   if (headerViewerTitleEl) {
     headerViewerTitleEl.innerHTML = `<div class="header-viewer-repo">${escapeHtml(repoPathDesc)}</div><div class="header-viewer-filename">${escapeHtml(fileName)}</div>`;
   }
-  const viewerTitleEl = document.getElementById('viewerFileName');
+  const viewerTitleEl = document.getElementById("viewerFileName");
   if (viewerTitleEl) {
     viewerTitleEl.innerHTML = `<div class="repo-desc" style="font-size: 11px; color: var(--color-fg-muted); line-height: 1.2;">${repoPathDesc}</div><div style="font-weight: 600; font-size: 14px; color: var(--gh-text-primary); line-height: 1.3;">${fileName}</div>`;
   }
-  document.getElementById('linkOpenGithub').href = `https://github.com/${owner}/${name}/blob/${appState.currentRepo ? appState.currentRepo.defaultBranch || 'main' : 'main'}/${encodeGitPath(path)}`;
+  document.getElementById("linkOpenGithub").href =
+    `https://github.com/${owner}/${name}/blob/${appState.currentRepo ? appState.currentRepo.defaultBranch || "main" : "main"}/${encodeGitPath(path)}`;
 
   updateViewerFavoriteStar();
-  const viewerPanel = document.getElementById('markdownViewerPanel');
+  const viewerPanel = document.getElementById("markdownViewerPanel");
   viewerPanel.innerHTML = '<p class="text-muted">Loading document...</p>';
   clearReaderTableOfContents();
 
@@ -1238,15 +1448,17 @@ async function openMarkdownFile(owner, name, path) {
   let cached = null;
   try {
     cached = await getIdb().get(fileKey);
-  } catch (err) { console.warn('Cache read error:', err); }
+  } catch (err) {
+    console.warn("Cache read error:", err);
+  }
 
-  if (cached && typeof cached.content === 'string') {
+  if (cached && typeof cached.content === "string") {
     // Self-healing: if cached content was polluted with GitHub API JSON metadata
     if (isGitHubApiJson(cached.content)) {
       try {
         const parsed = JSON.parse(cached.content);
-        if (parsed.size === 0 || parsed.content === '') {
-          cached.content = '';
+        if (parsed.size === 0 || parsed.content === "") {
+          cached.content = "";
           await getIdb().set(fileKey, cached);
         } else if (parsed.content) {
           cached.content = base64ToUtf8(parsed.content);
@@ -1260,13 +1472,13 @@ async function openMarkdownFile(owner, name, path) {
     }
   }
 
-  if (cached && typeof cached.content === 'string') {
+  if (cached && typeof cached.content === "string") {
     appState.currentFileSha = cached.sha || null;
     renderMarkdown(cached.content);
-    updateFileSyncBadge('cached', cached.lastSyncedAt);
+    updateFileSyncBadge("cached", cached.lastSyncedAt);
 
     if (appState.isOffline) {
-      showFlash('Viewing offline cached version.', 'info');
+      showFlash("Viewing offline cached version.", "info");
       return;
     }
 
@@ -1278,20 +1490,24 @@ async function openMarkdownFile(owner, name, path) {
 
   // Step 2: If Offline (and no cache)
   if (appState.isOffline) {
-    viewerPanel.innerHTML = '<div class="blankslate"><p class="text-danger">No network connection and no offline cached version available for this file.</p></div>';
+    viewerPanel.innerHTML =
+      '<div class="blankslate"><p class="text-danger">No network connection and no offline cached version available for this file.</p></div>';
     return;
   }
 
   // Step 3: Fetch GitHub API (Initial load, no cache yet)
-  updateFileSyncBadge('syncing');
+  updateFileSyncBadge("syncing");
 
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
 
     if (res.ok) {
       const data = await res.json();
@@ -1311,38 +1527,42 @@ async function openMarkdownFile(owner, name, path) {
         sha: data.sha,
         lastCommitSha: commitInfo ? commitInfo.sha : data.sha,
         lastCommitDate: commitInfo ? commitInfo.date : null,
-        lastSyncedAt: Date.now()
+        lastSyncedAt: Date.now(),
       };
       await getIdb().set(fileKey, newCache);
 
-      updateFileSyncBadge('synced', Date.now());
+      updateFileSyncBadge("synced", Date.now());
     } else {
-      const errorText = await res.text().catch(() => '');
-      viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Unable to load file from GitHub (HTTP ${res.status}). ${errorText ? `<br><small>${errorText}</small>` : ''}</p></div>`;
+      const errorText = await res.text().catch(() => "");
+      viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Unable to load file from GitHub (HTTP ${res.status}). ${errorText ? `<br><small>${errorText}</small>` : ""}</p></div>`;
     }
   } catch (err) {
-    console.error('Fetch markdown error:', err);
+    console.error("Fetch markdown error:", err);
     viewerPanel.innerHTML = `<div class="blankslate"><p class="text-danger">Connection error loading file: ${err.message || err}</p></div>`;
   }
 }
 
 function updateFileSyncBadge(status) {
-  const badge = document.getElementById('fileSyncBadge');
-  if (status === 'synced') {
-    badge.className = 'gh-badge gh-badge-success';
-    badge.innerHTML = '🟢 Synced';
-  } else if (status === 'syncing') {
-    badge.className = 'gh-badge gh-badge-secondary';
-    badge.innerHTML = '🟡 Syncing...';
-  } else if (status === 'cached') {
-    badge.className = 'gh-badge gh-badge-secondary';
-    badge.innerHTML = '⚪ Cache';
+  const badge = document.getElementById("fileSyncBadge");
+  if (status === "synced") {
+    badge.className = "gh-badge gh-badge-success";
+    badge.innerHTML = "🟢 Synced";
+  } else if (status === "syncing") {
+    badge.className = "gh-badge gh-badge-secondary";
+    badge.innerHTML = "🟡 Syncing...";
+  } else if (status === "cached") {
+    badge.className = "gh-badge gh-badge-secondary";
+    badge.innerHTML = "⚪ Cache";
   }
 }
 
 // --- LOGIC 7 & 8: Render Markdown, PlantUML & Mermaid ---
 function renderMarkdown(rawContent) {
-  if (typeof ttsStop === 'function' && typeof ttsState !== 'undefined' && ttsState.active) {
+  if (
+    typeof ttsStop === "function" &&
+    typeof ttsState !== "undefined" &&
+    ttsState.active
+  ) {
     ttsStop();
   }
 
@@ -1350,22 +1570,22 @@ function renderMarkdown(rawContent) {
   if (isGitHubApiJson(rawContent)) {
     try {
       const parsed = JSON.parse(rawContent);
-      if (parsed.size === 0 || parsed.content === '') {
-        rawContent = '';
+      if (parsed.size === 0 || parsed.content === "") {
+        rawContent = "";
       } else if (parsed.content) {
         rawContent = base64ToUtf8(parsed.content);
       } else {
-        rawContent = '';
+        rawContent = "";
       }
     } catch (e) {
-      rawContent = '';
+      rawContent = "";
     }
   }
 
   appState.currentFileContent = rawContent;
 
-  const viewerPanel = document.getElementById('markdownViewerPanel');
-  const rawPanel = document.getElementById('rawMarkdownPanel');
+  const viewerPanel = document.getElementById("markdownViewerPanel");
+  const rawPanel = document.getElementById("rawMarkdownPanel");
 
   if (!rawContent || !rawContent.trim()) {
     viewerPanel.innerHTML = `
@@ -1383,35 +1603,35 @@ function renderMarkdown(rawContent) {
         </button>
       </div>
     `;
-    if (rawPanel) rawPanel.textContent = '';
+    if (rawPanel) rawPanel.textContent = "";
     clearReaderTableOfContents();
     return;
   }
 
   const renderer = new marked.Renderer();
 
-  renderer.code = function(codeOrObj, languageStr) {
-    let code = '';
-    let lang = '';
+  renderer.code = function (codeOrObj, languageStr) {
+    let code = "";
+    let lang = "";
 
-    if (typeof codeOrObj === 'object' && codeOrObj !== null) {
-      code = codeOrObj.text || '';
-      lang = codeOrObj.lang || '';
+    if (typeof codeOrObj === "object" && codeOrObj !== null) {
+      code = codeOrObj.text || "";
+      lang = codeOrObj.lang || "";
     } else {
-      code = codeOrObj || '';
-      lang = languageStr || '';
+      code = codeOrObj || "";
+      lang = languageStr || "";
     }
 
-    lang = (lang || '').toLowerCase().trim();
+    lang = (lang || "").toLowerCase().trim();
 
-    if (lang === 'mermaid') {
+    if (lang === "mermaid") {
       const cleanMermaid = code
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&amp;/g, "&")
         .trim();
       return `<div class="mermaid">${cleanMermaid}</div>`;
-    } else if (lang === 'plantuml' || lang === 'puml') {
+    } else if (lang === "plantuml" || lang === "puml") {
       const encoded = encodePlantUML(code);
       const url = `https://www.plantuml.com/plantuml/svg/${encoded}`;
       return `
@@ -1438,8 +1658,20 @@ function renderMarkdown(rawContent) {
   marked.setOptions({ renderer });
   const rawHtml = marked.parse(rawContent);
   const cleanHtml = DOMPurify.sanitize(rawHtml, {
-    ADD_TAGS: ['div', 'img', 'button', 'span', 'svg', 'path'],
-    ADD_ATTR: ['src', 'alt', 'class', 'type', 'title', 'aria-label', 'viewBox', 'width', 'height', 'fill', 'd']
+    ADD_TAGS: ["div", "img", "button", "span", "svg", "path"],
+    ADD_ATTR: [
+      "src",
+      "alt",
+      "class",
+      "type",
+      "title",
+      "aria-label",
+      "viewBox",
+      "width",
+      "height",
+      "fill",
+      "d",
+    ],
   });
 
   viewerPanel.innerHTML = cleanHtml;
@@ -1450,33 +1682,39 @@ function renderMarkdown(rawContent) {
     try {
       renderMathInElement(viewerPanel, {
         delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false },
-          { left: '\\(', right: '\\)', display: false },
-          { left: '\\[', right: '\\]', display: true }
+          { left: "$$", right: "$$", display: true },
+          { left: "$", right: "$", display: false },
+          { left: "\\(", right: "\\)", display: false },
+          { left: "\\[", right: "\\]", display: true },
         ],
         throwOnError: false,
-        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
       });
     } catch (kErr) {
-      console.warn('KaTeX render warning:', kErr);
+      console.warn("KaTeX render warning:", kErr);
     }
   }
 
   if (window.mermaid) {
     try {
-      const mNodes = viewerPanel.querySelectorAll('.mermaid');
+      const mNodes = viewerPanel.querySelectorAll(".mermaid");
       if (mNodes.length > 0) {
-        mermaid.run({
-          nodes: Array.from(mNodes)
-        }).catch(mErr => console.warn('Mermaid async run err:', mErr));
+        mermaid
+          .run({
+            nodes: Array.from(mNodes),
+          })
+          .catch((mErr) => console.warn("Mermaid async run err:", mErr));
       }
-    } catch (mErr) { console.warn('Mermaid warning:', mErr); }
+    } catch (mErr) {
+      console.warn("Mermaid warning:", mErr);
+    }
   }
 
-  viewerPanel.querySelectorAll('pre code').forEach((block) => {
-    if (window.hljs && typeof window.hljs.highlightElement === 'function') {
-      try { window.hljs.highlightElement(block); } catch (e) {}
+  viewerPanel.querySelectorAll("pre code").forEach((block) => {
+    if (window.hljs && typeof window.hljs.highlightElement === "function") {
+      try {
+        window.hljs.highlightElement(block);
+      } catch (e) {}
     }
   });
 
@@ -1486,15 +1724,15 @@ function renderMarkdown(rawContent) {
 }
 
 function handleCopyCodeBlock(btn) {
-  const wrapper = btn.closest('.code-block-wrapper');
+  const wrapper = btn.closest(".code-block-wrapper");
   if (!wrapper) return;
-  const codeEl = wrapper.querySelector('pre code');
+  const codeEl = wrapper.querySelector("pre code");
   if (!codeEl) return;
 
-  const codeText = codeEl.textContent || codeEl.innerText || '';
+  const codeText = codeEl.textContent || codeEl.innerText || "";
 
   const setCopiedUI = () => {
-    btn.classList.add('copied');
+    btn.classList.add("copied");
     btn.innerHTML = `
       <svg class="octicon octicon-check" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
         <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
@@ -1502,7 +1740,7 @@ function handleCopyCodeBlock(btn) {
       <span>Copied!</span>
     `;
     setTimeout(() => {
-      btn.classList.remove('copied');
+      btn.classList.remove("copied");
       btn.innerHTML = `
         <svg class="octicon octicon-copy" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
           <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
@@ -1513,10 +1751,13 @@ function handleCopyCodeBlock(btn) {
   };
 
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(codeText).then(setCopiedUI).catch(() => {
-      fallbackCopyText(codeText);
-      setCopiedUI();
-    });
+    navigator.clipboard
+      .writeText(codeText)
+      .then(setCopiedUI)
+      .catch(() => {
+        fallbackCopyText(codeText);
+        setCopiedUI();
+      });
   } else {
     fallbackCopyText(codeText);
     setCopiedUI();
@@ -1525,37 +1766,37 @@ function handleCopyCodeBlock(btn) {
 
 function fallbackCopyText(text) {
   try {
-    const textArea = document.createElement('textarea');
+    const textArea = document.createElement("textarea");
     textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.top = '0';
-    textArea.style.left = '0';
-    textArea.style.width = '2em';
-    textArea.style.height = '2em';
-    textArea.style.padding = '0';
-    textArea.style.border = 'none';
-    textArea.style.outline = 'none';
-    textArea.style.boxShadow = 'none';
-    textArea.style.background = 'transparent';
+    textArea.style.position = "fixed";
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.width = "2em";
+    textArea.style.height = "2em";
+    textArea.style.padding = "0";
+    textArea.style.border = "none";
+    textArea.style.outline = "none";
+    textArea.style.boxShadow = "none";
+    textArea.style.background = "transparent";
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
-    document.execCommand('copy');
+    document.execCommand("copy");
     document.body.removeChild(textArea);
   } catch (e) {
-    console.warn('Fallback copy failed:', e);
+    console.warn("Fallback copy failed:", e);
   }
 }
 
 function encodePlantUML(sourceText) {
-  if (!sourceText) return '';
+  if (!sourceText) return "";
   try {
     const utf8Bytes = new TextEncoder().encode(sourceText);
     const compressed = pako.deflateRaw(utf8Bytes);
     return encode64(compressed);
   } catch (err) {
-    console.error('PlantUML encode error:', err);
-    return '';
+    console.error("PlantUML encode error:", err);
+    return "";
   }
 }
 
@@ -1576,9 +1817,14 @@ function encode64(data) {
 function append3bytes(b1, b2, b3) {
   const c1 = b1 >> 2;
   const c2 = ((b1 & 0x3) << 4) | (b2 >> 4);
-  const c3 = ((b2 & 0xF) << 2) | (b3 >> 6);
-  const c4 = b3 & 0x3F;
-  return encode6bit(c1 & 0x3F) + encode6bit(c2 & 0x3F) + encode6bit(c3 & 0x3F) + encode6bit(c4 & 0x3F);
+  const c3 = ((b2 & 0xf) << 2) | (b3 >> 6);
+  const c4 = b3 & 0x3f;
+  return (
+    encode6bit(c1 & 0x3f) +
+    encode6bit(c2 & 0x3f) +
+    encode6bit(c3 & 0x3f) +
+    encode6bit(c4 & 0x3f)
+  );
 }
 
 function encode6bit(b) {
@@ -1588,41 +1834,45 @@ function encode6bit(b) {
   b -= 26;
   if (b < 26) return String.fromCharCode(97 + b);
   b -= 26;
-  if (b === 0) return '-';
-  if (b === 1) return '_';
-  return '?';
+  if (b === 0) return "-";
+  if (b === 1) return "_";
+  return "?";
 }
 
 function toggleRawView() {
   appState.isRawView = !appState.isRawView;
-  const viewerPanel = document.getElementById('markdownViewerPanel');
-  const rawPanel = document.getElementById('rawMarkdownPanel');
-  const btnToggle = document.getElementById('btnToggleRaw');
+  const viewerPanel = document.getElementById("markdownViewerPanel");
+  const rawPanel = document.getElementById("rawMarkdownPanel");
+  const btnToggle = document.getElementById("btnToggleRaw");
 
   if (appState.isRawView) {
-    viewerPanel.classList.add('hidden');
-    rawPanel.classList.remove('hidden');
-    btnToggle.textContent = 'Preview';
+    viewerPanel.classList.add("hidden");
+    rawPanel.classList.remove("hidden");
+    btnToggle.textContent = "Preview";
   } else {
-    viewerPanel.classList.remove('hidden');
-    rawPanel.classList.add('hidden');
-    btnToggle.textContent = 'Raw';
+    viewerPanel.classList.remove("hidden");
+    rawPanel.classList.add("hidden");
+    btnToggle.textContent = "Raw";
   }
 }
 
 async function copyAllMarkdown() {
-  const content = appState.currentFileContent || (document.getElementById('rawMarkdownPanel') ? document.getElementById('rawMarkdownPanel').textContent : '');
+  const content =
+    appState.currentFileContent ||
+    (document.getElementById("rawMarkdownPanel")
+      ? document.getElementById("rawMarkdownPanel").textContent
+      : "");
   if (!content) {
-    showFlash('No Markdown content available to copy.', 'info');
+    showFlash("No Markdown content available to copy.", "info");
     return;
   }
 
-  const btn = document.getElementById('btnCopyAllMarkdown');
-  const originalHtml = btn ? btn.innerHTML : '';
+  const btn = document.getElementById("btnCopyAllMarkdown");
+  const originalHtml = btn ? btn.innerHTML : "";
 
   const setCopiedUI = () => {
     if (btn) {
-      btn.classList.add('copied');
+      btn.classList.add("copied");
       btn.innerHTML = `
         <svg class="octicon octicon-check" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
           <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
@@ -1630,11 +1880,11 @@ async function copyAllMarkdown() {
         <span>Copied!</span>
       `;
       setTimeout(() => {
-        btn.classList.remove('copied');
+        btn.classList.remove("copied");
         btn.innerHTML = originalHtml;
       }, 2000);
     }
-    showFlash('Copied entire Markdown file to clipboard!', 'success');
+    showFlash("Copied entire Markdown file to clipboard!", "success");
   };
 
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1652,27 +1902,31 @@ async function copyAllMarkdown() {
 }
 
 async function downloadCurrentMarkdownFile() {
-  const content = appState.currentFileContent || (document.getElementById('rawMarkdownPanel') ? document.getElementById('rawMarkdownPanel').textContent : '');
+  const content =
+    appState.currentFileContent ||
+    (document.getElementById("rawMarkdownPanel")
+      ? document.getElementById("rawMarkdownPanel").textContent
+      : "");
   if (!content) {
-    showFlash('No Markdown content available to download.', 'info');
+    showFlash("No Markdown content available to download.", "info");
     return;
   }
 
-  let fileName = 'document.md';
+  let fileName = "document.md";
   if (appState.currentFile && appState.currentFile.path) {
-    fileName = appState.currentFile.path.split('/').pop() || 'document.md';
+    fileName = appState.currentFile.path.split("/").pop() || "document.md";
   }
 
-  const btn = document.getElementById('btnDownloadMarkdown');
-  const originalHtml = btn ? btn.innerHTML : '';
+  const btn = document.getElementById("btnDownloadMarkdown");
+  const originalHtml = btn ? btn.innerHTML : "";
 
   try {
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-    const success = await downloadBlobFile(blob, fileName, 'text/markdown');
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const success = await downloadBlobFile(blob, fileName, "text/markdown");
     if (!success) return; // User cancelled share dialog
 
     if (btn) {
-      btn.classList.add('copied');
+      btn.classList.add("copied");
       btn.innerHTML = `
         <svg class="octicon octicon-check" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
           <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
@@ -1680,20 +1934,22 @@ async function downloadCurrentMarkdownFile() {
         <span>Saved!</span>
       `;
       setTimeout(() => {
-        btn.classList.remove('copied');
+        btn.classList.remove("copied");
         btn.innerHTML = originalHtml;
       }, 2000);
     }
-    showFlash(`Downloaded ${fileName}!`, 'success');
+    showFlash(`Downloaded ${fileName}!`, "success");
   } catch (err) {
-    console.error('Download error:', err);
-    showFlash('Failed to download Markdown file.', 'error');
+    console.error("Download error:", err);
+    showFlash("Failed to download Markdown file.", "error");
   }
 }
 
 // --- LOGIC 9 & 12: Favorite Files & Auto-cache ---
 function isFileFavorited(owner, name, path) {
-  return appState.favoriteFiles.some(f => f.owner === owner && f.name === name && f.path === path);
+  return appState.favoriteFiles.some(
+    (f) => f.owner === owner && f.name === name && f.path === path,
+  );
 }
 
 function toggleCurrentFileFavorite() {
@@ -1703,78 +1959,126 @@ function toggleCurrentFileFavorite() {
 }
 
 async function toggleFavoriteFile(owner, name, path) {
-  const index = appState.favoriteFiles.findIndex(f => f.owner === owner && f.name === name && f.path === path);
+  const index = appState.favoriteFiles.findIndex(
+    (f) => f.owner === owner && f.name === name && f.path === path,
+  );
   const fileKey = `${owner}/${name}/${path}`;
 
   if (index > -1) {
     // If user clicks star from file viewer or elsewhere, confirm if removing from All
-    if (confirm('Remove file from Favorites & delete from All groups permanently?')) {
+    if (
+      confirm(
+        "Remove file from Favorites & delete from All groups permanently?",
+      )
+    ) {
       appState.favoriteFiles.splice(index, 1);
-      try { await getIdb().del(fileKey); } catch (err) {}
-      showFlash('Removed file from Favorites.', 'info');
+      try {
+        await getIdb().del(fileKey);
+      } catch (err) {}
+      showFlash("Removed file from Favorites.", "info");
     } else {
       return;
     }
   } else {
-    appState.favoriteFiles.unshift({ owner, name, path, groups: ['All'], lastModified: Date.now(), addedAt: Date.now() });
-    showFlash('Added file to Favorites & Cached offline!', 'success');
-    
-    if (appState.currentFileContent && appState.currentFile && appState.currentFile.path === path) {
+    appState.favoriteFiles.unshift({
+      owner,
+      name,
+      path,
+      groups: ["All"],
+      lastModified: Date.now(),
+      addedAt: Date.now(),
+    });
+    showFlash("Added file to Favorites & Cached offline!", "success");
+
+    if (
+      appState.currentFileContent &&
+      appState.currentFile &&
+      appState.currentFile.path === path
+    ) {
       cacheFavoriteFile(owner, name, path, appState.currentFileContent);
     } else {
       cacheFavoriteFile(owner, name, path);
     }
   }
 
-  localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+  localStorage.setItem(
+    "gh_favorite_files",
+    JSON.stringify(appState.favoriteFiles),
+  );
   markStateDirty();
   updateViewerFavoriteStar();
   renderFavoritesList();
-  if (appState.mobileView === 'tree') renderFileTree();
-  if (appState.mobileView === 'history') renderHistoryList();
+  if (appState.mobileView === "tree") renderFileTree();
+  if (appState.mobileView === "history") renderHistoryList();
 }
 
-async function cacheFavoriteFile(owner, name, path, content = null, sha = '') {
+async function cacheFavoriteFile(owner, name, path, content = null, sha = "") {
   const fileKey = `${owner}/${name}/${path}`;
 
-  const favFile = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+  const favFile = appState.favoriteFiles.find(
+    (f) => f.owner === owner && f.name === name && f.path === path,
+  );
   if (favFile) {
     favFile.lastModified = Date.now();
-    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    localStorage.setItem(
+      "gh_favorite_files",
+      JSON.stringify(appState.favoriteFiles),
+    );
   }
-  
-  if (typeof content === 'string') {
-    const data = { fileKey, owner, name, path, content, sha, lastSyncedAt: Date.now() };
+
+  if (typeof content === "string") {
+    const data = {
+      fileKey,
+      owner,
+      name,
+      path,
+      content,
+      sha,
+      lastSyncedAt: Date.now(),
+    };
     await getIdb().set(fileKey, data);
     markStateDirty();
     return;
   }
 
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
 
     if (res.ok) {
       const fileData = await res.json();
       const raw = await resolveFileRawContent(fileData, owner, name, path);
-      const data = { fileKey, owner, name, path, content: raw, sha: fileData.sha, lastSyncedAt: Date.now() };
+      const data = {
+        fileKey,
+        owner,
+        name,
+        path,
+        content: raw,
+        sha: fileData.sha,
+        lastSyncedAt: Date.now(),
+      };
       await getIdb().set(fileKey, data);
     }
-  } catch (err) { console.error('Cache favorite err:', err); }
+  } catch (err) {
+    console.error("Cache favorite err:", err);
+  }
 }
 
 function updateViewerFavoriteStar() {
   if (!appState.currentFile) return;
   const { owner, name, path } = appState.currentFile;
   const isFav = isFileFavorited(owner, name, path);
-  const btn = document.getElementById('btnFavCurrentFile');
+  const btn = document.getElementById("btnFavCurrentFile");
   if (btn) {
-    if (isFav) btn.classList.add('favorited');
-    else btn.classList.remove('favorited');
+    if (isFav) btn.classList.add("favorited");
+    else btn.classList.remove("favorited");
   }
 }
 
@@ -1782,14 +2086,30 @@ async function manageCurrentFileGroups() {
   if (!appState.currentFile) return;
   const { owner, name, path } = appState.currentFile;
 
-  let file = appState.favoriteFiles.find(f => f.owner === owner && (f.name === name || (f.name && name && f.name.endsWith(name))) && f.path === path)
-    || appState.favoriteFiles.find(f => f.owner === owner && f.path === path);
+  let file =
+    appState.favoriteFiles.find(
+      (f) =>
+        f.owner === owner &&
+        (f.name === name || (f.name && name && f.name.endsWith(name))) &&
+        f.path === path,
+    ) ||
+    appState.favoriteFiles.find((f) => f.owner === owner && f.path === path);
 
   if (!file) {
     // Automatically add to Favorites with default group ['All'] and cache offline
-    const newFav = { owner, name, path, groups: ['All'], lastModified: Date.now(), addedAt: Date.now() };
+    const newFav = {
+      owner,
+      name,
+      path,
+      groups: ["All"],
+      lastModified: Date.now(),
+      addedAt: Date.now(),
+    };
     appState.favoriteFiles.unshift(newFav);
-    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    localStorage.setItem(
+      "gh_favorite_files",
+      JSON.stringify(appState.favoriteFiles),
+    );
     markStateDirty();
     updateViewerFavoriteStar();
     renderFavoritesList();
@@ -1800,7 +2120,10 @@ async function manageCurrentFileGroups() {
       cacheFavoriteFile(owner, name, path);
     }
 
-    showFlash('Added to Favorites (Group: All). Select additional groups below:', 'success');
+    showFlash(
+      "Added to Favorites (Group: All). Select additional groups below:",
+      "success",
+    );
   }
 
   openManagePageGroupsModal(owner, name, path);
@@ -1808,25 +2131,30 @@ async function manageCurrentFileGroups() {
 
 // --- FAV GROUPS MANAGEMENT ---
 function renderFavGroupsBar() {
-  const container = document.getElementById('favGroupsBar');
+  const container = document.getElementById("favGroupsBar");
   if (!container) return;
 
   sanitizeFavGroups();
 
-  if (!appState.activeFavGroup || !appState.favGroups.includes(appState.activeFavGroup)) {
-    appState.activeFavGroup = 'All';
+  if (
+    !appState.activeFavGroup ||
+    !appState.favGroups.includes(appState.activeFavGroup)
+  ) {
+    appState.activeFavGroup = "All";
   }
 
-  const chipsHtml = appState.favGroups.map(group => {
-    const isActive = group === appState.activeFavGroup;
-    const activeClass = isActive ? 'active' : '';
+  const chipsHtml = appState.favGroups
+    .map((group) => {
+      const isActive = group === appState.activeFavGroup;
+      const activeClass = isActive ? "active" : "";
 
-    return `
+      return `
       <div class="fav-group-chip ${activeClass}" onclick="setActiveFavGroup('${escapeHtml(group)}')">
         <span>${escapeHtml(group)}</span>
       </div>
     `;
-  }).join('');
+    })
+    .join("");
 
   const addBtnHtml = `
     <button class="fav-group-chip-add" onclick="promptCreateGroup()">
@@ -1842,13 +2170,13 @@ function renderFavGroupsBar() {
 }
 
 function updateDeleteGroupButtonUI() {
-  const btn = document.getElementById('btnDeleteActiveFavGroup');
+  const btn = document.getElementById("btnDeleteActiveFavGroup");
   if (!btn) return;
-  const currentGroup = appState.activeFavGroup || 'All';
-  if (currentGroup === 'All') {
-    btn.classList.add('hidden');
+  const currentGroup = appState.activeFavGroup || "All";
+  if (currentGroup === "All") {
+    btn.classList.add("hidden");
   } else {
-    btn.classList.remove('hidden');
+    btn.classList.remove("hidden");
     btn.title = `Delete group "${currentGroup}"`;
     btn.innerHTML = `
       <svg class="octicon octicon-trash" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
@@ -1860,9 +2188,9 @@ function updateDeleteGroupButtonUI() {
 }
 
 function deleteCurrentActiveFavGroup() {
-  const currentGroup = appState.activeFavGroup || 'All';
-  if (currentGroup === 'All') {
-    showFlash('Group "All" cannot be deleted.', 'info');
+  const currentGroup = appState.activeFavGroup || "All";
+  if (currentGroup === "All") {
+    showFlash('Group "All" cannot be deleted.', "info");
     return;
   }
   deleteFavGroup(currentGroup);
@@ -1875,63 +2203,67 @@ function setActiveFavGroup(groupName) {
 }
 
 function promptCreateGroup() {
-  const name = prompt('Enter new group name:');
+  const name = prompt("Enter new group name:");
   if (!name) return;
   const trimmed = name.trim();
   if (!trimmed) return;
 
   if (appState.favGroups.includes(trimmed)) {
-    showFlash(`Group "${trimmed}" already exists.`, 'info');
+    showFlash(`Group "${trimmed}" already exists.`, "info");
     setActiveFavGroup(trimmed);
     return;
   }
 
   appState.favGroups.push(trimmed);
-  localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+  localStorage.setItem("gh_fav_groups", JSON.stringify(appState.favGroups));
   markStateDirty();
-  showFlash(`Group "${trimmed}" created!`, 'success');
+  showFlash(`Group "${trimmed}" created!`, "success");
   setActiveFavGroup(trimmed);
 }
 
 function deleteFavGroup(groupName) {
-  if (groupName === 'All') {
-    showFlash('Group "All" cannot be deleted.', 'info');
+  if (groupName === "All") {
+    showFlash('Group "All" cannot be deleted.', "info");
     return;
   }
 
   // Count how many pages belong to this group
-  const pagesInGroupCount = appState.favoriteFiles.filter(file => {
-    const groups = file.groups || ['All'];
+  const pagesInGroupCount = appState.favoriteFiles.filter((file) => {
+    const groups = file.groups || ["All"];
     return groups.includes(groupName);
   }).length;
 
-  const warningMsg = `⚠️ Delete group "${groupName}"?\n\n` +
-    `• This group currently contains ${pagesInGroupCount} favorite page${pagesInGroupCount === 1 ? '' : 's'}.\n` +
-    `• After deletion, all ${pagesInGroupCount} page${pagesInGroupCount === 1 ? '' : 's'} will still be kept safely in group "All".\n\n` +
+  const warningMsg =
+    `⚠️ Delete group "${groupName}"?\n\n` +
+    `• This group currently contains ${pagesInGroupCount} favorite page${pagesInGroupCount === 1 ? "" : "s"}.\n` +
+    `• After deletion, all ${pagesInGroupCount} page${pagesInGroupCount === 1 ? "" : "s"} will still be kept safely in group "All".\n\n` +
     `Do you want to proceed with deleting this group?`;
 
   if (!confirm(warningMsg)) {
     return;
   }
 
-  appState.favGroups = appState.favGroups.filter(g => g !== groupName);
-  localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+  appState.favGroups = appState.favGroups.filter((g) => g !== groupName);
+  localStorage.setItem("gh_fav_groups", JSON.stringify(appState.favGroups));
 
-  appState.favoriteFiles.forEach(file => {
+  appState.favoriteFiles.forEach((file) => {
     if (file.groups) {
-      file.groups = file.groups.filter(g => g !== groupName);
+      file.groups = file.groups.filter((g) => g !== groupName);
       if (file.groups.length === 0) {
-        file.groups.push('All');
+        file.groups.push("All");
       }
     }
   });
-  localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+  localStorage.setItem(
+    "gh_favorite_files",
+    JSON.stringify(appState.favoriteFiles),
+  );
 
   markStateDirty();
-  showFlash(`Group "${groupName}" deleted. (Pages retained in "All")`, 'info');
+  showFlash(`Group "${groupName}" deleted. (Pages retained in "All")`, "info");
 
   if (appState.activeFavGroup === groupName) {
-    appState.activeFavGroup = 'All';
+    appState.activeFavGroup = "All";
   }
 
   renderFavGroupsBar();
@@ -1940,43 +2272,59 @@ function deleteFavGroup(groupName) {
 
 // --- CONTEXT-AWARE FAVORITE PAGE DELETION ---
 async function removeFavoriteFileInCurrentContext(owner, name, path) {
-  const currentGroup = appState.activeFavGroup || 'All';
+  const currentGroup = appState.activeFavGroup || "All";
 
-  if (currentGroup === 'All') {
+  if (currentGroup === "All") {
     // Deleting in group "All" requires confirmation because it completely deletes the page
-    if (confirm('Deleting from "All" will remove this favorite page permanently. Continue?')) {
+    if (
+      confirm(
+        'Deleting from "All" will remove this favorite page permanently. Continue?',
+      )
+    ) {
       await deleteFavoriteFileCompletely(owner, name, path);
     }
   } else {
     // Deleting from custom group requires NO confirmation
-    const file = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
+    const file = appState.favoriteFiles.find(
+      (f) => f.owner === owner && f.name === name && f.path === path,
+    );
     if (file) {
-      file.groups = (file.groups || []).filter(g => g !== currentGroup);
+      file.groups = (file.groups || []).filter((g) => g !== currentGroup);
       if (file.groups.length === 0) {
-        file.groups.push('All');
+        file.groups.push("All");
       }
-      localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+      localStorage.setItem(
+        "gh_favorite_files",
+        JSON.stringify(appState.favoriteFiles),
+      );
       markStateDirty();
-      showFlash(`Removed page from group "${currentGroup}".`, 'info');
+      showFlash(`Removed page from group "${currentGroup}".`, "info");
       renderFavoritesList();
     }
   }
 }
 
 async function deleteFavoriteFileCompletely(owner, name, path) {
-  const index = appState.favoriteFiles.findIndex(f => f.owner === owner && f.name === name && f.path === path);
+  const index = appState.favoriteFiles.findIndex(
+    (f) => f.owner === owner && f.name === name && f.path === path,
+  );
   const fileKey = `${owner}/${name}/${path}`;
 
   if (index > -1) {
     appState.favoriteFiles.splice(index, 1);
-    try { await getIdb().del(fileKey); } catch (err) {}
-    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    try {
+      await getIdb().del(fileKey);
+    } catch (err) {}
+    localStorage.setItem(
+      "gh_favorite_files",
+      JSON.stringify(appState.favoriteFiles),
+    );
     markStateDirty();
-    showFlash('Favorite page deleted permanently.', 'info');
+    showFlash("Favorite page deleted permanently.", "info");
     updateViewerFavoriteStar();
     renderFavoritesList();
-    if (appState.mobileView === 'tree') renderFileTree();
-    if (appState.mobileView === 'history') renderHistoryList();
+    if (appState.mobileView === "tree") renderFileTree();
+    if (appState.mobileView === "history") renderHistoryList();
   }
 }
 
@@ -1986,34 +2334,38 @@ let currentManagingFile = null;
 function getManagingFileObj() {
   if (!currentManagingFile) return null;
   const { owner, name, path } = currentManagingFile;
-  return appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path)
-    || appState.favoriteFiles.find(f => f.owner === owner && f.path === path)
-    || null;
+  return (
+    appState.favoriteFiles.find(
+      (f) => f.owner === owner && f.name === name && f.path === path,
+    ) ||
+    appState.favoriteFiles.find((f) => f.owner === owner && f.path === path) ||
+    null
+  );
 }
 
 function openManagePageGroupsModal(owner, name, path) {
   currentManagingFile = { owner, name, path };
-  const modal = document.getElementById('manageGroupsModal');
+  const modal = document.getElementById("manageGroupsModal");
   if (!modal) return;
 
   const file = getManagingFileObj();
   if (!file) {
-    console.warn('File not found in favoriteFiles:', owner, name, path);
+    console.warn("File not found in favoriteFiles:", owner, name, path);
     return;
   }
 
-  const titleEl = document.getElementById('manageGroupsModalTitle');
+  const titleEl = document.getElementById("manageGroupsModalTitle");
   if (titleEl) {
-    titleEl.textContent = `Groups for: ${path.split('/').pop()}`;
+    titleEl.textContent = `Groups for: ${path.split("/").pop()}`;
   }
 
   renderManageGroupsModalContent();
-  modal.classList.remove('hidden');
+  modal.classList.remove("hidden");
 }
 
 function closeManagePageGroupsModal() {
-  const modal = document.getElementById('manageGroupsModal');
-  if (modal) modal.classList.add('hidden');
+  const modal = document.getElementById("manageGroupsModal");
+  if (modal) modal.classList.add("hidden");
   currentManagingFile = null;
 }
 
@@ -2021,18 +2373,21 @@ function renderManageGroupsModalContent() {
   const file = getManagingFileObj();
   if (!file) return;
 
-  const fileGroups = file.groups || ['All'];
-  const listEl = document.getElementById('manageGroupsModalList') || document.getElementById('manageGroupsModalBody');
+  const fileGroups = file.groups || ["All"];
+  const listEl =
+    document.getElementById("manageGroupsModalList") ||
+    document.getElementById("manageGroupsModalBody");
   if (!listEl) return;
 
   sanitizeFavGroups();
 
-  listEl.innerHTML = appState.favGroups.map(group => {
-    const isAll = group === 'All';
-    const isChecked = isAll || fileGroups.includes(group);
+  listEl.innerHTML = appState.favGroups
+    .map((group) => {
+      const isAll = group === "All";
+      const isChecked = isAll || fileGroups.includes(group);
 
-    if (isAll) {
-      return `
+      if (isAll) {
+        return `
         <label class="modal-group-item disabled" title="All pages belong to group All by default">
           <span class="modal-group-name">
             ${escapeHtml(group)}
@@ -2041,119 +2396,134 @@ function renderManageGroupsModalContent() {
           <input type="checkbox" class="modal-group-checkbox" checked disabled />
         </label>
       `;
-    }
+      }
 
-    return `
+      return `
       <label class="modal-group-item">
         <span class="modal-group-name">${escapeHtml(group)}</span>
-        <input type="checkbox" class="modal-group-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFileGroupModal('${escapeHtml(group)}', this.checked)">
+        <input type="checkbox" class="modal-group-checkbox" ${isChecked ? "checked" : ""} onchange="toggleFileGroupModal('${escapeHtml(group)}', this.checked)">
       </label>
     `;
-  }).join('');
+    })
+    .join("");
 }
 
 function toggleFileGroupModal(groupName, isChecked) {
-  if (groupName === 'All') return; // Group All is always locked/checked
+  if (groupName === "All") return; // Group All is always locked/checked
 
   const file = getManagingFileObj();
   if (!file) return;
 
-  if (!Array.isArray(file.groups)) file.groups = ['All'];
+  if (!Array.isArray(file.groups)) file.groups = ["All"];
 
   if (isChecked) {
     if (!file.groups.includes(groupName)) {
       file.groups.push(groupName);
     }
   } else {
-    file.groups = file.groups.filter(g => g !== groupName);
+    file.groups = file.groups.filter((g) => g !== groupName);
     if (file.groups.length === 0) {
-      file.groups.push('All');
+      file.groups.push("All");
     }
   }
 
-  localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+  localStorage.setItem(
+    "gh_favorite_files",
+    JSON.stringify(appState.favoriteFiles),
+  );
   markStateDirty();
   renderManageGroupsModalContent();
   renderFavoritesList();
 }
 
 function createGroupFromModal() {
-  const input = document.getElementById('newGroupNameModalInput');
+  const input = document.getElementById("newGroupNameModalInput");
   if (!input) return;
   const name = input.value.trim();
   if (!name) return;
 
   if (appState.favGroups.includes(name)) {
-    showFlash(`Group "${name}" already exists.`, 'info');
+    showFlash(`Group "${name}" already exists.`, "info");
   } else {
     appState.favGroups.push(name);
-    localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+    localStorage.setItem("gh_fav_groups", JSON.stringify(appState.favGroups));
     markStateDirty();
-    showFlash(`Group "${name}" created!`, 'success');
+    showFlash(`Group "${name}" created!`, "success");
   }
 
   const file = getManagingFileObj();
   if (file) {
-    if (!Array.isArray(file.groups)) file.groups = ['All'];
+    if (!Array.isArray(file.groups)) file.groups = ["All"];
     if (!file.groups.includes(name)) file.groups.push(name);
-    localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+    localStorage.setItem(
+      "gh_favorite_files",
+      JSON.stringify(appState.favoriteFiles),
+    );
   }
 
-  input.value = '';
+  input.value = "";
   renderFavGroupsBar();
   renderManageGroupsModalContent();
   renderFavoritesList();
 }
 
 async function renderFavoritesList() {
-  const favFilesContainer = document.getElementById('favFilesContainer');
-  const favReposContainer = document.getElementById('favReposContainer');
+  const favFilesContainer = document.getElementById("favFilesContainer");
+  const favReposContainer = document.getElementById("favReposContainer");
 
   if (!favFilesContainer || !favReposContainer) return;
 
   renderFavGroupsBar();
   sanitizeFavGroups();
 
-  const activeGroup = appState.activeFavGroup || 'All';
+  const activeGroup = appState.activeFavGroup || "All";
 
   // Filter favorite files by active group
-  const filteredFiles = appState.favoriteFiles.filter(f => {
-    const groups = f.groups || ['All'];
-    if (activeGroup === 'All') return true;
+  const filteredFiles = appState.favoriteFiles.filter((f) => {
+    const groups = f.groups || ["All"];
+    if (activeGroup === "All") return true;
     return groups.includes(activeGroup);
   });
 
   if (filteredFiles.length === 0) {
     if (appState.favoriteFiles.length === 0) {
-      favFilesContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No favorite pages yet.</p></div>';
+      favFilesContainer.innerHTML =
+        '<div class="blankslate" style="padding: 16px;"><p>No favorite pages yet.</p></div>';
     } else {
       favFilesContainer.innerHTML = `<div class="blankslate" style="padding: 16px;"><p>No pages in group "${escapeHtml(activeGroup)}".</p></div>`;
     }
   } else {
-    const fileItems = await Promise.all(filteredFiles.map(async file => {
-      const cleanRepoName = (file.name || '').includes('/') ? file.name.split('/').pop() : file.name;
-      const fileKey = `${file.owner}/${cleanRepoName}/${file.path}`;
-      let syncTime = 0;
-      let syncText = '';
-      try {
-        const cached = await getIdb().get(fileKey);
-        if (cached && cached.lastSyncedAt) {
-          syncTime = cached.lastSyncedAt;
-          syncText = ` • <span class="text-muted">Synced ${formatTimeAgo(cached.lastSyncedAt)}</span>`;
-        }
-      } catch (e) {}
+    const fileItems = await Promise.all(
+      filteredFiles.map(async (file) => {
+        const cleanRepoName = (file.name || "").includes("/")
+          ? file.name.split("/").pop()
+          : file.name;
+        const fileKey = `${file.owner}/${cleanRepoName}/${file.path}`;
+        let syncTime = 0;
+        let syncText = "";
+        try {
+          const cached = await getIdb().get(fileKey);
+          if (cached && cached.lastSyncedAt) {
+            syncTime = cached.lastSyncedAt;
+            syncText = ` • <span class="text-muted">Synced ${formatTimeAgo(cached.lastSyncedAt)}</span>`;
+          }
+        } catch (e) {}
 
-      const lastModifiedTime = file.lastModified || file.updatedAt || syncTime || file.addedAt || 0;
-      return { file, cleanRepoName, syncText, lastModifiedTime };
-    }));
+        const lastModifiedTime =
+          file.lastModified || file.updatedAt || syncTime || file.addedAt || 0;
+        return { file, cleanRepoName, syncText, lastModifiedTime };
+      }),
+    );
 
     // Sort favorite pages by most recently modified / accessed / synced first
     fileItems.sort((a, b) => b.lastModifiedTime - a.lastModifiedTime);
 
-    const fileItemsHtml = fileItems.map(item => {
+    const fileItemsHtml = fileItems.map((item) => {
       const { file, cleanRepoName, syncText } = item;
-      const groups = file.groups || ['All'];
-      const badgesHtml = groups.map(g => `<span class="group-badge">${escapeHtml(g)}</span>`).join('');
+      const groups = file.groups || ["All"];
+      const badgesHtml = groups
+        .map((g) => `<span class="group-badge">${escapeHtml(g)}</span>`)
+        .join("");
 
       return `
         <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
@@ -2163,7 +2533,7 @@ async function renderFavoritesList() {
             </svg>
             <div style="min-width: 0; overflow: hidden;">
               <div class="repo-desc">[${cleanRepoName}]:[${getParentDirPath(file.path)}]${syncText}</div>
-              <div class="repo-name">${file.path.split('/').pop()}</div>
+              <div class="repo-name">${file.path.split("/").pop()}</div>
               <div class="group-badge-container">${badgesHtml}</div>
             </div>
           </div>
@@ -2173,7 +2543,7 @@ async function renderFavoritesList() {
                 <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path>
               </svg>
             </button>
-            <button class="btn-star-icon favorited" onclick="removeFavoriteFileInCurrentContext('${file.owner}', '${file.name}', '${file.path}')" title="${activeGroup === 'All' ? 'Delete page completely' : 'Remove from group ' + escapeHtml(activeGroup)}">
+            <button class="btn-star-icon favorited" onclick="removeFavoriteFileInCurrentContext('${file.owner}', '${file.name}', '${file.path}')" title="${activeGroup === "All" ? "Delete page completely" : "Remove from group " + escapeHtml(activeGroup)}">
               <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
                 <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
               </svg>
@@ -2182,24 +2552,42 @@ async function renderFavoritesList() {
         </div>
       `;
     });
-    favFilesContainer.innerHTML = fileItemsHtml.join('');
+    favFilesContainer.innerHTML = fileItemsHtml.join("");
   }
 
   if (appState.favoriteRepos.length === 0) {
-    favReposContainer.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No favorite repositories yet.</p></div>';
+    favReposContainer.innerHTML =
+      '<div class="blankslate" style="padding: 16px;"><p>No favorite repositories yet.</p></div>';
   } else {
     // Sort favorite repos by most recently modified / accessed / added first
     const sortedFavRepos = [...appState.favoriteRepos].sort((a, b) => {
-      const repoA = appState.repos.find(r => r.owner === a.owner && r.name === a.name);
-      const repoB = appState.repos.find(r => r.owner === b.owner && r.name === b.name);
-      const timeA = a.lastModified || a.updatedAt || (repoA && repoA.updatedAt ? new Date(repoA.updatedAt).getTime() : 0) || a.addedAt || 0;
-      const timeB = b.lastModified || b.updatedAt || (repoB && repoB.updatedAt ? new Date(repoB.updatedAt).getTime() : 0) || b.addedAt || 0;
+      const repoA = appState.repos.find(
+        (r) => r.owner === a.owner && r.name === a.name,
+      );
+      const repoB = appState.repos.find(
+        (r) => r.owner === b.owner && r.name === b.name,
+      );
+      const timeA =
+        a.lastModified ||
+        a.updatedAt ||
+        (repoA && repoA.updatedAt ? new Date(repoA.updatedAt).getTime() : 0) ||
+        a.addedAt ||
+        0;
+      const timeB =
+        b.lastModified ||
+        b.updatedAt ||
+        (repoB && repoB.updatedAt ? new Date(repoB.updatedAt).getTime() : 0) ||
+        b.addedAt ||
+        0;
       return timeB - timeA;
     });
 
-    favReposContainer.innerHTML = sortedFavRepos.map(repo => {
-      const cleanRepoName = (repo.name || '').includes('/') ? repo.name.split('/').pop() : repo.name;
-      return `
+    favReposContainer.innerHTML = sortedFavRepos
+      .map((repo) => {
+        const cleanRepoName = (repo.name || "").includes("/")
+          ? repo.name.split("/").pop()
+          : repo.name;
+        return `
         <div class="gh-action-item" onclick="openRepo('${repo.owner}', '${repo.name}')">
           <div class="repo-item-main">
             <svg class="octicon octicon-repo text-muted" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
@@ -2214,23 +2602,24 @@ async function renderFavoritesList() {
           </button>
         </div>
       `;
-    }).join('');
+      })
+      .join("");
   }
 }
 
 // --- LOGIC 13: Sync Favorites ---
 function setSyncSpinning(isSpinning) {
-  const btnSyncAll = document.getElementById('btnSyncAll');
-  const btnSyncCurrent = document.getElementById('btnSyncCurrentFile');
+  const btnSyncAll = document.getElementById("btnSyncAll");
+  const btnSyncCurrent = document.getElementById("btnSyncCurrentFile");
 
-  [btnSyncAll, btnSyncCurrent].forEach(btn => {
+  [btnSyncAll, btnSyncCurrent].forEach((btn) => {
     if (!btn) return;
-    const icon = btn.querySelector('.octicon-sync');
+    const icon = btn.querySelector(".octicon-sync");
     if (isSpinning) {
-      if (icon) icon.classList.add('is-spinning');
+      if (icon) icon.classList.add("is-spinning");
       btn.disabled = true;
     } else {
-      if (icon) icon.classList.remove('is-spinning');
+      if (icon) icon.classList.remove("is-spinning");
       btn.disabled = false;
     }
   });
@@ -2248,42 +2637,50 @@ async function syncCurrentFile() {
 
 async function syncFavoriteFile(owner, name, path) {
   if (appState.isOffline) {
-    showFlash('Cannot sync while offline.', 'info');
+    showFlash("Cannot sync while offline.", "info");
     return;
   }
 
   setSyncSpinning(true);
-  updateFileSyncBadge('syncing');
+  updateFileSyncBadge("syncing");
 
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
 
     if (res.ok) {
       const data = await res.json();
       const rawContent = await resolveFileRawContent(data, owner, name, path);
-      
+
       await cacheFavoriteFile(owner, name, path, rawContent, data.sha);
-      
-      if (appState.currentFile && appState.currentFile.owner === owner && appState.currentFile.name === name && appState.currentFile.path === path) {
+
+      if (
+        appState.currentFile &&
+        appState.currentFile.owner === owner &&
+        appState.currentFile.name === name &&
+        appState.currentFile.path === path
+      ) {
         appState.currentFileSha = data.sha || null;
         if (!appState.isEditing) {
           renderMarkdown(rawContent);
         }
       }
-      
-      updateFileSyncBadge('synced', Date.now());
+
+      updateFileSyncBadge("synced", Date.now());
       renderFavoritesList();
     } else {
-      updateFileSyncBadge('cached');
+      updateFileSyncBadge("cached");
     }
   } catch (err) {
-    console.error('Sync file error:', err);
-    updateFileSyncBadge('cached');
+    console.error("Sync file error:", err);
+    updateFileSyncBadge("cached");
   } finally {
     setSyncSpinning(false);
   }
@@ -2291,7 +2688,7 @@ async function syncFavoriteFile(owner, name, path) {
 
 async function syncAllFavorites() {
   if (appState.isOffline) {
-    showFlash('Cannot sync while offline.', 'info');
+    showFlash("Cannot sync while offline.", "info");
     return;
   }
 
@@ -2302,7 +2699,9 @@ async function syncAllFavorites() {
   setSyncSpinning(true);
 
   try {
-    const promises = appState.favoriteFiles.map(f => syncFavoriteFile(f.owner, f.name, f.path));
+    const promises = appState.favoriteFiles.map((f) =>
+      syncFavoriteFile(f.owner, f.name, f.path),
+    );
     await Promise.allSettled(promises);
     renderFavoritesList();
   } finally {
@@ -2313,39 +2712,48 @@ async function syncAllFavorites() {
 // --- LOGIC: Reading History ---
 function addToHistory(owner, name, path) {
   appState.readingHistory = appState.readingHistory.filter(
-    h => !(h.owner === owner && h.name === name && h.path === path)
+    (h) => !(h.owner === owner && h.name === name && h.path === path),
   );
   appState.readingHistory.unshift({
     owner,
     name,
     path,
-    readAt: Date.now()
+    readAt: Date.now(),
   });
   if (appState.readingHistory.length > 100) {
     appState.readingHistory = appState.readingHistory.slice(0, 100);
   }
-  localStorage.setItem('gh_reading_history', JSON.stringify(appState.readingHistory));
+  localStorage.setItem(
+    "gh_reading_history",
+    JSON.stringify(appState.readingHistory),
+  );
   markStateDirty();
   renderHistoryList();
 }
 
 function renderHistoryList() {
-  const container = document.getElementById('historyFilesContainer');
+  const container = document.getElementById("historyFilesContainer");
   if (!container) return;
 
   if (appState.readingHistory.length === 0) {
-    container.innerHTML = '<div class="blankslate" style="padding: 16px;"><p>No reading history yet.</p></div>';
+    container.innerHTML =
+      '<div class="blankslate" style="padding: 16px;"><p>No reading history yet.</p></div>';
     return;
   }
 
-  const sortedHistory = [...appState.readingHistory].sort((a, b) => (b.readAt || 0) - (a.readAt || 0));
+  const sortedHistory = [...appState.readingHistory].sort(
+    (a, b) => (b.readAt || 0) - (a.readAt || 0),
+  );
 
-  container.innerHTML = sortedHistory.map(file => {
-    const timeAgo = formatTimeAgo(file.readAt);
-    const isFav = isFileFavorited(file.owner, file.name, file.path);
-    const cleanRepoName = (file.name || '').includes('/') ? file.name.split('/').pop() : file.name;
+  container.innerHTML = sortedHistory
+    .map((file) => {
+      const timeAgo = formatTimeAgo(file.readAt);
+      const isFav = isFileFavorited(file.owner, file.name, file.path);
+      const cleanRepoName = (file.name || "").includes("/")
+        ? file.name.split("/").pop()
+        : file.name;
 
-    return `
+      return `
       <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
         <div class="repo-item-main">
           <svg class="octicon octicon-history text-muted" viewBox="0 0 16 16" width="18" height="18" fill="#0969da">
@@ -2353,32 +2761,33 @@ function renderHistoryList() {
           </svg>
           <div>
             <div class="repo-desc">[${cleanRepoName}]:[${getParentDirPath(file.path)}] • <span class="text-muted">${timeAgo}</span></div>
-            <div class="repo-name">${file.path.split('/').pop()}</div>
+            <div class="repo-name">${file.path.split("/").pop()}</div>
           </div>
         </div>
-        <button class="btn-star-icon ${isFav ? 'favorited' : ''}" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')" title="Favorite">
+        <button class="btn-star-icon ${isFav ? "favorited" : ""}" onclick="event.stopPropagation(); toggleFavoriteFile('${file.owner}', '${file.name}', '${file.path}')" title="Favorite">
           <svg class="octicon octicon-star" viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
             <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"></path>
           </svg>
         </button>
       </div>
     `;
-  }).join('');
+    })
+    .join("");
 }
 
 function clearHistory() {
-  if (confirm('Are you sure you want to clear reading history?')) {
+  if (confirm("Are you sure you want to clear reading history?")) {
     appState.readingHistory = [];
-    localStorage.removeItem('gh_reading_history');
+    localStorage.removeItem("gh_reading_history");
     renderHistoryList();
-    showFlash('Reading history cleared.', 'info');
+    showFlash("Reading history cleared.", "info");
   }
 }
 
 function formatTimeAgo(timestamp) {
-  if (!timestamp) return '';
+  if (!timestamp) return "";
   const diffSec = Math.floor((Date.now() - timestamp) / 1000);
-  if (diffSec < 60) return 'Just now';
+  if (diffSec < 60) return "Just now";
   const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `${diffMin}m ago`;
   const diffHour = Math.floor(diffMin / 60);
@@ -2391,36 +2800,42 @@ function formatTimeAgo(timestamp) {
 function filterList(query) {
   const q = query.toLowerCase().trim();
 
-  if (appState.mobileView === 'allRepos' || appState.mobileView === 'repos') {
-    const filtered = appState.repos.filter(r => 
-      r.name.toLowerCase().includes(q) || r.owner.toLowerCase().includes(q) || r.description.toLowerCase().includes(q)
+  if (appState.mobileView === "allRepos" || appState.mobileView === "repos") {
+    const filtered = appState.repos.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.owner.toLowerCase().includes(q) ||
+        r.description.toLowerCase().includes(q),
     );
     renderRepoList(filtered);
-  } else if (appState.mobileView === 'favPages') {
-    const container = document.getElementById('favFilesContainer');
+  } else if (appState.mobileView === "favPages") {
+    const container = document.getElementById("favFilesContainer");
     if (container) {
-      const items = container.querySelectorAll('.gh-action-item');
-      items.forEach(item => {
-        if (item.textContent.toLowerCase().includes(q)) item.classList.remove('hidden');
-        else item.classList.add('hidden');
+      const items = container.querySelectorAll(".gh-action-item");
+      items.forEach((item) => {
+        if (item.textContent.toLowerCase().includes(q))
+          item.classList.remove("hidden");
+        else item.classList.add("hidden");
       });
     }
-  } else if (appState.mobileView === 'favRepos') {
-    const container = document.getElementById('favReposContainer');
+  } else if (appState.mobileView === "favRepos") {
+    const container = document.getElementById("favReposContainer");
     if (container) {
-      const items = container.querySelectorAll('.gh-action-item');
-      items.forEach(item => {
-        if (item.textContent.toLowerCase().includes(q)) item.classList.remove('hidden');
-        else item.classList.add('hidden');
+      const items = container.querySelectorAll(".gh-action-item");
+      items.forEach((item) => {
+        if (item.textContent.toLowerCase().includes(q))
+          item.classList.remove("hidden");
+        else item.classList.add("hidden");
       });
     }
-  } else if (appState.mobileView === 'history') {
-    const container = document.getElementById('historyFilesContainer');
+  } else if (appState.mobileView === "history") {
+    const container = document.getElementById("historyFilesContainer");
     if (container) {
-      const items = container.querySelectorAll('.gh-action-item');
-      items.forEach(item => {
-        if (item.textContent.toLowerCase().includes(q)) item.classList.remove('hidden');
-        else item.classList.add('hidden');
+      const items = container.querySelectorAll(".gh-action-item");
+      items.forEach((item) => {
+        if (item.textContent.toLowerCase().includes(q))
+          item.classList.remove("hidden");
+        else item.classList.add("hidden");
       });
     }
   }
@@ -2431,49 +2846,59 @@ function changeFontScale(deltaOrValue) {
   if (deltaOrValue === 100) {
     appState.fontScale = 100;
   } else {
-    appState.fontScale = Math.min(200, Math.max(75, appState.fontScale + deltaOrValue));
+    appState.fontScale = Math.min(
+      200,
+      Math.max(75, appState.fontScale + deltaOrValue),
+    );
   }
 
   applyFontScale(appState.fontScale);
-  localStorage.setItem('gh_font_scale', appState.fontScale.toString());
+  localStorage.setItem("gh_font_scale", appState.fontScale.toString());
 }
 
 function applyFontScale(scale) {
-  document.documentElement.style.setProperty('--md-content-scale', (scale / 100).toString());
-  const badge = document.getElementById('zoomScaleBadge');
+  document.documentElement.style.setProperty(
+    "--md-content-scale",
+    (scale / 100).toString(),
+  );
+  const badge = document.getElementById("zoomScaleBadge");
   if (badge) badge.textContent = `${scale}%`;
 }
 
 // --- LOGIC: Lock / Unlock Text Selection ---
 function applyLockSelect() {
-  const viewerBodies = document.querySelectorAll('.viewer-body, #markdownViewerPanel');
-  const btn = document.getElementById('btnToggleLockSelect');
-  const icon = document.getElementById('lockSelectIcon');
-  const text = document.getElementById('lockSelectText');
+  const viewerBodies = document.querySelectorAll(
+    ".viewer-body, #markdownViewerPanel",
+  );
+  const btn = document.getElementById("btnToggleLockSelect");
+  const icon = document.getElementById("lockSelectIcon");
+  const text = document.getElementById("lockSelectText");
 
-  viewerBodies.forEach(el => {
+  viewerBodies.forEach((el) => {
     if (appState.isSelectionLocked) {
-      el.classList.add('selection-locked');
+      el.classList.add("selection-locked");
     } else {
-      el.classList.remove('selection-locked');
+      el.classList.remove("selection-locked");
     }
   });
 
   if (btn) {
     if (appState.isSelectionLocked) {
-      btn.classList.add('active-lock');
-      btn.title = 'Text selection is Locked (Tap to Unlock / Copy text)';
+      btn.classList.add("active-lock");
+      btn.title = "Text selection is Locked (Tap to Unlock / Copy text)";
       if (icon) {
-        icon.innerHTML = '<path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8 2V4a2 2 0 1 0-4 0v2ZM3.5 7.75v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Z"></path>';
+        icon.innerHTML =
+          '<path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8 2V4a2 2 0 1 0-4 0v2ZM3.5 7.75v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Z"></path>';
       }
-      if (text) text.textContent = 'Lock';
+      if (text) text.textContent = "Lock";
     } else {
-      btn.classList.remove('active-lock');
-      btn.title = 'Text selection is Unlocked (Tap to Lock)';
+      btn.classList.remove("active-lock");
+      btn.title = "Text selection is Unlocked (Tap to Lock)";
       if (icon) {
-        icon.innerHTML = '<path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4ZM10.5 4a2.5 2.5 0 0 0-5 0v2h5ZM3.5 7.75v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Z"></path>';
+        icon.innerHTML =
+          '<path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4ZM10.5 4a2.5 2.5 0 0 0-5 0v2h5ZM3.5 7.75v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Z"></path>';
       }
-      if (text) text.textContent = 'Unlock';
+      if (text) text.textContent = "Unlock";
     }
   }
 }
@@ -2483,49 +2908,53 @@ function toggleLockSelect() {
   applyLockSelect();
   showFlash(
     appState.isSelectionLocked
-      ? '🔒 Text selection LOCKED (Touch scroll optimized)'
-      : '🔓 Text selection UNLOCKED (Active for this page session)',
-    'info',
-    2000
+      ? "🔒 Text selection LOCKED (Touch scroll optimized)"
+      : "🔓 Text selection UNLOCKED (Active for this page session)",
+    "info",
+    2000,
   );
 }
 
 // --- LOGIC 16: User Guide & PAT Help Modal ---
-function toggleGuideModal(isOpen, initialTab = 'pat') {
+function toggleGuideModal(isOpen, initialTab = "pat") {
   appState.isGuideOpen = isOpen;
-  const modal = document.getElementById('helpGuideModal');
-  
+  const modal = document.getElementById("helpGuideModal");
+
   if (isOpen) {
-    modal.classList.remove('hidden');
+    modal.classList.remove("hidden");
     switchGuideTab(initialTab);
   } else {
-    modal.classList.add('hidden');
+    modal.classList.add("hidden");
   }
 }
 
 function switchGuideTab(tabName) {
   appState.activeGuideTab = tabName;
 
-  const tabPat = document.getElementById('tabGuidePat');
-  const tabFeatures = document.getElementById('tabGuideFeatures');
-  const tabBackup = document.getElementById('tabGuideBackup');
+  const tabPat = document.getElementById("tabGuidePat");
+  const tabFeatures = document.getElementById("tabGuideFeatures");
+  const tabBackup = document.getElementById("tabGuideBackup");
 
-  const contentPat = document.getElementById('guidePatContent');
-  const contentFeatures = document.getElementById('guideFeaturesContent');
-  const contentBackup = document.getElementById('guideBackupContent');
+  const contentPat = document.getElementById("guidePatContent");
+  const contentFeatures = document.getElementById("guideFeaturesContent");
+  const contentBackup = document.getElementById("guideBackupContent");
 
-  [tabPat, tabFeatures, tabBackup].forEach(t => t && t.classList.remove('active'));
-  [contentPat, contentFeatures, contentBackup].forEach(c => c && c.classList.add('hidden'));
+  [tabPat, tabFeatures, tabBackup].forEach(
+    (t) => t && t.classList.remove("active"),
+  );
+  [contentPat, contentFeatures, contentBackup].forEach(
+    (c) => c && c.classList.add("hidden"),
+  );
 
-  if (tabName === 'pat') {
-    if (tabPat) tabPat.classList.add('active');
-    if (contentPat) contentPat.classList.remove('hidden');
-  } else if (tabName === 'features') {
-    if (tabFeatures) tabFeatures.classList.add('active');
-    if (contentFeatures) contentFeatures.classList.remove('hidden');
-  } else if (tabName === 'backup') {
-    if (tabBackup) tabBackup.classList.add('active');
-    if (contentBackup) contentBackup.classList.remove('hidden');
+  if (tabName === "pat") {
+    if (tabPat) tabPat.classList.add("active");
+    if (contentPat) contentPat.classList.remove("hidden");
+  } else if (tabName === "features") {
+    if (tabFeatures) tabFeatures.classList.add("active");
+    if (contentFeatures) contentFeatures.classList.remove("hidden");
+  } else if (tabName === "backup") {
+    if (tabBackup) tabBackup.classList.add("active");
+    if (contentBackup) contentBackup.classList.remove("hidden");
     updateStorageStatusUI();
     updateGistAutoSyncStatus();
   }
@@ -2537,7 +2966,7 @@ async function requestPersistentStorage() {
     const isPersisted = await navigator.storage.persist();
     updateStorageStatusUI(isPersisted);
     if (isPersisted) {
-      console.log('[Storage] Persistent storage granted.');
+      console.log("[Storage] Persistent storage granted.");
     }
     return isPersisted;
   }
@@ -2545,17 +2974,23 @@ async function requestPersistentStorage() {
 }
 
 async function updateStorageStatusUI(isPersisted = null) {
-  const statusEl = document.getElementById('storageProtectionStatus');
+  const statusEl = document.getElementById("storageProtectionStatus");
   if (!statusEl) return;
 
-  if (isPersisted === null && navigator.storage && navigator.storage.persisted) {
+  if (
+    isPersisted === null &&
+    navigator.storage &&
+    navigator.storage.persisted
+  ) {
     isPersisted = await navigator.storage.persisted();
   }
 
   if (isPersisted) {
-    statusEl.innerHTML = '🟢 <strong style="color:#1a7f37;">Protected (Persistent)</strong> - Browser will never auto-delete your cache.';
+    statusEl.innerHTML =
+      '🟢 <strong style="color:#1a7f37;">Protected (Persistent)</strong> - Browser will never auto-delete your cache.';
   } else {
-    statusEl.innerHTML = '🟡 <strong style="color:#9a6700;">Best-Effort Storage</strong> - May be evicted if disk is full. Click below to request lifetime persistence.';
+    statusEl.innerHTML =
+      '🟡 <strong style="color:#9a6700;">Best-Effort Storage</strong> - May be evicted if disk is full. Click below to request lifetime persistence.';
   }
 }
 
@@ -2571,78 +3006,100 @@ async function exportAppData() {
       favoriteFiles: appState.favoriteFiles,
       readingHistory: appState.readingHistory,
       fontScale: appState.fontScale,
-      cachedFiles: cachedFiles
+      cachedFiles: cachedFiles,
     };
 
     const jsonStr = JSON.stringify(backupData, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const blob = new Blob([jsonStr], { type: "application/json" });
     const dateStr = new Date().toISOString().slice(0, 10);
     const fileName = `gh_explorer_backup_${dateStr}.json`;
-    const success = await downloadBlobFile(blob, fileName, 'application/json');
+    const success = await downloadBlobFile(blob, fileName, "application/json");
     if (!success) return; // Cancelled
-    showFlash('Backup JSON file exported successfully!', 'success');
+    showFlash("Backup JSON file exported successfully!", "success");
   } catch (err) {
-    console.error('Export error:', err);
-    showFlash('Failed to export backup data.', 'info');
+    console.error("Export error:", err);
+    showFlash("Failed to export backup data.", "info");
   }
 }
 
 async function importAppData(jsonStr) {
   try {
     const data = JSON.parse(jsonStr);
-    if (!data || (!data.favoriteRepos && !data.favoriteFiles && !data.token && !data.cachedFiles)) {
-      throw new Error('Invalid backup file format.');
+    if (
+      !data ||
+      (!data.favoriteRepos &&
+        !data.favoriteFiles &&
+        !data.token &&
+        !data.cachedFiles)
+    ) {
+      throw new Error("Invalid backup file format.");
     }
 
     if (data.token) {
       appState.token = data.token;
-      localStorage.setItem('gh_pat_token', data.token);
+      localStorage.setItem("gh_pat_token", data.token);
     }
 
     // Merge Fav Groups
     if (Array.isArray(data.favGroups)) {
-      const mergedGroupsSet = new Set(['All', ...appState.favGroups, ...data.favGroups]);
+      const mergedGroupsSet = new Set([
+        "All",
+        ...appState.favGroups,
+        ...data.favGroups,
+      ]);
       appState.favGroups = Array.from(mergedGroupsSet);
-      localStorage.setItem('gh_fav_groups', JSON.stringify(appState.favGroups));
+      localStorage.setItem("gh_fav_groups", JSON.stringify(appState.favGroups));
     }
 
     // 1. Smart Merge Favorite Repositories (Deduplicate)
     if (Array.isArray(data.favoriteRepos)) {
       const mergedReposMap = new Map();
-      appState.favoriteRepos.concat(data.favoriteRepos).forEach(r => {
+      appState.favoriteRepos.concat(data.favoriteRepos).forEach((r) => {
         if (r && r.owner && r.name) {
           const key = `${r.owner}/${r.name}`;
           mergedReposMap.set(key, r);
         }
       });
       appState.favoriteRepos = Array.from(mergedReposMap.values());
-      localStorage.setItem('gh_favorite_repos', JSON.stringify(appState.favoriteRepos));
+      localStorage.setItem(
+        "gh_favorite_repos",
+        JSON.stringify(appState.favoriteRepos),
+      );
     }
 
     // 2. Smart Merge Favorite Files (Deduplicate and merge groups)
     if (Array.isArray(data.favoriteFiles)) {
       const mergedFilesMap = new Map();
-      appState.favoriteFiles.concat(data.favoriteFiles).forEach(f => {
+      appState.favoriteFiles.concat(data.favoriteFiles).forEach((f) => {
         if (f && f.owner && f.name && f.path) {
           const key = `${f.owner}/${f.name}/${f.path}`;
           const existing = mergedFilesMap.get(key);
           if (existing) {
-            const mergedGroups = Array.from(new Set(['All', ...(existing.groups || []), ...(f.groups || [])]));
-            mergedFilesMap.set(key, { ...existing, ...f, groups: mergedGroups });
+            const mergedGroups = Array.from(
+              new Set(["All", ...(existing.groups || []), ...(f.groups || [])]),
+            );
+            mergedFilesMap.set(key, {
+              ...existing,
+              ...f,
+              groups: mergedGroups,
+            });
           } else {
-            const groups = Array.from(new Set(['All', ...(f.groups || [])]));
+            const groups = Array.from(new Set(["All", ...(f.groups || [])]));
             mergedFilesMap.set(key, { ...f, groups });
           }
         }
       });
       appState.favoriteFiles = Array.from(mergedFilesMap.values());
-      localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
+      localStorage.setItem(
+        "gh_favorite_files",
+        JSON.stringify(appState.favoriteFiles),
+      );
     }
 
     // 3. Smart Merge Reading History (Deduplicate & keep newest timestamp)
     if (Array.isArray(data.readingHistory)) {
       const mergedHistMap = new Map();
-      appState.readingHistory.concat(data.readingHistory).forEach(h => {
+      appState.readingHistory.concat(data.readingHistory).forEach((h) => {
         if (h && h.owner && h.name && h.path) {
           const key = `${h.owner}/${h.name}/${h.path}`;
           const existing = mergedHistMap.get(key);
@@ -2654,12 +3111,15 @@ async function importAppData(jsonStr) {
       appState.readingHistory = Array.from(mergedHistMap.values())
         .sort((a, b) => (b.readAt || 0) - (a.readAt || 0))
         .slice(0, 100);
-      localStorage.setItem('gh_reading_history', JSON.stringify(appState.readingHistory));
+      localStorage.setItem(
+        "gh_reading_history",
+        JSON.stringify(appState.readingHistory),
+      );
     }
 
     if (data.fontScale) {
       appState.fontScale = data.fontScale;
-      localStorage.setItem('gh_font_scale', data.fontScale.toString());
+      localStorage.setItem("gh_font_scale", data.fontScale.toString());
       applyFontScale(data.fontScale);
     }
 
@@ -2668,7 +3128,10 @@ async function importAppData(jsonStr) {
       for (const item of data.cachedFiles) {
         if (item && item.fileKey) {
           const existing = await getIdb().get(item.fileKey);
-          if (!existing || (item.lastSyncedAt || 0) >= (existing.lastSyncedAt || 0)) {
+          if (
+            !existing ||
+            (item.lastSyncedAt || 0) >= (existing.lastSyncedAt || 0)
+          ) {
             await getIdb().set(item.fileKey, item);
           }
         }
@@ -2678,10 +3141,10 @@ async function importAppData(jsonStr) {
     renderRepoList();
     renderFavoritesList();
     renderHistoryList();
-    showFlash('Backup merged & data restored successfully!', 'success');
+    showFlash("Backup merged & data restored successfully!", "success");
   } catch (err) {
-    console.error('Import error:', err);
-    showFlash(`Import failed: ${err.message || 'Invalid file'}`, 'info');
+    console.error("Import error:", err);
+    showFlash(`Import failed: ${err.message || "Invalid file"}`, "info");
   }
 }
 
@@ -2691,21 +3154,22 @@ function handleImportBackupFile(event) {
   const reader = new FileReader();
   reader.onload = (e) => {
     importAppData(e.target.result);
-    event.target.value = '';
+    event.target.value = "";
   };
   reader.readAsText(file);
 }
 
 async function backupToGist(isSilent = false) {
   if (!appState.token) {
-    if (!isSilent) showFlash('Personal Access Token required for Gist cloud sync.', 'info');
+    if (!isSilent)
+      showFlash("Personal Access Token required for Gist cloud sync.", "info");
     updateGistAutoSyncStatus();
     return;
   }
 
   if (appState.isOffline) {
-    if (!isSilent) showFlash('Cannot sync Gist while offline.', 'info');
-    updateGistAutoSyncStatus('Offline');
+    if (!isSilent) showFlash("Cannot sync Gist while offline.", "info");
+    updateGistAutoSyncStatus("Offline");
     return;
   }
 
@@ -2714,9 +3178,9 @@ async function backupToGist(isSilent = false) {
   }
 
   if (!isSilent) {
-    showFlash('Syncing backup to GitHub Private Gist...', 'info');
+    showFlash("Syncing backup to GitHub Private Gist...", "info");
   }
-  updateGistAutoSyncStatus('Syncing...');
+  updateGistAutoSyncStatus("Syncing...");
 
   try {
     const cachedFiles = await miniIdb.getAll();
@@ -2728,108 +3192,115 @@ async function backupToGist(isSilent = false) {
       favoriteFiles: appState.favoriteFiles,
       readingHistory: appState.readingHistory,
       fontScale: appState.fontScale,
-      cachedFiles: cachedFiles
+      cachedFiles: cachedFiles,
     };
 
-    const gistsRes = await fetch('https://api.github.com/gists', {
+    const gistsRes = await fetch("https://api.github.com/gists", {
       headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
+        Authorization: `Bearer ${appState.token}`,
+        Accept: "application/vnd.github.v3+json",
+      },
     });
 
     if (!gistsRes.ok) throw new Error(`HTTP ${gistsRes.status}`);
     const gists = await gistsRes.json();
-    const existingGist = gists.find(g => g.description === 'GH Markdown Explorer Backup Data');
+    const existingGist = gists.find(
+      (g) => g.description === "GH Markdown Explorer Backup Data",
+    );
 
     const gistPayload = {
-      description: 'GH Markdown Explorer Backup Data',
+      description: "GH Markdown Explorer Backup Data",
       public: false,
       files: {
-        'gh_explorer_backup.json': {
-          content: JSON.stringify(backupData, null, 2)
-        }
-      }
+        "gh_explorer_backup.json": {
+          content: JSON.stringify(backupData, null, 2),
+        },
+      },
     };
 
     let saveRes;
     if (existingGist) {
       saveRes = await fetch(`https://api.github.com/gists/${existingGist.id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Authorization': `Bearer ${appState.token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(gistPayload)
+        body: JSON.stringify(gistPayload),
       });
     } else {
-      saveRes = await fetch('https://api.github.com/gists', {
-        method: 'POST',
+      saveRes = await fetch("https://api.github.com/gists", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${appState.token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(gistPayload)
+        body: JSON.stringify(gistPayload),
       });
     }
 
     if (saveRes.ok) {
       appState.hasUnsavedChanges = false;
       appState.lastGistBackupTime = new Date().toISOString();
-      localStorage.setItem('gh_last_gist_backup_time', appState.lastGistBackupTime);
+      localStorage.setItem(
+        "gh_last_gist_backup_time",
+        appState.lastGistBackupTime,
+      );
       updateGistAutoSyncStatus();
       if (!isSilent) {
-        showFlash('Backed up to GitHub Private Gist successfully!', 'success');
+        showFlash("Backed up to GitHub Private Gist successfully!", "success");
       }
     } else {
       const errTxt = await saveRes.text();
       throw new Error(`HTTP ${saveRes.status} ${errTxt}`);
     }
   } catch (err) {
-    console.error('Gist backup error:', err);
-    updateGistAutoSyncStatus('Failed');
+    console.error("Gist backup error:", err);
+    updateGistAutoSyncStatus("Failed");
     if (!isSilent) {
-      showFlash(`Cloud backup failed: Ensure PAT has 'gist' scope.`, 'info');
+      showFlash(`Cloud backup failed: Ensure PAT has 'gist' scope.`, "info");
     }
   }
 }
 
 async function restoreFromGist() {
   if (!appState.token) {
-    showFlash('Personal Access Token required.', 'info');
+    showFlash("Personal Access Token required.", "info");
     return;
   }
-  showFlash('Fetching cloud backup from GitHub Gist...', 'info');
+  showFlash("Fetching cloud backup from GitHub Gist...", "info");
 
   try {
-    const gistsRes = await fetch('https://api.github.com/gists', {
+    const gistsRes = await fetch("https://api.github.com/gists", {
       headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
+        Authorization: `Bearer ${appState.token}`,
+        Accept: "application/vnd.github.v3+json",
+      },
     });
 
     if (!gistsRes.ok) throw new Error(`HTTP ${gistsRes.status}`);
     const gists = await gistsRes.json();
-    const backupGist = gists.find(g => g.description === 'GH Markdown Explorer Backup Data');
+    const backupGist = gists.find(
+      (g) => g.description === "GH Markdown Explorer Backup Data",
+    );
 
-    if (!backupGist || !backupGist.files['gh_explorer_backup.json']) {
-      showFlash('No GitHub Gist backup found for this account.', 'info');
+    if (!backupGist || !backupGist.files["gh_explorer_backup.json"]) {
+      showFlash("No GitHub Gist backup found for this account.", "info");
       return;
     }
 
-    const rawUrl = backupGist.files['gh_explorer_backup.json'].raw_url;
+    const rawUrl = backupGist.files["gh_explorer_backup.json"].raw_url;
     const contentRes = await fetch(rawUrl);
-    if (!contentRes.ok) throw new Error('Failed to download Gist content.');
+    if (!contentRes.ok) throw new Error("Failed to download Gist content.");
     const jsonStr = await contentRes.text();
 
     await importAppData(jsonStr);
-    showFlash('Restored from GitHub Private Gist successfully!', 'success');
+    showFlash("Restored from GitHub Private Gist successfully!", "success");
   } catch (err) {
-    console.error('Gist restore error:', err);
-    showFlash(`Cloud restore failed: ${err.message}`, 'info');
+    console.error("Gist restore error:", err);
+    showFlash(`Cloud restore failed: ${err.message}`, "info");
   }
 }
 
@@ -2841,29 +3312,29 @@ async function restoreFromGist() {
  * Universal Mobile File Download & Web Share Handler (Rule 8)
  * Uses Web Share API on iOS Safari/PWA to save to Files; falls back to <a> download on Desktop/Android.
  */
-async function downloadBlobFile(blob, fileName, mimeType = 'text/plain') {
+async function downloadBlobFile(blob, fileName, mimeType = "text/plain") {
   const file = new File([blob], fileName, { type: mimeType });
   const isIOS =
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
   if (isIOS && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({
         files: [file],
-        title: fileName
+        title: fileName,
       });
       return true;
     } catch (err) {
-      if (err.name === 'AbortError') {
+      if (err.name === "AbortError") {
         return false;
       }
-      console.warn('[WebShare] Fallback to direct download link:', err);
+      console.warn("[WebShare] Fallback to direct download link:", err);
     }
   }
 
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = fileName;
   document.body.appendChild(a);
@@ -2878,22 +3349,22 @@ async function downloadBlobFile(blob, fileName, mimeType = 'text/plain') {
  * Displays a non-intrusive banner when a new Service Worker is waiting to activate.
  */
 function promptPwaUpdate(waitingWorker) {
-  const banner = document.getElementById('pwaUpdateBanner');
-  const btnReload = document.getElementById('btnPwaReload');
-  const btnDismiss = document.getElementById('btnPwaDismiss');
+  const banner = document.getElementById("pwaUpdateBanner");
+  const btnReload = document.getElementById("btnPwaReload");
+  const btnDismiss = document.getElementById("btnPwaDismiss");
   if (!banner) return;
 
-  banner.classList.remove('hidden');
+  banner.classList.remove("hidden");
 
   if (btnReload) {
     btnReload.onclick = () => {
-      waitingWorker.postMessage({ action: 'skipWaiting' });
+      waitingWorker.postMessage({ action: "skipWaiting" });
     };
   }
 
   if (btnDismiss) {
     btnDismiss.onclick = () => {
-      banner.classList.add('hidden');
+      banner.classList.add("hidden");
     };
   }
 }
@@ -2903,52 +3374,52 @@ function promptPwaUpdate(waitingWorker) {
  * Supports native beforeinstallprompt on Chromium and custom guide modal on iOS Safari.
  */
 function initPWAInstallFlow() {
-  const btnInstall = document.getElementById('btnInstall');
-  const iosInstallModal = document.getElementById('iosInstallModal');
-  const btnCloseIosModal = document.getElementById('btnCloseIosModal');
-  const btnGotItIos = document.getElementById('btnGotItIos');
+  const btnInstall = document.getElementById("btnInstall");
+  const iosInstallModal = document.getElementById("iosInstallModal");
+  const btnCloseIosModal = document.getElementById("btnCloseIosModal");
+  const btnGotItIos = document.getElementById("btnGotItIos");
 
   let deferredInstallPrompt = null;
 
   const isStandalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia("(display-mode: standalone)").matches ||
     window.navigator.standalone === true;
 
   const isIOS =
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
   if (isStandalone) {
-    if (btnInstall) btnInstall.classList.add('hidden');
+    if (btnInstall) btnInstall.classList.add("hidden");
   } else if (isIOS && btnInstall) {
     // iOS Safari does not fire beforeinstallprompt: show button to open instructions
-    btnInstall.classList.remove('hidden');
+    btnInstall.classList.remove("hidden");
   }
 
   // 1. Listen for beforeinstallprompt on Chromium (Android / Desktop)
-  window.addEventListener('beforeinstallprompt', (e) => {
+  window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
     if (!isStandalone && btnInstall) {
-      btnInstall.classList.remove('hidden');
+      btnInstall.classList.remove("hidden");
     }
   });
 
   // 2. Listen when app is installed successfully
-  window.addEventListener('appinstalled', () => {
+  window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
-    if (btnInstall) btnInstall.classList.add('hidden');
-    showFlash('Cài đặt ứng dụng thành công!', 'success');
+    if (btnInstall) btnInstall.classList.add("hidden");
+    showFlash("Cài đặt ứng dụng thành công!", "success");
   });
 
   // 3. Handle click on Install button
   if (btnInstall) {
-    btnInstall.addEventListener('click', async () => {
+    btnInstall.addEventListener("click", async () => {
       if (deferredInstallPrompt) {
         deferredInstallPrompt.prompt();
         const { outcome } = await deferredInstallPrompt.userChoice;
-        if (outcome === 'accepted') {
-          btnInstall.classList.add('hidden');
+        if (outcome === "accepted") {
+          btnInstall.classList.add("hidden");
         }
         deferredInstallPrompt = null;
       } else if (iosInstallModal) {
@@ -2958,10 +3429,12 @@ function initPWAInstallFlow() {
   }
 
   if (btnCloseIosModal) {
-    btnCloseIosModal.addEventListener('click', () => toggleIosInstallModal(false));
+    btnCloseIosModal.addEventListener("click", () =>
+      toggleIosInstallModal(false),
+    );
   }
   if (btnGotItIos) {
-    btnGotItIos.addEventListener('click', () => toggleIosInstallModal(false));
+    btnGotItIos.addEventListener("click", () => toggleIosInstallModal(false));
   }
 }
 
@@ -2969,12 +3442,12 @@ function initPWAInstallFlow() {
  * Toggle iOS Safari Install Guide Modal
  */
 function toggleIosInstallModal(show) {
-  const modal = document.getElementById('iosInstallModal');
+  const modal = document.getElementById("iosInstallModal");
   if (!modal) return;
   if (show) {
-    modal.classList.remove('hidden');
+    modal.classList.remove("hidden");
   } else {
-    modal.classList.add('hidden');
+    modal.classList.add("hidden");
   }
 }
 
@@ -2984,50 +3457,50 @@ function toggleIosInstallModal(show) {
  * Extracts text, ensures unique element IDs for scrolling, and populates the TOC drawer.
  */
 function buildReaderTableOfContents() {
-  const viewerPanel = document.getElementById('markdownViewerPanel');
+  const viewerPanel = document.getElementById("markdownViewerPanel");
   if (!viewerPanel) return;
 
   // Query strictly H1 and H2 tags as requested (2 levels only)
-  const headingElements = viewerPanel.querySelectorAll('h1, h2');
+  const headingElements = viewerPanel.querySelectorAll("h1, h2");
   const headings = [];
 
   headingElements.forEach((el, index) => {
-    const rawText = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    const rawText = (el.textContent || "").replace(/\s+/g, " ").trim();
     if (!rawText) return;
 
     let id = el.id;
     if (!id) {
       const slug = rawText
         .toLowerCase()
-        .replace(/[^\w\s\u00C0-\u024F\u1EA0-\u1EF9-]/g, '')
+        .replace(/[^\w\s\u00C0-\u024F\u1EA0-\u1EF9-]/g, "")
         .trim()
-        .replace(/\s+/g, '-');
+        .replace(/\s+/g, "-");
       id = slug ? `h-${slug}-${index + 1}` : `heading-${index + 1}`;
       el.id = id;
     }
 
     const tagName = el.tagName.toLowerCase();
-    const level = tagName === 'h1' ? 1 : 2;
+    const level = tagName === "h1" ? 1 : 2;
 
     headings.push({
       id,
       text: rawText,
-      level
+      level,
     });
   });
 
   appState.readerHeadings = headings;
 
   // Update count badge
-  const countBadge = document.getElementById('readerTocCount');
+  const countBadge = document.getElementById("readerTocCount");
   if (countBadge) {
     countBadge.textContent = headings.length.toString();
   }
 
   // Reset search filter input
-  const searchInput = document.getElementById('tocSearchInput');
+  const searchInput = document.getElementById("tocSearchInput");
   if (searchInput) {
-    searchInput.value = '';
+    searchInput.value = "";
   }
 
   renderTocList(headings);
@@ -3037,7 +3510,7 @@ function buildReaderTableOfContents() {
  * Renders the array of headings into the side modal list.
  */
 function renderTocList(headings) {
-  const listContainer = document.getElementById('readerTocList');
+  const listContainer = document.getElementById("readerTocList");
   if (!listContainer) return;
 
   if (!headings || headings.length === 0) {
@@ -3052,18 +3525,20 @@ function renderTocList(headings) {
     return;
   }
 
-  listContainer.innerHTML = headings.map(item => {
-    const levelClass = item.level === 1 ? 'toc-item-h1' : 'toc-item-h2';
-    const tagClass = item.level === 1 ? 'toc-tag-h1' : 'toc-tag-h2';
-    const tagLabel = item.level === 1 ? 'H1' : 'H2';
+  listContainer.innerHTML = headings
+    .map((item) => {
+      const levelClass = item.level === 1 ? "toc-item-h1" : "toc-item-h2";
+      const tagClass = item.level === 1 ? "toc-tag-h1" : "toc-tag-h2";
+      const tagLabel = item.level === 1 ? "H1" : "H2";
 
-    return `
+      return `
       <div role="button" tabindex="0" class="toc-item ${levelClass}" onclick="seekToHeading('${escapeHtml(item.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ')seekToHeading('${escapeHtml(item.id)}')" aria-label="Nhảy đến ${tagLabel}: ${escapeHtml(item.text)}">
         <span class="toc-level-tag ${tagClass}">${tagLabel}</span>
         <span class="toc-item-text">${escapeHtml(item.text)}</span>
       </div>
     `;
-  }).join('');
+    })
+    .join("");
 }
 
 /**
@@ -3077,15 +3552,15 @@ function seekToHeading(headingId) {
   toggleTocModal(false);
 
   if (target) {
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
 
     // Trigger visual pulse glow
-    target.classList.remove('heading-target-active');
+    target.classList.remove("heading-target-active");
     void target.offsetWidth; // Force reflow
-    target.classList.add('heading-target-active');
+    target.classList.add("heading-target-active");
 
     setTimeout(() => {
-      target.classList.remove('heading-target-active');
+      target.classList.remove("heading-target-active");
     }, 2000);
   }
 }
@@ -3095,15 +3570,15 @@ function seekToHeading(headingId) {
  */
 function filterTocItems(query) {
   if (!appState.readerHeadings) return;
-  const q = (query || '').trim().toLowerCase();
+  const q = (query || "").trim().toLowerCase();
 
   if (!q) {
     renderTocList(appState.readerHeadings);
     return;
   }
 
-  const filtered = appState.readerHeadings.filter(item =>
-    (item.text || '').toLowerCase().includes(q)
+  const filtered = appState.readerHeadings.filter((item) =>
+    (item.text || "").toLowerCase().includes(q),
   );
   renderTocList(filtered);
 }
@@ -3116,65 +3591,86 @@ let isTocScrollLockInitialized = false;
  */
 function initTocScrollLock() {
   if (isTocScrollLockInitialized) return;
-  const modal = document.getElementById('readerTocModal');
-  const tocList = document.getElementById('readerTocList');
+  const modal = document.getElementById("readerTocModal");
+  const tocList = document.getElementById("readerTocList");
   if (!modal || !tocList) return;
 
   isTocScrollLockInitialized = true;
 
   // 1. Prevent touchmove scrolling on backdrop and non-scrollable header/filter
-  modal.addEventListener('touchmove', (e) => {
-    if (!e.target.closest('.side-modal-body')) {
-      e.preventDefault();
-    }
-  }, { passive: false });
+  modal.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!e.target.closest(".side-modal-body")) {
+        e.preventDefault();
+      }
+    },
+    { passive: false },
+  );
 
   // 2. Prevent touch scroll chaining at boundaries of .side-modal-body
   let startTouchY = 0;
-  tocList.addEventListener('touchstart', (e) => {
-    if (e.touches && e.touches.length > 0) {
-      startTouchY = e.touches[0].clientY;
-    }
-  }, { passive: true });
+  tocList.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches && e.touches.length > 0) {
+        startTouchY = e.touches[0].clientY;
+      }
+    },
+    { passive: true },
+  );
 
-  tocList.addEventListener('touchmove', (e) => {
-    if (!e.touches || e.touches.length === 0) return;
-    const currentY = e.touches[0].clientY;
-    const deltaY = currentY - startTouchY;
-    const isAtTop = tocList.scrollTop <= 0;
-    const isAtBottom = Math.ceil(tocList.scrollTop + tocList.clientHeight) >= tocList.scrollHeight - 1;
+  tocList.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!e.touches || e.touches.length === 0) return;
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - startTouchY;
+      const isAtTop = tocList.scrollTop <= 0;
+      const isAtBottom =
+        Math.ceil(tocList.scrollTop + tocList.clientHeight) >=
+        tocList.scrollHeight - 1;
 
-    // Pulling down while at top (trying to scroll up beyond beginning)
-    if (isAtTop && deltaY > 0) {
-      e.preventDefault();
-      return;
-    }
-    // Pushing up while at bottom (trying to scroll down past end of list)
-    if (isAtBottom && deltaY < 0) {
-      e.preventDefault();
-      return;
-    }
-  }, { passive: false });
+      // Pulling down while at top (trying to scroll up beyond beginning)
+      if (isAtTop && deltaY > 0) {
+        e.preventDefault();
+        return;
+      }
+      // Pushing up while at bottom (trying to scroll down past end of list)
+      if (isAtBottom && deltaY < 0) {
+        e.preventDefault();
+        return;
+      }
+    },
+    { passive: false },
+  );
 
   // 3. Prevent mouse wheel / trackpad scroll chaining at boundaries
-  tocList.addEventListener('wheel', (e) => {
-    const isAtTop = tocList.scrollTop <= 0;
-    const isAtBottom = Math.ceil(tocList.scrollTop + tocList.clientHeight) >= tocList.scrollHeight - 1;
+  tocList.addEventListener(
+    "wheel",
+    (e) => {
+      const isAtTop = tocList.scrollTop <= 0;
+      const isAtBottom =
+        Math.ceil(tocList.scrollTop + tocList.clientHeight) >=
+        tocList.scrollHeight - 1;
 
-    if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
-      e.preventDefault();
-    }
-  }, { passive: false });
+      if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
+        e.preventDefault();
+      }
+    },
+    { passive: false },
+  );
 }
 
 /**
  * Toggles the TOC side modal drawer open or closed.
  */
 function toggleTocModal(show) {
-  const modal = document.getElementById('readerTocModal');
+  const modal = document.getElementById("readerTocModal");
   if (!modal) return;
 
-  const shouldOpen = (show === undefined) ? modal.classList.contains('hidden') : Boolean(show);
+  const shouldOpen =
+    show === undefined ? modal.classList.contains("hidden") : Boolean(show);
 
   if (shouldOpen) {
     initTocScrollLock();
@@ -3183,17 +3679,17 @@ function toggleTocModal(show) {
     if (!appState.readerHeadings || appState.readerHeadings.length === 0) {
       buildReaderTableOfContents();
     }
-    modal.classList.remove('hidden');
-    document.body.classList.add('body-toc-open');
+    modal.classList.remove("hidden");
+    document.body.classList.add("body-toc-open");
 
-    const searchInput = document.getElementById('tocSearchInput');
+    const searchInput = document.getElementById("tocSearchInput");
     if (searchInput) {
-      searchInput.value = '';
+      searchInput.value = "";
       renderTocList(appState.readerHeadings);
     }
   } else {
-    modal.classList.add('hidden');
-    document.body.classList.remove('body-toc-open');
+    modal.classList.add("hidden");
+    document.body.classList.remove("body-toc-open");
   }
 }
 
@@ -3202,17 +3698,17 @@ function toggleTocModal(show) {
  */
 function clearReaderTableOfContents() {
   appState.readerHeadings = [];
-  const countBadge = document.getElementById('readerTocCount');
-  if (countBadge) countBadge.textContent = '0';
+  const countBadge = document.getElementById("readerTocCount");
+  if (countBadge) countBadge.textContent = "0";
 
-  const listContainer = document.getElementById('readerTocList');
-  if (listContainer) listContainer.innerHTML = '';
+  const listContainer = document.getElementById("readerTocList");
+  if (listContainer) listContainer.innerHTML = "";
 
-  const modal = document.getElementById('readerTocModal');
-  if (modal && !modal.classList.contains('hidden')) {
-    modal.classList.add('hidden');
+  const modal = document.getElementById("readerTocModal");
+  if (modal && !modal.classList.contains("hidden")) {
+    modal.classList.add("hidden");
   }
-  document.body.classList.remove('body-toc-open');
+  document.body.classList.remove("body-toc-open");
 }
 
 /* ==========================================================================
@@ -3232,12 +3728,12 @@ const TTS_PAUSE_DURATION_MS = 100;
 
 const ttsState = {
   isSupported: true,
-  mode: 'audio', // 'audio' (HTML5 Media Stream) | 'speechSynthesis' (Offline Fallback)
-  language: (function() {
+  mode: "audio", // 'audio' (HTML5 Media Stream) | 'speechSynthesis' (Offline Fallback)
+  language: (function () {
     try {
-      return localStorage.getItem('gh_md_tts_lang') || 'vi';
+      return localStorage.getItem("gh_md_tts_lang") || "vi";
     } catch (e) {
-      return 'vi';
+      return "vi";
     }
   })(),
   active: false,
@@ -3254,16 +3750,16 @@ const ttsState = {
   watchdogTimer: null,
   pauseTimeout: null,
   currentStartTimestamp: 0,
-  wakeLock: null
+  wakeLock: null,
 };
 
 /**
  * Generates Google Translate TTS audio URL for selected language (vi | en).
  */
 function getTtsAudioUrl(text) {
-  const clean = (text || '').trim();
+  const clean = (text || "").trim();
   const encoded = encodeURIComponent(clean);
-  const langCode = (ttsState.language === 'en') ? 'en' : 'vi';
+  const langCode = ttsState.language === "en" ? "en" : "vi";
   return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${langCode}&client=tw-ob&q=${encoded}`;
 }
 
@@ -3272,13 +3768,13 @@ function getTtsAudioUrl(text) {
  */
 function getTtsAudioPlayer() {
   if (!ttsState.audioPlayer) {
-    let audio = document.getElementById('ttsAudioPlayer');
+    let audio = document.getElementById("ttsAudioPlayer");
     if (!audio) {
-      audio = document.createElement('audio');
-      audio.id = 'ttsAudioPlayer';
+      audio = document.createElement("audio");
+      audio.id = "ttsAudioPlayer";
       audio.playsInline = true;
-      audio.preload = 'auto';
-      audio.style.display = 'none';
+      audio.preload = "auto";
+      audio.style.display = "none";
       document.body.appendChild(audio);
     }
     ttsState.audioPlayer = audio;
@@ -3291,9 +3787,9 @@ function getTtsAudioPlayer() {
  */
 async function requestTtsWakeLock() {
   try {
-    if ('wakeLock' in navigator && !ttsState.wakeLock) {
-      ttsState.wakeLock = await navigator.wakeLock.request('screen');
-      ttsState.wakeLock.addEventListener('release', () => {
+    if ("wakeLock" in navigator && !ttsState.wakeLock) {
+      ttsState.wakeLock = await navigator.wakeLock.request("screen");
+      ttsState.wakeLock.addEventListener("release", () => {
         ttsState.wakeLock = null;
       });
     }
@@ -3316,20 +3812,26 @@ function releaseTtsWakeLock() {
  * Registers Media Session API for Lock Screen Controls & Bluetooth Headset (iOS & Android).
  */
 function setupMediaSession() {
-  if (!('mediaSession' in navigator)) return;
+  if (!("mediaSession" in navigator)) return;
   try {
-    const isEn = (ttsState.language === 'en');
-    const defaultTitle = isEn ? 'Markdown Document' : 'Tài liệu Markdown';
-    const fileName = appState.currentFile ? appState.currentFile.path.split('/').pop() : defaultTitle;
+    const isEn = ttsState.language === "en";
+    const defaultTitle = isEn ? "Markdown Document" : "Tài liệu Markdown";
+    const fileName = appState.currentFile
+      ? appState.currentFile.path.split("/").pop()
+      : defaultTitle;
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: fileName,
-      artist: isEn ? 'GitHub Markdown Reader • English' : 'GitHub Markdown Reader • Tiếng Việt',
-      album: isEn ? 'H1/H2 Female • Content Male' : 'H1/H2 Giọng nữ • Nội dung Giọng nam',
+      artist: isEn
+        ? "GitHub Markdown Reader • English"
+        : "GitHub Markdown Reader • Tiếng Việt",
+      album: isEn
+        ? "H1/H2 Female • Content Male"
+        : "H1/H2 Giọng nữ • Nội dung Giọng nam",
       artwork: [
-        { src: './icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-        { src: './icons/icon-512.png', sizes: '512x512', type: 'image/png' }
-      ]
+        { src: "./icons/icon-192.png", sizes: "192x192", type: "image/png" },
+        { src: "./icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      ],
     });
 
     const safeSetAction = (action, handler) => {
@@ -3339,32 +3841,32 @@ function setupMediaSession() {
     };
 
     // Bluetooth Headset Remote Control Handlers (AVRCP / MediaKeys)
-    safeSetAction('play', () => {
+    safeSetAction("play", () => {
       ttsPlay();
     });
-    safeSetAction('pause', () => {
+    safeSetAction("pause", () => {
       ttsPause();
     });
-    safeSetAction('stop', () => {
+    safeSetAction("stop", () => {
       ttsPause(); // Safely pause so playback can be resumed from headset
     });
-    safeSetAction('toggleplaypause', () => {
+    safeSetAction("toggleplaypause", () => {
       ttsTogglePlayPause();
     });
-    safeSetAction('previoustrack', () => {
+    safeSetAction("previoustrack", () => {
       ttsPrev();
     });
-    safeSetAction('nexttrack', () => {
+    safeSetAction("nexttrack", () => {
       ttsNext();
     });
-    safeSetAction('seekbackward', () => {
+    safeSetAction("seekbackward", () => {
       ttsPrev();
     });
-    safeSetAction('seekforward', () => {
+    safeSetAction("seekforward", () => {
       ttsNext();
     });
   } catch (e) {
-    console.warn('[TTS] Media Session error:', e);
+    console.warn("[TTS] Media Session error:", e);
   }
 }
 
@@ -3372,40 +3874,58 @@ function setupMediaSession() {
  * Updates Media Session playback state and segment info on Lock Screen and Bluetooth.
  */
 function updateMediaSessionStatus() {
-  if (!('mediaSession' in navigator)) return;
+  if (!("mediaSession" in navigator)) return;
   try {
-    navigator.mediaSession.playbackState = ttsState.playing ? 'playing' : 'paused';
+    navigator.mediaSession.playbackState = ttsState.playing
+      ? "playing"
+      : "paused";
 
-    if (ttsState.items && ttsState.items.length > 0 && ttsState.currentIndex < ttsState.items.length) {
+    if (
+      ttsState.items &&
+      ttsState.items.length > 0 &&
+      ttsState.currentIndex < ttsState.items.length
+    ) {
       const cur = ttsState.items[ttsState.currentIndex];
-      const isEn = (ttsState.language === 'en');
-      let roleText = '';
-      if (cur.type === 'h1' || cur.type === 'h2') {
-        roleText = isEn ? 'Female Voice' : 'Giọng nữ';
+      const isEn = ttsState.language === "en";
+      let roleText = "";
+      if (cur.type === "h1" || cur.type === "h2") {
+        roleText = isEn ? "Female Voice" : "Giọng nữ";
       } else {
-        roleText = isEn ? 'Male Voice' : 'Giọng nam';
+        roleText = isEn ? "Male Voice" : "Giọng nam";
       }
-      const defaultTitle = isEn ? 'Markdown Document' : 'Tài liệu Markdown';
-      const fileName = appState.currentFile ? appState.currentFile.path.split('/').pop() : defaultTitle;
+      const defaultTitle = isEn ? "Markdown Document" : "Tài liệu Markdown";
+      const fileName = appState.currentFile
+        ? appState.currentFile.path.split("/").pop()
+        : defaultTitle;
 
       navigator.mediaSession.metadata = new MediaMetadata({
         title: `[${ttsState.currentIndex + 1}/${ttsState.items.length}] ${fileName}`,
         artist: `${roleText} • ${cur.text.slice(0, 50)}...`,
-        album: isEn ? 'GitHub Markdown Reader (English)' : 'GitHub Markdown Reader (Tiếng Việt)',
+        album: isEn
+          ? "GitHub Markdown Reader (English)"
+          : "GitHub Markdown Reader (Tiếng Việt)",
         artwork: [
-          { src: './icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: './icons/icon-512.png', sizes: '512x512', type: 'image/png' }
-        ]
+          { src: "./icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "./icons/icon-512.png", sizes: "512x512", type: "image/png" },
+        ],
       });
 
-      if ('setPositionState' in navigator.mediaSession && ttsState.audioPlayer && isFinite(ttsState.audioPlayer.duration) && ttsState.audioPlayer.duration > 0) {
+      if (
+        "setPositionState" in navigator.mediaSession &&
+        ttsState.audioPlayer &&
+        isFinite(ttsState.audioPlayer.duration) &&
+        ttsState.audioPlayer.duration > 0
+      ) {
         try {
           const dur = ttsState.audioPlayer.duration;
-          const pos = Math.min(dur, Math.max(0, ttsState.audioPlayer.currentTime || 0));
+          const pos = Math.min(
+            dur,
+            Math.max(0, ttsState.audioPlayer.currentTime || 0),
+          );
           navigator.mediaSession.setPositionState({
             duration: dur,
             playbackRate: ttsState.audioPlayer.playbackRate || 1.0,
-            position: pos
+            position: pos,
           });
         } catch (posErr) {}
       }
@@ -3422,14 +3942,14 @@ function startTtsWatchdog() {
     if (!ttsState.active || !ttsState.playing) return;
 
     // In audio mode: check if audio is paused unexpectedly while playing flag is true
-    if (ttsState.mode === 'audio' && ttsState.audioPlayer) {
+    if (ttsState.mode === "audio" && ttsState.audioPlayer) {
       if (ttsState.audioPlayer.paused && !ttsState.pauseTimeout) {
         ttsState.audioPlayer.play().catch(() => {});
       }
     }
 
     // In speech synthesis mode: keep Chrome synthesis active
-    if (ttsState.mode === 'speechSynthesis' && 'speechSynthesis' in window) {
+    if (ttsState.mode === "speechSynthesis" && "speechSynthesis" in window) {
       try {
         if (window.speechSynthesis.paused) {
           window.speechSynthesis.resume();
@@ -3438,14 +3958,20 @@ function startTtsWatchdog() {
     }
 
     // Auto-recovery if a segment gets stuck longer than safety threshold
-    if (ttsState.currentStartTimestamp > 0 && ttsState.items && ttsState.currentIndex < ttsState.items.length) {
+    if (
+      ttsState.currentStartTimestamp > 0 &&
+      ttsState.items &&
+      ttsState.currentIndex < ttsState.items.length
+    ) {
       const item = ttsState.items[ttsState.currentIndex];
-      const wordCount = (item.text || '').split(/\s+/).length;
-      const maxAllowedDurationMs = Math.max(8000, (wordCount * 600) + 9000);
+      const wordCount = (item.text || "").split(/\s+/).length;
+      const maxAllowedDurationMs = Math.max(8000, wordCount * 600 + 9000);
       const elapsedMs = Date.now() - ttsState.currentStartTimestamp;
 
       if (elapsedMs > maxAllowedDurationMs) {
-        console.warn('[TTS Watchdog] Detected stuck segment in background. Auto-advancing...');
+        console.warn(
+          "[TTS Watchdog] Detected stuck segment in background. Auto-advancing...",
+        );
         ttsSpeakItem(ttsState.currentIndex + 1);
       }
     }
@@ -3465,16 +3991,22 @@ function stopTtsWatchdog() {
 /**
  * Handle visibility changes (Lock screen / App minimized).
  */
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
     // When returning to screen, sync visual highlight and scroll to active item
-    if (ttsState.active && ttsState.items && ttsState.currentIndex < ttsState.items.length) {
+    if (
+      ttsState.active &&
+      ttsState.items &&
+      ttsState.currentIndex < ttsState.items.length
+    ) {
       const item = ttsState.items[ttsState.currentIndex];
-      document.querySelectorAll('.tts-active-reading').forEach(el => el.classList.remove('tts-active-reading'));
+      document
+        .querySelectorAll(".tts-active-reading")
+        .forEach((el) => el.classList.remove("tts-active-reading"));
       if (item.element) {
-        item.element.classList.add('tts-active-reading');
+        item.element.classList.add("tts-active-reading");
         try {
-          item.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          item.element.scrollIntoView({ behavior: "smooth", block: "center" });
         } catch (e) {
           item.element.scrollIntoView();
         }
@@ -3488,22 +4020,22 @@ document.addEventListener('visibilitychange', () => {
  * Initializes and selects voices for fallback Web Speech API (Vietnamese & English).
  */
 function initTtsVoices() {
-  if (!('speechSynthesis' in window)) return;
+  if (!("speechSynthesis" in window)) return;
   try {
     const voices = window.speechSynthesis.getVoices() || [];
-    ttsState.viVoices = voices.filter(v => {
-      const lang = (v.lang || '').toLowerCase();
-      return lang.startsWith('vi') || lang.includes('viet');
+    ttsState.viVoices = voices.filter((v) => {
+      const lang = (v.lang || "").toLowerCase();
+      return lang.startsWith("vi") || lang.includes("viet");
     });
 
-    ttsState.enVoices = voices.filter(v => {
-      const lang = (v.lang || '').toLowerCase();
-      return lang.startsWith('en');
+    ttsState.enVoices = voices.filter((v) => {
+      const lang = (v.lang || "").toLowerCase();
+      return lang.startsWith("en");
     });
 
     selectVoicesForLanguage();
   } catch (e) {
-    console.warn('TTS voice init error:', e);
+    console.warn("TTS voice init error:", e);
   }
 }
 
@@ -3511,52 +4043,92 @@ function initTtsVoices() {
  * Selects female voice (for H1, H2) and male voice (for content) according to selected language.
  */
 function selectVoicesForLanguage() {
-  const isEn = (ttsState.language === 'en');
+  const isEn = ttsState.language === "en";
   const voiceList = isEn ? ttsState.enVoices : ttsState.viVoices;
 
   if (isEn) {
     // 1. English Female Voice
-    ttsState.femaleVoice = voiceList.find(v => {
-      const name = (v.name || '').toLowerCase();
-      return name.includes('female') || name.includes('samantha') || name.includes('karen') ||
-             name.includes('victoria') || name.includes('zira') || name.includes('ava') ||
-             name.includes('allison') || name.includes('susan');
-    }) || voiceList[0] || null;
+    ttsState.femaleVoice =
+      voiceList.find((v) => {
+        const name = (v.name || "").toLowerCase();
+        return (
+          name.includes("female") ||
+          name.includes("samantha") ||
+          name.includes("karen") ||
+          name.includes("victoria") ||
+          name.includes("zira") ||
+          name.includes("ava") ||
+          name.includes("allison") ||
+          name.includes("susan")
+        );
+      }) ||
+      voiceList[0] ||
+      null;
 
     // 2. English Male Voice
-    ttsState.maleVoice = voiceList.find(v => {
-      const name = (v.name || '').toLowerCase();
-      return (name.includes('male') || name.includes('alex') || name.includes('daniel') ||
-              name.includes('david') || name.includes('fred') || name.includes('tom') ||
-              name.includes('oliver') || name.includes('george')) &&
-             !name.includes('female');
-    }) || voiceList.find(v => v !== ttsState.femaleVoice) || voiceList[1] || voiceList[0] || null;
+    ttsState.maleVoice =
+      voiceList.find((v) => {
+        const name = (v.name || "").toLowerCase();
+        return (
+          (name.includes("male") ||
+            name.includes("alex") ||
+            name.includes("daniel") ||
+            name.includes("david") ||
+            name.includes("fred") ||
+            name.includes("tom") ||
+            name.includes("oliver") ||
+            name.includes("george")) &&
+          !name.includes("female")
+        );
+      }) ||
+      voiceList.find((v) => v !== ttsState.femaleVoice) ||
+      voiceList[1] ||
+      voiceList[0] ||
+      null;
   } else {
     // 1. Vietnamese Female Voice
-    ttsState.femaleVoice = voiceList.find(v => {
-      const name = (v.name || '').toLowerCase();
-      return name.includes('female') || name.includes('nữ') || name.includes('nu') ||
-             name.includes('linh') || name.includes('hoaimy') || name.includes('mai') ||
-             name.includes('chi') || name.includes('lan') || name.includes('an');
-    }) || voiceList[0] || null;
+    ttsState.femaleVoice =
+      voiceList.find((v) => {
+        const name = (v.name || "").toLowerCase();
+        return (
+          name.includes("female") ||
+          name.includes("nữ") ||
+          name.includes("nu") ||
+          name.includes("linh") ||
+          name.includes("hoaimy") ||
+          name.includes("mai") ||
+          name.includes("chi") ||
+          name.includes("lan") ||
+          name.includes("an")
+        );
+      }) ||
+      voiceList[0] ||
+      null;
 
     // 2. Vietnamese Male Voice
-    ttsState.maleVoice = voiceList.find(v => {
-      const name = (v.name || '').toLowerCase();
-      return (name.includes('male') || name.includes('nam') || name.includes('namminh') ||
-              name.includes('minh') || name.includes('trung') || name.includes('khoa')) &&
-             !name.includes('female');
+    ttsState.maleVoice = voiceList.find((v) => {
+      const name = (v.name || "").toLowerCase();
+      return (
+        (name.includes("male") ||
+          name.includes("nam") ||
+          name.includes("namminh") ||
+          name.includes("minh") ||
+          name.includes("trung") ||
+          name.includes("khoa")) &&
+        !name.includes("female")
+      );
     });
 
     if (!ttsState.maleVoice && voiceList.length > 1) {
-      ttsState.maleVoice = voiceList.find(v => v !== ttsState.femaleVoice) || voiceList[1];
+      ttsState.maleVoice =
+        voiceList.find((v) => v !== ttsState.femaleVoice) || voiceList[1];
     } else if (!ttsState.maleVoice) {
       ttsState.maleVoice = voiceList[0] || null;
     }
   }
 }
 
-if ('speechSynthesis' in window) {
+if ("speechSynthesis" in window) {
   window.speechSynthesis.onvoiceschanged = () => {
     initTtsVoices();
   };
@@ -3570,16 +4142,19 @@ if ('speechSynthesis' in window) {
  */
 function splitTextIntoSentences(rawText) {
   if (!rawText) return [];
-  let text = rawText.replace(/\s+/g, ' ').trim();
+  let text = rawText.replace(/\s+/g, " ").trim();
   if (!text) return [];
 
-  const PLACEHOLDER_DECIMAL = '__DECIMAL_DOT__';
-  const PLACEHOLDER_ABBR = '__ABBR_DOT__';
+  const PLACEHOLDER_DECIMAL = "__DECIMAL_DOT__";
+  const PLACEHOLDER_ABBR = "__ABBR_DOT__";
 
   // 1. Protect decimal numbers (e.g., 3.14, 0.2) and common abbreviations (VI & EN)
   let protectedText = text
-    .replace(/(\d+)\.(\d+)/g, '$1' + PLACEHOLDER_DECIMAL + '$2')
-    .replace(/(v\.v|e\.g|i\.e|tp|th\.s|ts|dr|mr|mrs|ms|inc|ltd|co|corp|approx|vs|etc)\./gi, '$1' + PLACEHOLDER_ABBR);
+    .replace(/(\d+)\.(\d+)/g, "$1" + PLACEHOLDER_DECIMAL + "$2")
+    .replace(
+      /(v\.v|e\.g|i\.e|tp|th\.s|ts|dr|mr|mrs|ms|inc|ltd|co|corp|approx|vs|etc)\./gi,
+      "$1" + PLACEHOLDER_ABBR,
+    );
 
   // 2. Segment at punctuation marks: . ! ? : ; … or end of string
   const regex = /[^.!?…;:]+([.!?…;:]+|$)/g;
@@ -3587,10 +4162,10 @@ function splitTextIntoSentences(rawText) {
   const candidateSentences = [];
 
   if (rawMatches && rawMatches.length > 0) {
-    rawMatches.forEach(m => {
+    rawMatches.forEach((m) => {
       let s = m
-        .replace(new RegExp(PLACEHOLDER_DECIMAL, 'g'), '.')
-        .replace(new RegExp(PLACEHOLDER_ABBR, 'g'), '.')
+        .replace(new RegExp(PLACEHOLDER_DECIMAL, "g"), ".")
+        .replace(new RegExp(PLACEHOLDER_ABBR, "g"), ".")
         .trim();
       if (s.length > 0) candidateSentences.push(s);
     });
@@ -3600,16 +4175,19 @@ function splitTextIntoSentences(rawText) {
 
   // 3. For extra-long sentences (>150 chars), split by commas to stay within TTS stream limits
   const finalSentences = [];
-  candidateSentences.forEach(sentence => {
+  candidateSentences.forEach((sentence) => {
     if (sentence.length <= 150) {
       finalSentences.push(sentence);
     } else {
       const commaParts = sentence.split(/,\s*/);
-      let currentChunk = '';
+      let currentChunk = "";
       commaParts.forEach((part, pIdx) => {
-        const isLastPart = (pIdx === commaParts.length - 1);
-        const suffix = isLastPart ? '' : ', ';
-        if ((currentChunk + part + suffix).length > 140 && currentChunk.length > 0) {
+        const isLastPart = pIdx === commaParts.length - 1;
+        const suffix = isLastPart ? "" : ", ";
+        if (
+          (currentChunk + part + suffix).length > 140 &&
+          currentChunk.length > 0
+        ) {
           finalSentences.push(currentChunk.trim());
           currentChunk = part + suffix;
         } else {
@@ -3633,66 +4211,83 @@ function splitTextIntoSentences(rawText) {
  * - Every bullet list item (LI)
  */
 function extractTtsItems() {
-  const panel = document.getElementById('markdownViewerPanel');
+  const panel = document.getElementById("markdownViewerPanel");
   if (!panel) return [];
 
   const items = [];
-  const candidates = panel.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, blockquote');
+  const candidates = panel.querySelectorAll(
+    "h1, h2, h3, h4, h5, h6, p, li, blockquote",
+  );
 
-  candidates.forEach(el => {
+  candidates.forEach((el) => {
     // Skip code blocks, diagrams, blank states, and hidden panels
-    if (el.closest('.code-block-wrapper') || el.closest('pre') || el.closest('.mermaid') ||
-        el.closest('.plantuml-diagram') || el.closest('.blankslate') || el.closest('.raw-content-panel')) {
+    if (
+      el.closest(".code-block-wrapper") ||
+      el.closest("pre") ||
+      el.closest(".mermaid") ||
+      el.closest(".plantuml-diagram") ||
+      el.closest(".blankslate") ||
+      el.closest(".raw-content-panel")
+    ) {
       return;
     }
 
     // Avoid duplicate speech: if li contains p, we read the inner p elements instead
-    if (el.tagName.toLowerCase() === 'li' && el.querySelector('p')) {
+    if (el.tagName.toLowerCase() === "li" && el.querySelector("p")) {
       return;
     }
     // If blockquote contains p or headings, read inner children instead
-    if (el.tagName.toLowerCase() === 'blockquote' && el.querySelector('p, h1, h2, h3, h4, h5, h6')) {
+    if (
+      el.tagName.toLowerCase() === "blockquote" &&
+      el.querySelector("p, h1, h2, h3, h4, h5, h6")
+    ) {
       return;
     }
 
     // Clean text by cloning and stripping non-speech sub-elements:
     // Strictly strip code blocks, pre elements, copy buttons, SVGs, math, and styles
     const clone = el.cloneNode(true);
-    clone.querySelectorAll('.code-block-wrapper, pre, .btn-copy-code, button, svg, .katex-html, style, script').forEach(node => node.remove());
+    clone
+      .querySelectorAll(
+        ".code-block-wrapper, pre, .btn-copy-code, button, svg, .katex-html, style, script",
+      )
+      .forEach((node) => node.remove());
 
     // Also strip code elements that represent code blocks (syntax highlighted, language tagged, or multiline)
-    clone.querySelectorAll('code').forEach(codeEl => {
-      if (codeEl.classList.contains('hljs') ||
-          (codeEl.className && codeEl.className.includes('language-')) ||
-          (codeEl.textContent && codeEl.textContent.includes('\n')) ||
-          (codeEl.textContent && codeEl.textContent.trim().length > 60)) {
+    clone.querySelectorAll("code").forEach((codeEl) => {
+      if (
+        codeEl.classList.contains("hljs") ||
+        (codeEl.className && codeEl.className.includes("language-")) ||
+        (codeEl.textContent && codeEl.textContent.includes("\n")) ||
+        (codeEl.textContent && codeEl.textContent.trim().length > 60)
+      ) {
         codeEl.remove();
       }
     });
 
-    let text = (clone.textContent || '').trim();
+    let text = (clone.textContent || "").trim();
 
     // Clean raw code fences, markdown artifact remnants, and format links
-    text = text.replace(/```[\s\S]*?```/g, '');
-    text = text.replace(/```[a-zA-Z0-9_-]*/g, '');
-    text = text.replace(/```/g, '');
-    text = text.replace(/^#+\s*/, '');
-    const linkWord = (ttsState.language === 'en') ? 'link' : 'đường dẫn liên kết';
+    text = text.replace(/```[\s\S]*?```/g, "");
+    text = text.replace(/```[a-zA-Z0-9_-]*/g, "");
+    text = text.replace(/```/g, "");
+    text = text.replace(/^#+\s*/, "");
+    const linkWord = ttsState.language === "en" ? "link" : "đường dẫn liên kết";
     text = text.replace(/https?:\/\/[^\s]+/g, linkWord);
-    text = text.replace(/\s+/g, ' ').trim();
+    text = text.replace(/\s+/g, " ").trim();
 
     // If empty, too short, or only punctuation remnants (e.g. ":", "-", "•", ".", ";")
     if (!text || text.length < 2 || /^[:\-\s•.,;]+$/.test(text)) return;
 
     const tag = el.tagName.toLowerCase();
-    const isH1 = (tag === 'h1');
-    const isH2 = (tag === 'h2');
-    const isHeader = isH1 || isH2 || ['h3', 'h4', 'h5', 'h6'].includes(tag);
-    const isBullet = (tag === 'li');
+    const isH1 = tag === "h1";
+    const isH2 = tag === "h2";
+    const isHeader = isH1 || isH2 || ["h3", "h4", "h5", "h6"].includes(tag);
+    const isBullet = tag === "li";
 
-    let voiceType = 'body';
-    if (isH1) voiceType = 'h1';
-    else if (isH2) voiceType = 'h2';
+    let voiceType = "body";
+    if (isH1) voiceType = "h1";
+    else if (isH2) voiceType = "h2";
 
     if (isHeader) {
       // Headers: Read complete title unit then apply 0.1s pause
@@ -3701,7 +4296,7 @@ function extractTtsItems() {
         type: voiceType,
         text: text,
         isHeader: true,
-        pauseAfterMs: TTS_PAUSE_DURATION_MS
+        pauseAfterMs: TTS_PAUSE_DURATION_MS,
       });
     } else {
       // Paragraphs & Bullets: Segment by punctuation marks with 0.1s pause for each sentence/bullet
@@ -3712,8 +4307,8 @@ function extractTtsItems() {
           type: voiceType,
           text: sentenceText,
           isHeader: false,
-          isBullet: isBullet && (sIdx === sentences.length - 1),
-          pauseAfterMs: TTS_PAUSE_DURATION_MS
+          isBullet: isBullet && sIdx === sentences.length - 1,
+          pauseAfterMs: TTS_PAUSE_DURATION_MS,
         });
       });
     }
@@ -3726,11 +4321,13 @@ function extractTtsItems() {
  * Plays speech unit via HTML5 Audio Stream (persistent when screen locked).
  */
 function playViaAudioElement(item, index) {
-  ttsState.mode = 'audio';
+  ttsState.mode = "audio";
   const audio = getTtsAudioPlayer();
 
-  if ('speechSynthesis' in window) {
-    try { window.speechSynthesis.cancel(); } catch (e) {}
+  if ("speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
   }
 
   const audioUrl = getTtsAudioUrl(item.text);
@@ -3739,7 +4336,7 @@ function playViaAudioElement(item, index) {
   // Voice rules:
   // - Headers H1 & H2: Female voice (natural pitch, clear speed 1.0)
   // - Others: Male voice (faster by 25%: playbackRate 1.25, preserves pitch)
-  if (item.type === 'h1' || item.type === 'h2') {
+  if (item.type === "h1" || item.type === "h2") {
     audio.preservesPitch = true;
     audio.playbackRate = 1.0;
   } else {
@@ -3762,19 +4359,24 @@ function playViaAudioElement(item, index) {
   };
 
   audio.onerror = (e) => {
-    console.warn('[TTS Audio Stream] Fallback to SpeechSynthesis due to audio error:', e);
+    console.warn(
+      "[TTS Audio Stream] Fallback to SpeechSynthesis due to audio error:",
+      e,
+    );
     playViaSpeechSynthesis(item, index);
   };
 
   ttsState.playing = true;
   const playPromise = audio.play();
   if (playPromise !== undefined) {
-    playPromise.then(() => {
-      updateMediaSessionStatus();
-    }).catch(err => {
-      console.warn('[TTS Audio play notice]:', err);
-      playViaSpeechSynthesis(item, index);
-    });
+    playPromise
+      .then(() => {
+        updateMediaSessionStatus();
+      })
+      .catch((err) => {
+        console.warn("[TTS Audio play notice]:", err);
+        playViaSpeechSynthesis(item, index);
+      });
   }
 }
 
@@ -3782,28 +4384,32 @@ function playViaAudioElement(item, index) {
  * Plays speech unit via Web Speech API (offline fallback).
  */
 function playViaSpeechSynthesis(item, index) {
-  ttsState.mode = 'speechSynthesis';
-  if (!('speechSynthesis' in window)) {
-    showFlash('Trình duyệt không hỗ trợ Web Speech API.', 'warning');
+  ttsState.mode = "speechSynthesis";
+  if (!("speechSynthesis" in window)) {
+    showFlash("Trình duyệt không hỗ trợ Web Speech API.", "warning");
     return;
   }
 
   if (ttsState.audioPlayer) {
-    try { ttsState.audioPlayer.pause(); } catch (e) {}
+    try {
+      ttsState.audioPlayer.pause();
+    } catch (e) {}
   }
 
-  try { window.speechSynthesis.cancel(); } catch (e) {}
+  try {
+    window.speechSynthesis.cancel();
+  } catch (e) {}
 
   const utterance = new SpeechSynthesisUtterance(item.text);
-  utterance.lang = (ttsState.language === 'en') ? 'en-US' : 'vi-VN';
+  utterance.lang = ttsState.language === "en" ? "en-US" : "vi-VN";
 
-  if (item.type === 'h1' || item.type === 'h2') {
+  if (item.type === "h1" || item.type === "h2") {
     if (ttsState.femaleVoice) utterance.voice = ttsState.femaleVoice;
     utterance.pitch = ttsState.femaleVoice ? 1.15 : 1.25;
     utterance.rate = 1.0;
   } else {
     if (ttsState.maleVoice) utterance.voice = ttsState.maleVoice;
-    utterance.pitch = (ttsState.language === 'en') ? 0.85 : 0.75;
+    utterance.pitch = ttsState.language === "en" ? 0.85 : 0.75;
     utterance.rate = 1.25; // Nhanh hơn 25%
   }
 
@@ -3820,7 +4426,7 @@ function playViaSpeechSynthesis(item, index) {
   };
 
   utterance.onerror = (event) => {
-    if (event.error === 'canceled' || event.error === 'interrupted') return;
+    if (event.error === "canceled" || event.error === "interrupted") return;
     if (ttsState.playing && ttsState.active) {
       ttsSpeakItem(index + 1);
     }
@@ -3832,7 +4438,7 @@ function playViaSpeechSynthesis(item, index) {
   try {
     window.speechSynthesis.speak(utterance);
   } catch (e) {
-    console.error('SpeechSynthesis.speak error:', e);
+    console.error("SpeechSynthesis.speak error:", e);
   }
 }
 
@@ -3846,14 +4452,14 @@ function ttsSpeakItem(index) {
   }
 
   if (!ttsState.items || ttsState.items.length === 0) {
-    showFlash('Không tìm thấy nội dung văn bản để đọc.', 'info');
+    showFlash("Không tìm thấy nội dung văn bản để đọc.", "info");
     ttsStop();
     return;
   }
 
   if (index < 0 || index >= ttsState.items.length) {
     ttsStop();
-    showFlash('Đã đọc xong 100% nội dung bài viết.', 'success');
+    showFlash("Đã đọc xong 100% nội dung bài viết.", "success");
     return;
   }
 
@@ -3862,14 +4468,17 @@ function ttsSpeakItem(index) {
   const item = ttsState.items[index];
 
   // Update DOM highlights smoothly
-  if (document.visibilityState === 'visible') {
-    const prevItem = (index > 0 && ttsState.items[index - 1]) ? ttsState.items[index - 1] : null;
+  if (document.visibilityState === "visible") {
+    const prevItem =
+      index > 0 && ttsState.items[index - 1] ? ttsState.items[index - 1] : null;
     if (!prevItem || prevItem.element !== item.element) {
-      document.querySelectorAll('.tts-active-reading').forEach(el => el.classList.remove('tts-active-reading'));
+      document
+        .querySelectorAll(".tts-active-reading")
+        .forEach((el) => el.classList.remove("tts-active-reading"));
       if (item.element) {
-        item.element.classList.add('tts-active-reading');
+        item.element.classList.add("tts-active-reading");
         try {
-          item.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          item.element.scrollIntoView({ behavior: "smooth", block: "center" });
         } catch (e) {
           item.element.scrollIntoView();
         }
@@ -3883,8 +4492,10 @@ function ttsSpeakItem(index) {
       if (!ttsState.preloadAudio) {
         ttsState.preloadAudio = new Audio();
       }
-      ttsState.preloadAudio.src = getTtsAudioUrl(ttsState.items[index + 1].text);
-      ttsState.preloadAudio.preload = 'auto';
+      ttsState.preloadAudio.src = getTtsAudioUrl(
+        ttsState.items[index + 1].text,
+      );
+      ttsState.preloadAudio.preload = "auto";
     } catch (e) {}
   }
 
@@ -3903,93 +4514,102 @@ function ttsSpeakItem(index) {
  * Updates UI elements for TTS (Soundwave, Badges, Progress, Button Icons).
  */
 function updateTtsUI() {
-  const controlBar = document.getElementById('ttsControlBar');
-  const soundwave = document.getElementById('ttsSoundwave');
-  const voiceRoleBadge = document.getElementById('ttsVoiceRoleBadge');
-  const progressText = document.getElementById('ttsProgressText');
-  const playPauseIcon = document.getElementById('ttsPlayPauseIcon');
-  const btnToggleTts = document.getElementById('btnToggleTts');
-  const btnHeaderTts = document.getElementById('btnHeaderTts');
-  const ttsBtnLabel = document.getElementById('ttsBtnLabel');
+  const controlBar = document.getElementById("ttsControlBar");
+  const soundwave = document.getElementById("ttsSoundwave");
+  const voiceRoleBadge = document.getElementById("ttsVoiceRoleBadge");
+  const progressText = document.getElementById("ttsProgressText");
+  const playPauseIcon = document.getElementById("ttsPlayPauseIcon");
+  const btnToggleTts = document.getElementById("btnToggleTts");
+  const btnHeaderTts = document.getElementById("btnHeaderTts");
+  const ttsBtnLabel = document.getElementById("ttsBtnLabel");
 
   if (controlBar) {
     if (ttsState.active) {
-      controlBar.classList.remove('hidden');
+      controlBar.classList.remove("hidden");
     } else {
-      controlBar.classList.add('hidden');
+      controlBar.classList.add("hidden");
     }
   }
 
   if (btnToggleTts) {
     if (ttsState.active) {
-      btnToggleTts.classList.add('active');
-      if (ttsBtnLabel) ttsBtnLabel.textContent = ttsState.playing ? 'Đang đọc' : 'Tạm dừng';
+      btnToggleTts.classList.add("active");
+      if (ttsBtnLabel)
+        ttsBtnLabel.textContent = ttsState.playing ? "Đang đọc" : "Tạm dừng";
     } else {
-      btnToggleTts.classList.remove('active');
-      if (ttsBtnLabel) ttsBtnLabel.textContent = 'Đọc';
+      btnToggleTts.classList.remove("active");
+      if (ttsBtnLabel) ttsBtnLabel.textContent = "Đọc";
     }
   }
 
   if (btnHeaderTts) {
     if (ttsState.active) {
-      btnHeaderTts.classList.add('tts-active');
+      btnHeaderTts.classList.add("tts-active");
     } else {
-      btnHeaderTts.classList.remove('tts-active');
+      btnHeaderTts.classList.remove("tts-active");
     }
   }
 
   if (soundwave) {
     if (ttsState.playing) {
-      soundwave.classList.add('active');
+      soundwave.classList.add("active");
     } else {
-      soundwave.classList.remove('active');
+      soundwave.classList.remove("active");
     }
   }
 
   // Update Play/Pause Icon and Label
-  const playPauseText = document.getElementById('ttsPlayPauseText');
-  const isEn = (ttsState.language === 'en');
+  const playPauseText = document.getElementById("ttsPlayPauseText");
+  const isEn = ttsState.language === "en";
   if (playPauseIcon) {
     if (ttsState.playing) {
       // Pause icon
       playPauseIcon.innerHTML = `
         <path d="M4.5 3.25A.75.75 0 0 1 5.25 4v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Zm7 0a.75.75 0 0 1 .75v8a.75.75 0 0 1-1.5 0V4a.75.75 0 0 1 .75-.75Z"></path>
       `;
-      if (playPauseText) playPauseText.textContent = isEn ? 'Pause' : 'Tạm dừng';
+      if (playPauseText)
+        playPauseText.textContent = isEn ? "Pause" : "Tạm dừng";
     } else {
       // Play icon
       playPauseIcon.innerHTML = `
         <path d="M4.5 3.75A.75.75 0 0 1 5.7 3.12l7 4.25a.75.75 0 0 1 0 1.26l-7 4.25A.75.75 0 0 1 4.5 12.25v-8.5Z"></path>
       `;
-      if (playPauseText) playPauseText.textContent = isEn ? 'Resume' : 'Tiếp tục';
+      if (playPauseText)
+        playPauseText.textContent = isEn ? "Resume" : "Tiếp tục";
     }
   }
 
-  const stopBtnText = document.getElementById('ttsStopBtnText');
+  const stopBtnText = document.getElementById("ttsStopBtnText");
   if (stopBtnText) {
-    stopBtnText.textContent = isEn ? 'Stop' : 'Dừng';
+    stopBtnText.textContent = isEn ? "Stop" : "Dừng";
   }
 
   // Update Language Badge Text
-  const langBadgeText = document.getElementById('ttsLangBadgeText');
+  const langBadgeText = document.getElementById("ttsLangBadgeText");
   if (langBadgeText) {
-    langBadgeText.textContent = (ttsState.language === 'en') ? '🇬🇧 EN' : '🇻🇳 VI';
+    langBadgeText.textContent = ttsState.language === "en" ? "🇬🇧 EN" : "🇻🇳 VI";
   }
 
   // Update Role Badge and Progress
-  if (ttsState.items && ttsState.items.length > 0 && ttsState.currentIndex < ttsState.items.length) {
+  if (
+    ttsState.items &&
+    ttsState.items.length > 0 &&
+    ttsState.currentIndex < ttsState.items.length
+  ) {
     const cur = ttsState.items[ttsState.currentIndex];
-    const isEn = (ttsState.language === 'en');
+    const isEn = ttsState.language === "en";
     if (voiceRoleBadge) {
-      if (cur.type === 'h1') {
-        voiceRoleBadge.textContent = isEn ? 'H1 • Female' : 'H1 • Giọng nữ';
-        voiceRoleBadge.className = 'tts-voice-role role-female';
-      } else if (cur.type === 'h2') {
-        voiceRoleBadge.textContent = isEn ? 'H2 • Female' : 'H2 • Giọng nữ';
-        voiceRoleBadge.className = 'tts-voice-role role-female';
+      if (cur.type === "h1") {
+        voiceRoleBadge.textContent = isEn ? "H1 • Female" : "H1 • Giọng nữ";
+        voiceRoleBadge.className = "tts-voice-role role-female";
+      } else if (cur.type === "h2") {
+        voiceRoleBadge.textContent = isEn ? "H2 • Female" : "H2 • Giọng nữ";
+        voiceRoleBadge.className = "tts-voice-role role-female";
       } else {
-        voiceRoleBadge.textContent = isEn ? 'Content • Male' : 'Nội dung • Giọng nam';
-        voiceRoleBadge.className = 'tts-voice-role role-male';
+        voiceRoleBadge.textContent = isEn
+          ? "Content • Male"
+          : "Nội dung • Giọng nam";
+        voiceRoleBadge.className = "tts-voice-role role-male";
       }
     }
     if (progressText) {
@@ -4005,8 +4625,8 @@ function updateTtsUI() {
  * Maps each element to its first sentence index.
  */
 function attachTtsClickListeners() {
-  const panel = document.getElementById('markdownViewerPanel');
-  if (panel) panel.classList.add('tts-mode-active');
+  const panel = document.getElementById("markdownViewerPanel");
+  if (panel) panel.classList.add("tts-mode-active");
 
   const elementFirstIndexMap = new Map();
   ttsState.items.forEach((item, idx) => {
@@ -4026,7 +4646,7 @@ function attachTtsClickListeners() {
   });
 
   // Prevent clicks or interactions with code blocks from triggering speech
-  panel.querySelectorAll('.code-block-wrapper, pre').forEach(codeBlock => {
+  panel.querySelectorAll(".code-block-wrapper, pre").forEach((codeBlock) => {
     codeBlock.onclick = (e) => {
       e.stopPropagation();
     };
@@ -4037,10 +4657,10 @@ function attachTtsClickListeners() {
  * Detaches interactive click-to-speak listeners.
  */
 function detachTtsClickListeners() {
-  const panel = document.getElementById('markdownViewerPanel');
+  const panel = document.getElementById("markdownViewerPanel");
   if (panel) {
-    panel.classList.remove('tts-mode-active');
-    panel.querySelectorAll('.code-block-wrapper, pre').forEach(codeBlock => {
+    panel.classList.remove("tts-mode-active");
+    panel.querySelectorAll(".code-block-wrapper, pre").forEach((codeBlock) => {
       codeBlock.onclick = null;
     });
   }
@@ -4069,41 +4689,42 @@ function toggleTtsPlayer() {
  * Shows the Language Selection Modal for TTS.
  */
 function showTtsLanguageModal() {
-  const modal = document.getElementById('ttsLanguageModal');
+  const modal = document.getElementById("ttsLanguageModal");
   if (!modal) return;
 
-  const currentLang = ttsState.language || localStorage.getItem('gh_md_tts_lang') || 'vi';
-  const optVi = document.getElementById('ttsOptVi');
-  const optEn = document.getElementById('ttsOptEn');
+  const currentLang =
+    ttsState.language || localStorage.getItem("gh_md_tts_lang") || "vi";
+  const optVi = document.getElementById("ttsOptVi");
+  const optEn = document.getElementById("ttsOptEn");
 
   if (optVi && optEn) {
-    if (currentLang === 'en') {
-      optVi.classList.remove('active');
-      optEn.classList.add('active');
+    if (currentLang === "en") {
+      optVi.classList.remove("active");
+      optEn.classList.add("active");
     } else {
-      optVi.classList.add('active');
-      optEn.classList.remove('active');
+      optVi.classList.add("active");
+      optEn.classList.remove("active");
     }
   }
 
-  modal.classList.remove('hidden');
+  modal.classList.remove("hidden");
 }
 
 /**
  * Closes the Language Selection Modal.
  */
 function closeTtsLanguageModal() {
-  const modal = document.getElementById('ttsLanguageModal');
-  if (modal) modal.classList.add('hidden');
+  const modal = document.getElementById("ttsLanguageModal");
+  if (modal) modal.classList.add("hidden");
 }
 
 /**
  * Selects reading language and starts or updates TTS playback.
  */
 function selectTtsLanguageAndStart(lang) {
-  ttsState.language = (lang === 'en') ? 'en' : 'vi';
+  ttsState.language = lang === "en" ? "en" : "vi";
   try {
-    localStorage.setItem('gh_md_tts_lang', ttsState.language);
+    localStorage.setItem("gh_md_tts_lang", ttsState.language);
   } catch (e) {}
 
   closeTtsLanguageModal();
@@ -4120,7 +4741,12 @@ function selectTtsLanguageAndStart(lang) {
     initTtsVoices();
     ttsState.items = extractTtsItems();
     if (ttsState.items.length === 0) {
-      showFlash((ttsState.language === 'en') ? 'No readable text found.' : 'Không có văn bản nào để đọc.', 'info');
+      showFlash(
+        ttsState.language === "en"
+          ? "No readable text found."
+          : "Không có văn bản nào để đọc.",
+        "info",
+      );
       return;
     }
     ttsState.active = true;
@@ -4147,14 +4773,16 @@ function ttsPause() {
   if (ttsState.playing) {
     ttsState.playing = false;
 
-    if (ttsState.mode === 'audio' && ttsState.audioPlayer) {
+    if (ttsState.mode === "audio" && ttsState.audioPlayer) {
       try {
         if (!ttsState.audioPlayer.paused) {
           ttsState.audioPlayer.pause();
         }
       } catch (e) {}
-    } else if ('speechSynthesis' in window) {
-      try { window.speechSynthesis.pause(); } catch (e) {}
+    } else if ("speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.pause();
+      } catch (e) {}
     }
 
     stopTtsWatchdog();
@@ -4183,14 +4811,20 @@ function ttsPlay() {
   requestTtsWakeLock();
   startTtsWatchdog();
 
-  if (ttsState.mode === 'audio' && ttsState.audioPlayer && ttsState.audioPlayer.src) {
+  if (
+    ttsState.mode === "audio" &&
+    ttsState.audioPlayer &&
+    ttsState.audioPlayer.src
+  ) {
     ttsState.audioPlayer.play().catch(() => {
       ttsSpeakItem(ttsState.currentIndex);
     });
     updateTtsUI();
     updateMediaSessionStatus();
   } else if (window.speechSynthesis && window.speechSynthesis.paused) {
-    try { window.speechSynthesis.resume(); } catch (e) {}
+    try {
+      window.speechSynthesis.resume();
+    } catch (e) {}
     updateTtsUI();
     updateMediaSessionStatus();
   } else {
@@ -4217,7 +4851,8 @@ function ttsTogglePlayPause() {
  * Skips to next paragraph or sentence.
  */
 function ttsNext() {
-  if (!ttsState.active || !ttsState.items || ttsState.items.length === 0) return;
+  if (!ttsState.active || !ttsState.items || ttsState.items.length === 0)
+    return;
   if (ttsState.pauseTimeout) {
     clearTimeout(ttsState.pauseTimeout);
     ttsState.pauseTimeout = null;
@@ -4226,7 +4861,12 @@ function ttsNext() {
   if (nextIdx < ttsState.items.length) {
     ttsSpeakItem(nextIdx);
   } else {
-    showFlash((ttsState.language === 'en') ? 'Reached end of document.' : 'Đã đến cuối tài liệu.', 'info');
+    showFlash(
+      ttsState.language === "en"
+        ? "Reached end of document."
+        : "Đã đến cuối tài liệu.",
+      "info",
+    );
   }
 }
 
@@ -4234,7 +4874,8 @@ function ttsNext() {
  * Goes back to previous paragraph or sentence.
  */
 function ttsPrev() {
-  if (!ttsState.active || !ttsState.items || ttsState.items.length === 0) return;
+  if (!ttsState.active || !ttsState.items || ttsState.items.length === 0)
+    return;
   if (ttsState.pauseTimeout) {
     clearTimeout(ttsState.pauseTimeout);
     ttsState.pauseTimeout = null;
@@ -4259,8 +4900,10 @@ function ttsStop() {
     } catch (e) {}
   }
 
-  if ('speechSynthesis' in window) {
-    try { window.speechSynthesis.cancel(); } catch (e) {}
+  if ("speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
   }
 
   ttsState.playing = false;
@@ -4271,12 +4914,14 @@ function ttsStop() {
   stopTtsWatchdog();
   releaseTtsWakeLock();
 
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = 'none';
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.playbackState = "none";
   }
 
   detachTtsClickListeners();
-  document.querySelectorAll('.tts-active-reading').forEach(el => el.classList.remove('tts-active-reading'));
+  document
+    .querySelectorAll(".tts-active-reading")
+    .forEach((el) => el.classList.remove("tts-active-reading"));
 
   updateTtsUI();
 }
@@ -4296,43 +4941,43 @@ function ttsClose() {
  * Attaches input and keyboard listeners for the Markdown editor and commit modal.
  */
 function initMarkdownEditorListeners() {
-  const textarea = document.getElementById('markdownEditorTextarea');
+  const textarea = document.getElementById("markdownEditorTextarea");
   if (textarea) {
-    textarea.addEventListener('input', () => {
+    textarea.addEventListener("input", () => {
       updateEditorDirtyUI();
     });
 
-    textarea.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab') {
+    textarea.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") {
         e.preventDefault();
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const val = textarea.value;
-        textarea.value = val.substring(0, start) + '  ' + val.substring(end);
+        textarea.value = val.substring(0, start) + "  " + val.substring(end);
         textarea.selectionStart = textarea.selectionEnd = start + 2;
         updateEditorDirtyUI();
       }
     });
   }
 
-  const commitMsgInput = document.getElementById('commitMessageInput');
+  const commitMsgInput = document.getElementById("commitMessageInput");
   if (commitMsgInput) {
-    commitMsgInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    commitMsgInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         executeCommitAndPush();
-      } else if (e.key === 'Enter') {
+      } else if (e.key === "Enter") {
         e.preventDefault();
-        const descInput = document.getElementById('commitDescriptionInput');
+        const descInput = document.getElementById("commitDescriptionInput");
         if (descInput) descInput.focus();
       }
     });
   }
 
-  const commitDescInput = document.getElementById('commitDescriptionInput');
+  const commitDescInput = document.getElementById("commitDescriptionInput");
   if (commitDescInput) {
-    commitDescInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    commitDescInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         executeCommitAndPush();
       }
@@ -4345,7 +4990,7 @@ function initMarkdownEditorListeners() {
  */
 function hasEditorUnsavedChanges() {
   if (!appState.isEditing) return false;
-  const textarea = document.getElementById('markdownEditorTextarea');
+  const textarea = document.getElementById("markdownEditorTextarea");
   if (!textarea) return false;
   return textarea.value !== appState.editorOriginalContent;
 }
@@ -4355,24 +5000,26 @@ function hasEditorUnsavedChanges() {
  */
 function confirmDiscardEditorChanges() {
   if (!hasEditorUnsavedChanges()) return true;
-  return confirm('Bạn có thay đổi chưa được push lên GitHub.\nBạn có chắc chắn muốn hủy bỏ các thay đổi này không?');
+  return confirm(
+    "Bạn có thay đổi chưa được push lên GitHub.\nBạn có chắc chắn muốn hủy bỏ các thay đổi này không?",
+  );
 }
 
 /**
  * Updates the editor header status text and Push button state.
  */
 function updateEditorDirtyUI() {
-  const dirtyBadge = document.getElementById('editorDirtyBadge');
-  const btnPush = document.getElementById('btnEditorPush');
+  const dirtyBadge = document.getElementById("editorDirtyBadge");
+  const btnPush = document.getElementById("btnEditorPush");
   const isDirty = hasEditorUnsavedChanges();
 
   if (dirtyBadge) {
     if (isDirty) {
-      dirtyBadge.textContent = '● Đã thay đổi (Chưa push)';
-      dirtyBadge.classList.add('is-dirty');
+      dirtyBadge.textContent = "● Đã thay đổi (Chưa push)";
+      dirtyBadge.classList.add("is-dirty");
     } else {
-      dirtyBadge.textContent = 'Đang chỉnh sửa (Chưa sửa)';
-      dirtyBadge.classList.remove('is-dirty');
+      dirtyBadge.textContent = "Đang chỉnh sửa (Chưa sửa)";
+      dirtyBadge.classList.remove("is-dirty");
     }
   }
 
@@ -4386,58 +5033,67 @@ function updateEditorDirtyUI() {
  */
 function enterEditMode() {
   if (!appState.currentFile) {
-    showFlash('Vui lòng mở một tệp Markdown trước khi chỉnh sửa.', 'info');
+    showFlash("Vui lòng mở một tệp Markdown trước khi chỉnh sửa.", "info");
     return;
   }
 
-  if (appState.currentFileContent === null || appState.currentFileContent === undefined) {
-    showFlash('Tài liệu đang tải, vui lòng thử lại sau giây lát.', 'info');
+  if (
+    appState.currentFileContent === null ||
+    appState.currentFileContent === undefined
+  ) {
+    showFlash("Tài liệu đang tải, vui lòng thử lại sau giây lát.", "info");
     return;
   }
 
   if (!appState.token) {
-    showFlash('Cần kết nối GitHub PAT để chỉnh sửa và push lên repo.', 'error');
+    showFlash("Cần kết nối GitHub PAT để chỉnh sửa và push lên repo.", "error");
     return;
   }
 
-  if (typeof ttsStop === 'function' && typeof ttsState !== 'undefined' && ttsState.active) {
+  if (
+    typeof ttsStop === "function" &&
+    typeof ttsState !== "undefined" &&
+    ttsState.active
+  ) {
     ttsStop();
   }
   toggleTocModal(false);
 
   appState.isEditing = true;
-  appState.editorTab = 'write';
-  appState.editorOriginalContent = appState.currentFileContent || '';
+  appState.editorTab = "write";
+  appState.editorOriginalContent = appState.currentFileContent || "";
 
-  const fileName = appState.currentFile.path.split('/').pop() || 'document.md';
-  const headerFileNameEl = document.getElementById('editorHeaderFileName');
+  const fileName = appState.currentFile.path.split("/").pop() || "document.md";
+  const headerFileNameEl = document.getElementById("editorHeaderFileName");
   if (headerFileNameEl) {
     headerFileNameEl.textContent = fileName;
   }
 
-  const editorBar = document.getElementById('editorControlBar');
-  if (editorBar) editorBar.classList.remove('hidden');
+  const editorBar = document.getElementById("editorControlBar");
+  if (editorBar) editorBar.classList.remove("hidden");
 
-  const viewerMobileHeader = document.querySelector('#viewViewer .viewer-mobile-header');
-  if (viewerMobileHeader) viewerMobileHeader.classList.add('hidden');
+  const viewerMobileHeader = document.querySelector(
+    "#viewViewer .viewer-mobile-header",
+  );
+  if (viewerMobileHeader) viewerMobileHeader.classList.add("hidden");
 
-  const viewerBody = document.querySelector('#viewViewer .viewer-body');
-  if (viewerBody) viewerBody.classList.add('is-editing');
+  const viewerBody = document.querySelector("#viewViewer .viewer-body");
+  if (viewerBody) viewerBody.classList.add("is-editing");
 
-  const viewerPanel = document.getElementById('markdownViewerPanel');
-  const rawPanel = document.getElementById('rawMarkdownPanel');
-  const editorContainer = document.getElementById('markdownEditorContainer');
+  const viewerPanel = document.getElementById("markdownViewerPanel");
+  const rawPanel = document.getElementById("rawMarkdownPanel");
+  const editorContainer = document.getElementById("markdownEditorContainer");
 
-  if (viewerPanel) viewerPanel.classList.add('hidden');
-  if (rawPanel) rawPanel.classList.add('hidden');
-  if (editorContainer) editorContainer.classList.remove('hidden');
+  if (viewerPanel) viewerPanel.classList.add("hidden");
+  if (rawPanel) rawPanel.classList.add("hidden");
+  if (editorContainer) editorContainer.classList.remove("hidden");
 
-  const textarea = document.getElementById('markdownEditorTextarea');
+  const textarea = document.getElementById("markdownEditorTextarea");
   if (textarea) {
     textarea.value = appState.editorOriginalContent;
   }
 
-  switchEditorTab('write');
+  switchEditorTab("write");
   updateEditorDirtyUI();
 
   if (textarea) {
@@ -4462,31 +5118,33 @@ function cancelEditMode() {
  */
 function exitEditModeUI() {
   appState.isEditing = false;
-  appState.editorTab = 'write';
+  appState.editorTab = "write";
 
   closeCommitPushModal();
 
-  const editorBar = document.getElementById('editorControlBar');
-  if (editorBar) editorBar.classList.add('hidden');
+  const editorBar = document.getElementById("editorControlBar");
+  if (editorBar) editorBar.classList.add("hidden");
 
-  const viewerMobileHeader = document.querySelector('#viewViewer .viewer-mobile-header');
-  if (viewerMobileHeader) viewerMobileHeader.classList.remove('hidden');
+  const viewerMobileHeader = document.querySelector(
+    "#viewViewer .viewer-mobile-header",
+  );
+  if (viewerMobileHeader) viewerMobileHeader.classList.remove("hidden");
 
-  const viewerBody = document.querySelector('#viewViewer .viewer-body');
-  if (viewerBody) viewerBody.classList.remove('is-editing');
+  const viewerBody = document.querySelector("#viewViewer .viewer-body");
+  if (viewerBody) viewerBody.classList.remove("is-editing");
 
-  const editorContainer = document.getElementById('markdownEditorContainer');
-  if (editorContainer) editorContainer.classList.add('hidden');
+  const editorContainer = document.getElementById("markdownEditorContainer");
+  if (editorContainer) editorContainer.classList.add("hidden");
 
-  const viewerPanel = document.getElementById('markdownViewerPanel');
-  const rawPanel = document.getElementById('rawMarkdownPanel');
+  const viewerPanel = document.getElementById("markdownViewerPanel");
+  const rawPanel = document.getElementById("rawMarkdownPanel");
 
   if (appState.isRawView) {
-    if (viewerPanel) viewerPanel.classList.add('hidden');
-    if (rawPanel) rawPanel.classList.remove('hidden');
+    if (viewerPanel) viewerPanel.classList.add("hidden");
+    if (rawPanel) rawPanel.classList.remove("hidden");
   } else {
-    if (viewerPanel) viewerPanel.classList.remove('hidden');
-    if (rawPanel) rawPanel.classList.add('hidden');
+    if (viewerPanel) viewerPanel.classList.remove("hidden");
+    if (rawPanel) rawPanel.classList.add("hidden");
   }
 }
 
@@ -4496,40 +5154,40 @@ function exitEditModeUI() {
 function switchEditorTab(tab) {
   appState.editorTab = tab;
 
-  const btnWrite = document.getElementById('btnEditorTabWrite');
-  const btnPreview = document.getElementById('btnEditorTabPreview');
-  const writePane = document.getElementById('markdownEditorWritePane');
-  const previewPane = document.getElementById('markdownEditorPreviewPane');
-  const formatTools = document.getElementById('editorFormatTools');
-  const textarea = document.getElementById('markdownEditorTextarea');
+  const btnWrite = document.getElementById("btnEditorTabWrite");
+  const btnPreview = document.getElementById("btnEditorTabPreview");
+  const writePane = document.getElementById("markdownEditorWritePane");
+  const previewPane = document.getElementById("markdownEditorPreviewPane");
+  const formatTools = document.getElementById("editorFormatTools");
+  const textarea = document.getElementById("markdownEditorTextarea");
 
-  if (tab === 'preview') {
+  if (tab === "preview") {
     if (btnWrite) {
-      btnWrite.classList.remove('active');
-      btnWrite.setAttribute('aria-selected', 'false');
+      btnWrite.classList.remove("active");
+      btnWrite.setAttribute("aria-selected", "false");
     }
     if (btnPreview) {
-      btnPreview.classList.add('active');
-      btnPreview.setAttribute('aria-selected', 'true');
+      btnPreview.classList.add("active");
+      btnPreview.setAttribute("aria-selected", "true");
     }
-    if (writePane) writePane.classList.add('hidden');
-    if (formatTools) formatTools.classList.add('hidden');
+    if (writePane) writePane.classList.add("hidden");
+    if (formatTools) formatTools.classList.add("hidden");
     if (previewPane) {
-      previewPane.classList.remove('hidden');
-      renderEditorPreviewContent(textarea ? textarea.value : '', previewPane);
+      previewPane.classList.remove("hidden");
+      renderEditorPreviewContent(textarea ? textarea.value : "", previewPane);
     }
   } else {
     if (btnWrite) {
-      btnWrite.classList.add('active');
-      btnWrite.setAttribute('aria-selected', 'true');
+      btnWrite.classList.add("active");
+      btnWrite.setAttribute("aria-selected", "true");
     }
     if (btnPreview) {
-      btnPreview.classList.remove('active');
-      btnPreview.setAttribute('aria-selected', 'false');
+      btnPreview.classList.remove("active");
+      btnPreview.setAttribute("aria-selected", "false");
     }
-    if (previewPane) previewPane.classList.add('hidden');
-    if (writePane) writePane.classList.remove('hidden');
-    if (formatTools) formatTools.classList.remove('hidden');
+    if (previewPane) previewPane.classList.add("hidden");
+    if (writePane) writePane.classList.remove("hidden");
+    if (formatTools) formatTools.classList.remove("hidden");
   }
 }
 
@@ -4540,31 +5198,32 @@ function renderEditorPreviewContent(rawText, targetPanel) {
   if (!targetPanel) return;
 
   if (!rawText || !rawText.trim()) {
-    targetPanel.innerHTML = '<div class="blankslate"><p class="text-muted">Chưa có nội dung để xem trước.</p></div>';
+    targetPanel.innerHTML =
+      '<div class="blankslate"><p class="text-muted">Chưa có nội dung để xem trước.</p></div>';
     return;
   }
 
   const renderer = new marked.Renderer();
-  renderer.code = function(codeOrObj, languageStr) {
-    let code = '';
-    let lang = '';
-    if (typeof codeOrObj === 'object' && codeOrObj !== null) {
-      code = codeOrObj.text || '';
-      lang = codeOrObj.lang || '';
+  renderer.code = function (codeOrObj, languageStr) {
+    let code = "";
+    let lang = "";
+    if (typeof codeOrObj === "object" && codeOrObj !== null) {
+      code = codeOrObj.text || "";
+      lang = codeOrObj.lang || "";
     } else {
-      code = codeOrObj || '';
-      lang = languageStr || '';
+      code = codeOrObj || "";
+      lang = languageStr || "";
     }
-    lang = (lang || '').toLowerCase().trim();
+    lang = (lang || "").toLowerCase().trim();
 
-    if (lang === 'mermaid') {
+    if (lang === "mermaid") {
       const cleanMermaid = code
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&amp;/g, "&")
         .trim();
       return `<div class="mermaid">${cleanMermaid}</div>`;
-    } else if (lang === 'plantuml' || lang === 'puml') {
+    } else if (lang === "plantuml" || lang === "puml") {
       const encoded = encodePlantUML(code);
       const url = `https://www.plantuml.com/plantuml/svg/${encoded}`;
       return `<div class="plantuml-diagram"><img src="${url}" alt="PlantUML Diagram"></div>`;
@@ -4577,8 +5236,20 @@ function renderEditorPreviewContent(rawText, targetPanel) {
   marked.setOptions({ renderer });
   const rawHtml = marked.parse(rawText);
   const cleanHtml = DOMPurify.sanitize(rawHtml, {
-    ADD_TAGS: ['div', 'img', 'button', 'span', 'svg', 'path'],
-    ADD_ATTR: ['src', 'alt', 'class', 'type', 'title', 'aria-label', 'viewBox', 'width', 'height', 'fill', 'd']
+    ADD_TAGS: ["div", "img", "button", "span", "svg", "path"],
+    ADD_ATTR: [
+      "src",
+      "alt",
+      "class",
+      "type",
+      "title",
+      "aria-label",
+      "viewBox",
+      "width",
+      "height",
+      "fill",
+      "d",
+    ],
   });
 
   targetPanel.innerHTML = cleanHtml;
@@ -4587,29 +5258,31 @@ function renderEditorPreviewContent(rawText, targetPanel) {
     try {
       renderMathInElement(targetPanel, {
         delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false },
-          { left: '\\(', right: '\\)', display: false },
-          { left: '\\[', right: '\\]', display: true }
+          { left: "$$", right: "$$", display: true },
+          { left: "$", right: "$", display: false },
+          { left: "\\(", right: "\\)", display: false },
+          { left: "\\[", right: "\\]", display: true },
         ],
         throwOnError: false,
-        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
       });
     } catch (e) {}
   }
 
   if (window.mermaid) {
     try {
-      const mNodes = targetPanel.querySelectorAll('.mermaid');
+      const mNodes = targetPanel.querySelectorAll(".mermaid");
       if (mNodes.length > 0) {
         mermaid.run({ nodes: Array.from(mNodes) }).catch(() => {});
       }
     } catch (e) {}
   }
 
-  targetPanel.querySelectorAll('pre code').forEach((block) => {
-    if (window.hljs && typeof window.hljs.highlightElement === 'function') {
-      try { window.hljs.highlightElement(block); } catch (e) {}
+  targetPanel.querySelectorAll("pre code").forEach((block) => {
+    if (window.hljs && typeof window.hljs.highlightElement === "function") {
+      try {
+        window.hljs.highlightElement(block);
+      } catch (e) {}
     }
   });
 }
@@ -4618,11 +5291,11 @@ function renderEditorPreviewContent(rawText, targetPanel) {
  * Inserts or wraps Markdown syntax at the current cursor selection in the editor textarea.
  */
 function insertEditorMarkdown(type) {
-  const textarea = document.getElementById('markdownEditorTextarea');
+  const textarea = document.getElementById("markdownEditorTextarea");
   if (!textarea) return;
 
-  if (appState.editorTab !== 'write') {
-    switchEditorTab('write');
+  if (appState.editorTab !== "write") {
+    switchEditorTab("write");
   }
 
   textarea.focus();
@@ -4631,64 +5304,64 @@ function insertEditorMarkdown(type) {
   const val = textarea.value;
   const selected = val.substring(start, end);
 
-  let before = '';
+  let before = "";
   let middle = selected;
-  let after = '';
+  let after = "";
 
-  const needsNewlinePrefix = start > 0 && val[start - 1] !== '\n';
+  const needsNewlinePrefix = start > 0 && val[start - 1] !== "\n";
 
   switch (type) {
-    case 'h1':
-      before = (needsNewlinePrefix ? '\n' : '') + '# ';
-      middle = selected || 'Tiêu đề 1';
+    case "h1":
+      before = (needsNewlinePrefix ? "\n" : "") + "# ";
+      middle = selected || "Tiêu đề 1";
       break;
-    case 'h2':
-      before = (needsNewlinePrefix ? '\n' : '') + '## ';
-      middle = selected || 'Tiêu đề 2';
+    case "h2":
+      before = (needsNewlinePrefix ? "\n" : "") + "## ";
+      middle = selected || "Tiêu đề 2";
       break;
-    case 'bold':
-      before = '**';
-      middle = selected || 'văn bản in đậm';
-      after = '**';
+    case "bold":
+      before = "**";
+      middle = selected || "văn bản in đậm";
+      after = "**";
       break;
-    case 'italic':
-      before = '*';
-      middle = selected || 'văn bản in nghiêng';
-      after = '*';
+    case "italic":
+      before = "*";
+      middle = selected || "văn bản in nghiêng";
+      after = "*";
       break;
-    case 'code':
-      before = '`';
-      middle = selected || 'code';
-      after = '`';
+    case "code":
+      before = "`";
+      middle = selected || "code";
+      after = "`";
       break;
-    case 'codeblock':
-      before = (needsNewlinePrefix ? '\n' : '') + '```\n';
-      middle = selected || '// code';
-      after = '\n```\n';
+    case "codeblock":
+      before = (needsNewlinePrefix ? "\n" : "") + "```\n";
+      middle = selected || "// code";
+      after = "\n```\n";
       break;
-    case 'list':
-      before = (needsNewlinePrefix ? '\n' : '') + '- ';
-      middle = selected || 'Mục danh sách';
+    case "list":
+      before = (needsNewlinePrefix ? "\n" : "") + "- ";
+      middle = selected || "Mục danh sách";
       break;
-    case 'task':
-      before = (needsNewlinePrefix ? '\n' : '') + '- [ ] ';
-      middle = selected || 'Công việc cần làm';
+    case "task":
+      before = (needsNewlinePrefix ? "\n" : "") + "- [ ] ";
+      middle = selected || "Công việc cần làm";
       break;
-    case 'quote':
-      before = (needsNewlinePrefix ? '\n' : '') + '> ';
-      middle = selected || 'Trích dẫn';
+    case "quote":
+      before = (needsNewlinePrefix ? "\n" : "") + "> ";
+      middle = selected || "Trích dẫn";
       break;
-    case 'link':
-      before = '[';
-      middle = selected || 'tiêu đề liên kết';
-      after = '](https://)';
+    case "link":
+      before = "[";
+      middle = selected || "tiêu đề liên kết";
+      after = "](https://)";
       break;
     default:
       return;
   }
 
   const replacement = before + middle + after;
-  textarea.setRangeText(replacement, start, end, 'select');
+  textarea.setRangeText(replacement, start, end, "select");
   textarea.selectionStart = start + before.length;
   textarea.selectionEnd = start + before.length + middle.length;
   updateEditorDirtyUI();
@@ -4701,27 +5374,35 @@ function openCommitPushModal() {
   if (!appState.isEditing || !appState.currentFile) return;
 
   if (!hasEditorUnsavedChanges()) {
-    showFlash('Nội dung chưa có thay đổi nào để push lên GitHub.', 'info');
+    showFlash("Nội dung chưa có thay đổi nào để push lên GitHub.", "info");
     return;
   }
 
   if (!navigator.onLine || appState.isOffline) {
-    showFlash('Bạn đang ngoại tuyến (Offline). Vui lòng kết nối mạng để push thay đổi.', 'error', 4000);
+    showFlash(
+      "Bạn đang ngoại tuyến (Offline). Vui lòng kết nối mạng để push thay đổi.",
+      "error",
+      4000,
+    );
     return;
   }
 
   if (!appState.token) {
-    showFlash('Cần kết nối GitHub PAT để thực hiện push.', 'error');
+    showFlash("Cần kết nối GitHub PAT để thực hiện push.", "error");
     return;
   }
 
   const { owner, name, path } = appState.currentFile;
-  const fileName = path.split('/').pop() || 'document.md';
-  const targetBranch = (appState.currentRepo && appState.currentRepo.owner === owner && appState.currentRepo.name === name && appState.currentRepo.defaultBranch)
-    ? appState.currentRepo.defaultBranch
-    : 'default branch';
+  const fileName = path.split("/").pop() || "document.md";
+  const targetBranch =
+    appState.currentRepo &&
+    appState.currentRepo.owner === owner &&
+    appState.currentRepo.name === name &&
+    appState.currentRepo.defaultBranch
+      ? appState.currentRepo.defaultBranch
+      : "default branch";
 
-  const targetInfoEl = document.getElementById('commitTargetInfo');
+  const targetInfoEl = document.getElementById("commitTargetInfo");
   if (targetInfoEl) {
     targetInfoEl.innerHTML = `
       <div><span class="text-muted">Repo:</span> <strong>${escapeHtml(owner)}/${escapeHtml(name)}</strong> <span class="text-muted">(${escapeHtml(targetBranch)})</span></div>
@@ -4729,27 +5410,27 @@ function openCommitPushModal() {
     `;
   }
 
-  const msgInput = document.getElementById('commitMessageInput');
+  const msgInput = document.getElementById("commitMessageInput");
   if (msgInput) {
     msgInput.value = `Update ${fileName}`;
   }
 
-  const descInput = document.getElementById('commitDescriptionInput');
+  const descInput = document.getElementById("commitDescriptionInput");
   if (descInput) {
-    descInput.value = '';
+    descInput.value = "";
   }
 
-  const errEl = document.getElementById('commitPushError');
+  const errEl = document.getElementById("commitPushError");
   if (errEl) {
-    errEl.textContent = '';
-    errEl.classList.add('hidden');
+    errEl.textContent = "";
+    errEl.classList.add("hidden");
   }
 
   setCommitPushLoadingState(false);
 
-  const modal = document.getElementById('commitPushModal');
+  const modal = document.getElementById("commitPushModal");
   if (modal) {
-    modal.classList.remove('hidden');
+    modal.classList.remove("hidden");
     if (msgInput) {
       setTimeout(() => {
         msgInput.focus();
@@ -4764,8 +5445,8 @@ function openCommitPushModal() {
  */
 function closeCommitPushModal() {
   if (appState.isPushingCommit) return;
-  const modal = document.getElementById('commitPushModal');
-  if (modal) modal.classList.add('hidden');
+  const modal = document.getElementById("commitPushModal");
+  if (modal) modal.classList.add("hidden");
 }
 
 /**
@@ -4773,11 +5454,11 @@ function closeCommitPushModal() {
  */
 function setCommitPushLoadingState(isLoading) {
   appState.isPushingCommit = isLoading;
-  const btnConfirm = document.getElementById('btnConfirmPush');
-  const btnCancel = document.getElementById('btnCancelCommitModal');
-  const btnClose = document.getElementById('btnCloseCommitModal');
-  const msgInput = document.getElementById('commitMessageInput');
-  const descInput = document.getElementById('commitDescriptionInput');
+  const btnConfirm = document.getElementById("btnConfirmPush");
+  const btnCancel = document.getElementById("btnCancelCommitModal");
+  const btnClose = document.getElementById("btnCloseCommitModal");
+  const msgInput = document.getElementById("commitMessageInput");
+  const descInput = document.getElementById("commitDescriptionInput");
 
   if (btnCancel) btnCancel.disabled = isLoading;
   if (btnClose) btnClose.disabled = isLoading;
@@ -4810,28 +5491,31 @@ function setCommitPushLoadingState(isLoading) {
 async function executeCommitAndPush() {
   if (appState.isPushingCommit || !appState.currentFile) return;
 
-  const textarea = document.getElementById('markdownEditorTextarea');
-  const msgInput = document.getElementById('commitMessageInput');
-  const descInput = document.getElementById('commitDescriptionInput');
-  const errEl = document.getElementById('commitPushError');
+  const textarea = document.getElementById("markdownEditorTextarea");
+  const msgInput = document.getElementById("commitMessageInput");
+  const descInput = document.getElementById("commitDescriptionInput");
+  const errEl = document.getElementById("commitPushError");
 
   if (!textarea || !msgInput) return;
 
   const newContent = textarea.value;
-  const fileName = appState.currentFile.path.split('/').pop() || 'document.md';
+  const fileName = appState.currentFile.path.split("/").pop() || "document.md";
   const commitSummary = msgInput.value.trim() || `Update ${fileName}`;
-  const commitDesc = descInput ? descInput.value.trim() : '';
-  const fullCommitMessage = commitDesc ? `${commitSummary}\n\n${commitDesc}` : commitSummary;
+  const commitDesc = descInput ? descInput.value.trim() : "";
+  const fullCommitMessage = commitDesc
+    ? `${commitSummary}\n\n${commitDesc}`
+    : commitSummary;
 
   if (errEl) {
-    errEl.textContent = '';
-    errEl.classList.add('hidden');
+    errEl.textContent = "";
+    errEl.classList.add("hidden");
   }
 
   if (!navigator.onLine || appState.isOffline) {
     if (errEl) {
-      errEl.textContent = 'Không có kết nối mạng. Vui lòng kiểm tra kết nối Internet và thử lại.';
-      errEl.classList.remove('hidden');
+      errEl.textContent =
+        "Không có kết nối mạng. Vui lòng kiểm tra kết nối Internet và thử lại.";
+      errEl.classList.remove("hidden");
     }
     return;
   }
@@ -4839,28 +5523,41 @@ async function executeCommitAndPush() {
   setCommitPushLoadingState(true);
 
   const { owner, name, path } = appState.currentFile;
-  const targetBranch = (appState.currentRepo && appState.currentRepo.owner === owner && appState.currentRepo.name === name && appState.currentRepo.defaultBranch)
-    ? appState.currentRepo.defaultBranch
-    : null;
+  const targetBranch =
+    appState.currentRepo &&
+    appState.currentRepo.owner === owner &&
+    appState.currentRepo.name === name &&
+    appState.currentRepo.defaultBranch
+      ? appState.currentRepo.defaultBranch
+      : null;
 
   try {
     // 1. Fetch latest remote file metadata to ensure accurate blob SHA and detect external changes
     let targetSha = appState.currentFileSha || null;
-    const branchQuery = targetBranch ? `?ref=${encodeURIComponent(targetBranch)}` : '';
-    const metaRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}${branchQuery}`, {
-      headers: {
-        'Authorization': `Bearer ${appState.token}`,
-        'Accept': 'application/vnd.github.v3+json'
+    const branchQuery = targetBranch
+      ? `?ref=${encodeURIComponent(targetBranch)}`
+      : "";
+    const metaRes = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}${branchQuery}`,
+      {
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+        cache: "no-store",
       },
-      cache: 'no-store'
-    });
+    );
 
     if (metaRes.status === 200) {
       const metaData = await metaRes.json();
-      if (appState.currentFileSha && metaData.sha && metaData.sha !== appState.currentFileSha) {
+      if (
+        appState.currentFileSha &&
+        metaData.sha &&
+        metaData.sha !== appState.currentFileSha
+      ) {
         const proceedOverwrite = confirm(
-          '⚠️ Tệp tin này trên GitHub vừa có commit mới từ một thiết bị/nguồn khác kể từ khi bạn mở trang.\n\n' +
-          'Bạn có muốn tiếp tục push và ghi đè nội dung mới của bạn lên phiên bản trên GitHub không?'
+          "⚠️ Tệp tin này trên GitHub vừa có commit mới từ một thiết bị/nguồn khác kể từ khi bạn mở trang.\n\n" +
+            "Bạn có muốn tiếp tục push và ghi đè nội dung mới của bạn lên phiên bản trên GitHub không?",
         );
         if (!proceedOverwrite) {
           setCommitPushLoadingState(false);
@@ -4872,13 +5569,15 @@ async function executeCommitAndPush() {
       // File does not exist yet on remote branch -> GitHub API creates it when sha is omitted
       targetSha = null;
     } else if (metaRes.status === 401 || metaRes.status === 403) {
-      throw new Error('GitHub PAT không hợp lệ hoặc không có quyền truy cập repository này.');
+      throw new Error(
+        "GitHub PAT không hợp lệ hoặc không có quyền truy cập repository này.",
+      );
     }
 
     // 2. Build PUT payload with UTF-8 safe Base64 content
     const payload = {
       message: fullCommitMessage,
-      content: utf8ToBase64(newContent)
+      content: utf8ToBase64(newContent),
     };
     if (targetSha) {
       payload.sha = targetSha;
@@ -4887,7 +5586,450 @@ async function executeCommitAndPush() {
       payload.branch = targetBranch;
     }
 
-    const putRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`, {
+    const putRes = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(path)}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${appState.token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+
+    if (!putRes.ok) {
+      let apiMsg = "";
+      try {
+        const errData = await putRes.json();
+        apiMsg = errData.message || "";
+      } catch (e) {}
+
+      if (putRes.status === 401) {
+        throw new Error("GitHub PAT đã hết hạn hoặc không hợp lệ (HTTP 401).");
+      } else if (putRes.status === 403 || putRes.status === 404) {
+        throw new Error(
+          `Không đủ quyền ghi lên repository (HTTP ${putRes.status}). Hãy đảm bảo PAT của bạn có quyền "repo" (Classic PAT) hoặc "Contents: Read and write" (Fine-grained PAT).${apiMsg ? ` Chi tiết: ${apiMsg}` : ""}`,
+        );
+      } else if (putRes.status === 409) {
+        throw new Error(
+          "Xung đột phiên bản SHA trên GitHub (HTTP 409). Vui lòng nhấn Commit & Push lại để đồng bộ.",
+        );
+      } else {
+        throw new Error(
+          `Push thất bại (HTTP ${putRes.status})${apiMsg ? `: ${apiMsg}` : "."}`,
+        );
+      }
+    }
+
+    const putData = await putRes.json();
+    const newBlobSha =
+      putData.content && putData.content.sha ? putData.content.sha : targetSha;
+    const newCommitSha =
+      putData.commit && putData.commit.sha ? putData.commit.sha : newBlobSha;
+    const newCommitDate =
+      putData.commit &&
+      (putData.commit.committer?.date || putData.commit.author?.date)
+        ? putData.commit.committer?.date || putData.commit.author?.date
+        : new Date().toISOString();
+
+    // 3. Update local appState & IndexedDB offline cache
+    appState.currentFileContent = newContent;
+    appState.currentFileSha = newBlobSha;
+    appState.editorOriginalContent = newContent;
+
+    const fileKey = `${owner}/${name}/${path}`;
+    const updatedCache = {
+      fileKey,
+      owner,
+      name,
+      path,
+      content: newContent,
+      sha: newBlobSha,
+      lastCommitSha: newCommitSha,
+      lastCommitDate: newCommitDate,
+      lastSyncedAt: Date.now(),
+    };
+    await getIdb().set(fileKey, updatedCache);
+
+    const favFile = appState.favoriteFiles.find(
+      (f) => f.owner === owner && f.name === name && f.path === path,
+    );
+    if (favFile) {
+      favFile.lastModified = Date.now();
+      localStorage.setItem(
+        "gh_favorite_files",
+        JSON.stringify(appState.favoriteFiles),
+      );
+    }
+    markStateDirty();
+
+    // 4. Close modal, exit Edit mode, re-render Markdown & show confirmation
+    setCommitPushLoadingState(false);
+    exitEditModeUI();
+    renderMarkdown(newContent);
+    updateFileSyncBadge("synced", Date.now());
+    renderFavoritesList();
+
+    showFlash(
+      `Đã commit & push "${fileName}" lên GitHub thành công!`,
+      "success",
+      3500,
+    );
+  } catch (err) {
+    console.error("Commit & Push error:", err);
+    setCommitPushLoadingState(false);
+    if (errEl) {
+      errEl.textContent = err.message || "Đã xảy ra lỗi khi push lên GitHub.";
+      errEl.classList.remove("hidden");
+    }
+  }
+}
+
+/* ==========================================================================
+   CREATE NEW MARKDOWN FILE IN REPOSITORY FOLDER MODULE
+   ========================================================================== */
+
+/**
+ * Syncs ARIA aria-invalid attribute with native CSS :user-invalid state.
+ */
+function syncNewFileAriaInvalid(inputEl) {
+  if (!inputEl || typeof inputEl.matches !== 'function') return;
+  try {
+    inputEl.setAttribute('aria-invalid', inputEl.matches(':user-invalid') ? 'true' : 'false');
+  } catch (e) {}
+}
+
+/**
+ * Normalizes and validates user-entered relative file path inside current repo folder.
+ * Automatically appends .md if no .md extension is present.
+ */
+function resolveNewFileTarget(rawInput) {
+  if (typeof rawInput !== 'string') return null;
+  const cleaned = rawInput.trim().replace(/^\/+|\/+$/g, '');
+  if (!cleaned) return null;
+
+  // Reject invalid filename characters or control characters
+  if (/[\x00-\x1f\\:*?"<>|]/.test(cleaned) || cleaned.includes('//')) {
+    return null;
+  }
+
+  const rawSegments = cleaned.split('/').map(s => s.trim());
+  if (rawSegments.some(s => !s || s === '.' || s === '..')) {
+    return null;
+  }
+
+  const lastIdx = rawSegments.length - 1;
+  let leafName = rawSegments[lastIdx].replace(/\.+$/, '');
+  if (!leafName) return null;
+
+  if (!/\.md$/i.test(leafName)) {
+    leafName += '.md';
+  }
+  rawSegments[lastIdx] = leafName;
+
+  const fullSegments = [...appState.currentPath, ...rawSegments];
+  const fullPath = fullSegments.join('/');
+  const parentSegments = fullSegments.slice(0, -1);
+
+  return {
+    fullPath,
+    fileName: leafName,
+    parentSegments
+  };
+}
+
+/**
+ * Updates the live resolved path preview and commit placeholder while typing.
+ */
+function updateNewFileResolvedPreview() {
+  const nameInput = document.getElementById('newFileNameInput');
+  const previewEl = document.getElementById('newFileResolvedPreview');
+  const commitInput = document.getElementById('newFileCommitInput');
+  if (!nameInput || !previewEl) return;
+
+  const raw = nameInput.value;
+  if (!raw || !raw.trim()) {
+    previewEl.textContent = '';
+    previewEl.classList.add('hidden');
+    if (commitInput) commitInput.placeholder = 'Create document.md';
+    return;
+  }
+
+  const resolved = resolveNewFileTarget(raw);
+  if (!resolved) {
+    previewEl.textContent = '';
+    previewEl.classList.add('hidden');
+    return;
+  }
+
+  previewEl.innerHTML = `Đường dẫn tạo: <code>${escapeHtml(resolved.fullPath)}</code>`;
+  previewEl.classList.remove('hidden');
+  if (commitInput) {
+    commitInput.placeholder = `Create ${resolved.fileName}`;
+  }
+}
+
+/**
+ * Wires event listeners for Create File modal, semantic <form>, and validation states.
+ */
+function initCreateFileModalListeners() {
+  const modal = document.getElementById('createFileModal');
+  const form = document.getElementById('createFileForm');
+  const nameInput = document.getElementById('newFileNameInput');
+  const btnClose = document.getElementById('btnCloseCreateFileModal');
+  const btnCancel = document.getElementById('btnCancelCreateFileModal');
+
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeCreateFileModal();
+      }
+    });
+  }
+
+  if (btnClose) {
+    btnClose.addEventListener('click', () => closeCreateFileModal());
+  }
+
+  if (btnCancel) {
+    btnCancel.addEventListener('click', () => closeCreateFileModal());
+  }
+
+  if (nameInput) {
+    nameInput.addEventListener('input', () => {
+      nameInput.setCustomValidity('');
+      const errEl = document.getElementById('createFileApiError');
+      if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
+      }
+      if (nameInput.hasAttribute('aria-invalid')) {
+        syncNewFileAriaInvalid(nameInput);
+      }
+      updateNewFileResolvedPreview();
+    });
+
+    nameInput.addEventListener('blur', () => {
+      syncNewFileAriaInvalid(nameInput);
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      executeCreateNewFile();
+    });
+  }
+}
+
+/**
+ * Opens the Create New File modal for the active repository folder.
+ */
+function openCreateFileModal() {
+  if (!appState.currentRepo) {
+    showFlash('Vui lòng chọn một repository trước khi tạo file.', 'info');
+    return;
+  }
+
+  if (!appState.token) {
+    showFlash('Cần kết nối GitHub PAT để tạo file mới trên repo.', 'error');
+    return;
+  }
+
+  if (!navigator.onLine || appState.isOffline) {
+    showFlash('Bạn đang ngoại tuyến (Offline). Vui lòng kết nối mạng để tạo file mới.', 'error', 4000);
+    return;
+  }
+
+  const { owner, name, defaultBranch } = appState.currentRepo;
+  const folderDisplay = appState.currentPath.length > 0
+    ? `/${appState.currentPath.join('/')}`
+    : '/ (Thư mục gốc)';
+
+  const folderInfoEl = document.getElementById('createFileFolderInfo');
+  if (folderInfoEl) {
+    folderInfoEl.innerHTML = `
+      <div><span class="text-muted">Repo:</span> <strong>${escapeHtml(owner)}/${escapeHtml(name)}</strong> <span class="text-muted">(${escapeHtml(defaultBranch || 'main')})</span></div>
+      <div><span class="text-muted">Thư mục:</span> <code>${escapeHtml(folderDisplay)}</code></div>
+    `;
+  }
+
+  const form = document.getElementById('createFileForm');
+  if (form) {
+    form.reset();
+  }
+
+  const nameInput = document.getElementById('newFileNameInput');
+  if (nameInput) {
+    nameInput.setCustomValidity('');
+    nameInput.removeAttribute('aria-invalid');
+  }
+
+  const chkOpenEditor = document.getElementById('chkOpenEditorAfterCreate');
+  if (chkOpenEditor) {
+    chkOpenEditor.checked = true;
+  }
+
+  const previewEl = document.getElementById('newFileResolvedPreview');
+  if (previewEl) {
+    previewEl.textContent = '';
+    previewEl.classList.add('hidden');
+  }
+
+  const errEl = document.getElementById('createFileApiError');
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  setCreateFileLoadingState(false);
+
+  const modal = document.getElementById('createFileModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    if (nameInput) {
+      setTimeout(() => {
+        nameInput.focus();
+      }, 60);
+    }
+  }
+}
+
+/**
+ * Closes the Create New File modal.
+ */
+function closeCreateFileModal() {
+  if (appState.isCreatingFile) return;
+  const modal = document.getElementById('createFileModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+/**
+ * Toggles button spinner and disables controls while creating file on GitHub.
+ */
+function setCreateFileLoadingState(isLoading) {
+  appState.isCreatingFile = isLoading;
+  const btnConfirm = document.getElementById('btnConfirmCreateFile');
+  const btnCancel = document.getElementById('btnCancelCreateFileModal');
+  const btnClose = document.getElementById('btnCloseCreateFileModal');
+  const nameInput = document.getElementById('newFileNameInput');
+  const commitInput = document.getElementById('newFileCommitInput');
+  const chkOpenEditor = document.getElementById('chkOpenEditorAfterCreate');
+
+  if (btnCancel) btnCancel.disabled = isLoading;
+  if (btnClose) btnClose.disabled = isLoading;
+  if (nameInput) nameInput.disabled = isLoading;
+  if (commitInput) commitInput.disabled = isLoading;
+  if (chkOpenEditor) chkOpenEditor.disabled = isLoading;
+
+  if (btnConfirm) {
+    btnConfirm.disabled = isLoading;
+    if (isLoading) {
+      btnConfirm.innerHTML = `
+        <svg class="octicon octicon-sync is-spinning" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+          <path d="M1.705 8.005a6.295 6.295 0 0 1 11.252-3.712l-1.606 1.606a.75.75 0 1 0 1.06 1.06l2.885-2.886a.75.75 0 0 0 0-1.06L13.41.127a.75.75 0 0 0-1.06 1.06l1.378 1.378A7.795 7.795 0 0 0 .205 8.005a.75.75 0 0 0 1.5 0Zm12.59 0a6.295 6.295 0 0 1-11.252 3.712l1.606-1.606a.75.75 0 1 0-1.06-1.06L.704 11.937a.75.75 0 0 0 0 1.06l2.885 2.886a.75.75 0 0 0 1.06-1.06l-1.378-1.378a7.795 7.795 0 0 0 13.734-5.44.75.75 0 0 0-1.5 0Z"></path>
+        </svg>
+        <span>Đang tạo...</span>
+      `;
+    } else {
+      btnConfirm.innerHTML = `
+        <svg class="octicon octicon-plus" viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+          <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path>
+        </svg>
+        <span>Tạo &amp; Push</span>
+      `;
+    }
+  }
+}
+
+/**
+ * Validates and creates a new Markdown file inside the current folder on GitHub.
+ */
+async function executeCreateNewFile() {
+  if (appState.isCreatingFile || !appState.currentRepo) return;
+
+  const nameInput = document.getElementById('newFileNameInput');
+  const commitInput = document.getElementById('newFileCommitInput');
+  const chkOpenEditor = document.getElementById('chkOpenEditorAfterCreate');
+  const errEl = document.getElementById('createFileApiError');
+
+  if (!nameInput) return;
+
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  const resolved = resolveNewFileTarget(nameInput.value);
+  if (!resolved) {
+    nameInput.setCustomValidity('Tên file hoặc đường dẫn không hợp lệ.');
+    syncNewFileAriaInvalid(nameInput);
+    nameInput.reportValidity();
+    nameInput.focus();
+    return;
+  }
+
+  const { fullPath, fileName, parentSegments } = resolved;
+
+  // Instant local duplicate check against loaded tree entries
+  const existsLocally = appState.currentTreeEntries.some(
+    entry => entry.path.toLowerCase() === fullPath.toLowerCase()
+  );
+  if (existsLocally) {
+    if (errEl) {
+      errEl.textContent = `Tệp hoặc thư mục "${fullPath}" đã tồn tại trong repository. Vui lòng chọn tên khác.`;
+      errEl.classList.remove('hidden');
+    }
+    nameInput.focus();
+    return;
+  }
+
+  if (!navigator.onLine || appState.isOffline) {
+    if (errEl) {
+      errEl.textContent = 'Không có kết nối mạng. Vui lòng kiểm tra Internet và thử lại.';
+      errEl.classList.remove('hidden');
+    }
+    return;
+  }
+
+  const { owner, name, defaultBranch } = appState.currentRepo;
+  const targetBranch = defaultBranch || null;
+  const commitMessage = (commitInput && commitInput.value.trim())
+    ? commitInput.value.trim()
+    : `Create ${fileName}`;
+  const shouldOpenEditor = chkOpenEditor ? chkOpenEditor.checked : true;
+
+  setCreateFileLoadingState(true);
+
+  try {
+    // 1. Verify file does not already exist on remote GitHub branch
+    const branchQuery = targetBranch ? `?ref=${encodeURIComponent(targetBranch)}` : '';
+    const checkRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(fullPath)}${branchQuery}`, {
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      },
+      cache: 'no-store'
+    });
+
+    if (checkRes.status === 200) {
+      throw new Error(`Đường dẫn "${fullPath}" đã tồn tại trên GitHub. Vui lòng đặt tên khác để tránh ghi đè.`);
+    } else if (checkRes.status === 401 || checkRes.status === 403) {
+      throw new Error('GitHub PAT không hợp lệ hoặc không có quyền truy cập repository này.');
+    }
+
+    // 2. Create new empty Markdown file via PUT /repos/{owner}/{repo}/contents/{path}
+    const payload = {
+      message: commitMessage,
+      content: utf8ToBase64('')
+    };
+    if (targetBranch) {
+      payload.branch = targetBranch;
+    }
+
+    const putRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(fullPath)}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${appState.token}`,
@@ -4908,65 +6050,86 @@ async function executeCommitAndPush() {
         throw new Error('GitHub PAT đã hết hạn hoặc không hợp lệ (HTTP 401).');
       } else if (putRes.status === 403 || putRes.status === 404) {
         throw new Error(
-          `Không đủ quyền ghi lên repository (HTTP ${putRes.status}). Hãy đảm bảo PAT của bạn có quyền "repo" (Classic PAT) hoặc "Contents: Read and write" (Fine-grained PAT).${apiMsg ? ` Chi tiết: ${apiMsg}` : ''}`
+          `Không đủ quyền tạo file trên repository (HTTP ${putRes.status}). Hãy đảm bảo PAT của bạn có quyền "repo" (Classic PAT) hoặc "Contents: Read and write" (Fine-grained PAT).${apiMsg ? ` Chi tiết: ${apiMsg}` : ''}`
         );
-      } else if (putRes.status === 409) {
-        throw new Error('Xung đột phiên bản SHA trên GitHub (HTTP 409). Vui lòng nhấn Commit & Push lại để đồng bộ.');
+      } else if (putRes.status === 422) {
+        throw new Error(`Không thể tạo file (HTTP 422 — file có thể đã tồn tại hoặc tên không hợp lệ)${apiMsg ? `: ${apiMsg}` : '.'}`);
       } else {
-        throw new Error(`Push thất bại (HTTP ${putRes.status})${apiMsg ? `: ${apiMsg}` : '.'}`);
+        throw new Error(`Tạo file thất bại (HTTP ${putRes.status})${apiMsg ? `: ${apiMsg}` : '.'}`);
       }
     }
 
     const putData = await putRes.json();
-    const newBlobSha = (putData.content && putData.content.sha) ? putData.content.sha : targetSha;
+    const newBlobSha = (putData.content && putData.content.sha) ? putData.content.sha : '';
     const newCommitSha = (putData.commit && putData.commit.sha) ? putData.commit.sha : newBlobSha;
     const newCommitDate = (putData.commit && (putData.commit.committer?.date || putData.commit.author?.date))
       ? (putData.commit.committer?.date || putData.commit.author?.date)
       : new Date().toISOString();
 
-    // 3. Update local appState & IndexedDB offline cache
-    appState.currentFileContent = newContent;
-    appState.currentFileSha = newBlobSha;
-    appState.editorOriginalContent = newContent;
+    // 3. Inject any new intermediate folder 'tree' entries + the new 'blob' entry into currentTreeEntries
+    let accumDir = '';
+    parentSegments.forEach(seg => {
+      accumDir = accumDir ? `${accumDir}/${seg}` : seg;
+      const hasTreeEntry = appState.currentTreeEntries.some(e => e.path === accumDir && e.type === 'tree');
+      if (!hasTreeEntry) {
+        appState.currentTreeEntries.push({
+          path: accumDir,
+          mode: '040000',
+          type: 'tree',
+          sha: ''
+        });
+      }
+    });
 
-    const fileKey = `${owner}/${name}/${path}`;
-    const updatedCache = {
+    if (!appState.currentTreeEntries.some(e => e.path === fullPath)) {
+      appState.currentTreeEntries.push({
+        path: fullPath,
+        mode: '100644',
+        type: 'blob',
+        sha: newBlobSha,
+        size: 0
+      });
+    }
+
+    // 4. Cache the newly created file in IndexedDB for instant offline/editor access
+    const fileKey = `${owner}/${name}/${fullPath}`;
+    await getIdb().set(fileKey, {
       fileKey,
       owner,
       name,
-      path,
-      content: newContent,
+      path: fullPath,
+      content: '',
       sha: newBlobSha,
       lastCommitSha: newCommitSha,
       lastCommitDate: newCommitDate,
       lastSyncedAt: Date.now()
-    };
-    await getIdb().set(fileKey, updatedCache);
-
-    const favFile = appState.favoriteFiles.find(f => f.owner === owner && f.name === name && f.path === path);
-    if (favFile) {
-      favFile.lastModified = Date.now();
-      localStorage.setItem('gh_favorite_files', JSON.stringify(appState.favoriteFiles));
-    }
+    });
     markStateDirty();
 
-    // 4. Close modal, exit Edit mode, re-render Markdown & show confirmation
-    setCommitPushLoadingState(false);
-    exitEditModeUI();
-    renderMarkdown(newContent);
-    updateFileSyncBadge('synced', Date.now());
-    renderFavoritesList();
+    setCreateFileLoadingState(false);
+    closeCreateFileModal();
+    renderFileTree();
 
-    showFlash(`Đã commit & push "${fileName}" lên GitHub thành công!`, 'success', 3500);
+    if (shouldOpenEditor) {
+      appState.currentPath = [...parentSegments];
+      updateBreadcrumb();
+      renderFileTree();
+      await openMarkdownFile(owner, name, fullPath);
+      enterEditMode();
+      showFlash(`Đã tạo "${fileName}" trên GitHub! Bạn có thể soạn nội dung ngay.`, 'success', 3500);
+    } else {
+      showFlash(`Đã tạo file "${fullPath}" trên GitHub thành công!`, 'success', 3500);
+    }
   } catch (err) {
-    console.error('Commit & Push error:', err);
-    setCommitPushLoadingState(false);
+    console.error('Create file error:', err);
+    setCreateFileLoadingState(false);
     if (errEl) {
-      errEl.textContent = err.message || 'Đã xảy ra lỗi khi push lên GitHub.';
+      errEl.textContent = err.message || 'Đã xảy ra lỗi khi tạo file mới trên GitHub.';
       errEl.classList.remove('hidden');
     }
   }
 }
+
 
 
 
