@@ -2,35 +2,35 @@
    GitHub Markdown Explorer - Service Worker (Offline PWA Engine)
    ========================================================================== */
 
-const CACHE_NAME = "gh-md-explorer-v48";
+const CACHE_NAME = 'gh-md-explorer-v48';
 
 // Static assets to precache (App Shell & CDN Dependencies)
 const PRECACHE_ASSETS = [
-  "./",
-  "./index.html",
-  "./styles.css",
-  "./styles.css?v=48",
-  "./app.js",
-  "./app.js?v=48",
-  "./manifest.webmanifest",
-  "./manifest.webmanifest?v=48",
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon-maskable-192.png",
-  "./icons/icon-maskable-512.png",
-  "./icons/apple-touch-icon.png",
-  "./icon.jpeg",
-  "https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown-light.min.css",
-  "https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css",
-  "https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js",
-  "https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js",
-  "https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js",
-  "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js",
-  "https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css",
-  "https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js",
-  "https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js",
+  './',
+  './index.html',
+  './styles.css',
+  './styles.css?v=48',
+  './app.js',
+  './app.js?v=48',
+  './manifest.webmanifest',
+  './manifest.webmanifest?v=48',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-maskable-192.png',
+  './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon.png',
+  './icon.jpeg',
+  'https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown-light.min.css',
+  'https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css',
+  'https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js',
+  'https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js',
+  'https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js',
+  'https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js',
+  'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css',
+  'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js',
+  'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js'
 ];
 
 // Install Event: Precache all static resources
