@@ -315,9 +315,15 @@ body.mobile-app {
    Mobile App Layout & Single View Panels
    -------------------------------------------------------------------------- */
 .gh-container {
-  flex: 1;
+  flex: 1 1 auto;
   padding: 12px;
-  width: 100%;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.gh-app-layout {
+  inline-size: 100%;
+  min-inline-size: 0;
 }
 
 .pat-card-box {
@@ -378,6 +384,8 @@ body.mobile-app {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  inline-size: 100%;
+  min-inline-size: 0;
 }
 
 .view-panel-header {
@@ -415,6 +423,8 @@ body.mobile-app {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  min-inline-size: 0;
   cursor: pointer;
 }
 .gh-action-item:last-child {
@@ -428,8 +438,17 @@ body.mobile-app {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
-  overflow: hidden;
+  flex: 1 1 0%;
+  min-inline-size: 0;
+}
+
+.repo-item-main > svg {
+  flex: 0 0 auto;
+}
+
+.repo-item-main > div {
+  flex: 1 1 0%;
+  min-inline-size: 0;
 }
 
 .repo-name {
@@ -486,8 +505,17 @@ body.mobile-app {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 0%;
+  min-inline-size: 0;
+}
+.tree-row-left > svg {
+  flex: 0 0 auto;
+}
+.tree-name {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tree-row:last-child {
   border-bottom: none;
