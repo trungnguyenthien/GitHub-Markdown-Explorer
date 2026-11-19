@@ -1116,15 +1116,15 @@ function toggleCurrentRepoFavorite() {
 
 function updateRepoFavoriteStar() {
   const btn = document.getElementById("btnFavCurrentRepo");
-  const btnNewFile = document.getElementById("btnCreateNewFile");
+  const btnNewFile = document.getElementById('btnCreateNewFile');
 
   if (!appState.currentRepo) {
-    if (btn) btn.classList.add("hidden");
-    if (btnNewFile) btnNewFile.classList.add("hidden");
+    if (btn) btn.classList.add('hidden');
+    if (btnNewFile) btnNewFile.classList.add('hidden');
     return;
   }
 
-  if (btnNewFile) btnNewFile.classList.remove("hidden");
+  if (btnNewFile) btnNewFile.classList.remove('hidden');
 
   if (!btn) return;
   btn.classList.remove("hidden");
@@ -1236,20 +1236,12 @@ function renderFileTree() {
     return a.type === "tree" ? -1 : 1;
   });
 
-  container.innerHTML = entries
-    .map((entry) => {
-      const isFolder = entry.type === "tree";
-      const isReadable = isReadableFile(entry.path);
-      const isMd = isMarkdownFile(entry.path);
-      const name = entry.path.split("/").pop();
-      const isFav =
-        isReadable && appState.currentRepo
-          ? isFileFavorited(
-              appState.currentRepo.owner,
-              appState.currentRepo.name,
-              entry.path,
-            )
-          : false;
+  container.innerHTML = entries.map(entry => {
+    const isFolder = entry.type === 'tree';
+    const isReadable = isReadableFile(entry.path);
+    const isMd = isMarkdownFile(entry.path);
+    const name = entry.path.split('/').pop();
+    const isFav = isReadable && appState.currentRepo ? isFileFavorited(appState.currentRepo.owner, appState.currentRepo.name, entry.path) : false;
 
       if (isFolder) {
         return `
@@ -1269,10 +1261,9 @@ function renderFileTree() {
             : appState.currentRepo.name
           : "";
         const fileLang = getFileLanguage(entry.path);
-        const langBadge =
-          isReadable && !isMd
-            ? `<span class="code-badge-pill code-badge-${escapeHtml(fileLang)}">${escapeHtml(getLanguageDisplayName(fileLang))}</span>`
-            : "";
+        const langBadge = (isReadable && !isMd)
+          ? `<span class="code-badge-pill code-badge-${escapeHtml(fileLang)}">${escapeHtml(getLanguageDisplayName(fileLang))}</span>`
+          : "";
 
         return `
         <div class="tree-row ${isReadable ? "is-md" : ""}" ${isReadable ? `onclick="openMarkdownFile('${escapeHtml(appState.currentRepo.owner)}', '${escapeHtml(appState.currentRepo.name)}', '${escapeHtml(entry.path)}')"` : `title="Định dạng chưa được hỗ trợ xem"`}>
@@ -2761,10 +2752,9 @@ async function renderFavoritesList() {
         .join("");
       const fileLang = getFileLanguage(file.path);
       const isMd = isMarkdownFile(file.path);
-      const langBadge =
-        isReadableFile(file.path) && !isMd
-          ? `<span class="code-badge-pill code-badge-${escapeHtml(fileLang)}" style="margin-left: 6px;">${escapeHtml(getLanguageDisplayName(fileLang))}</span>`
-          : "";
+      const langBadge = (isReadableFile(file.path) && !isMd)
+        ? `<span class="code-badge-pill code-badge-${escapeHtml(fileLang)}" style="margin-left: 6px;">${escapeHtml(getLanguageDisplayName(fileLang))}</span>`
+        : "";
 
       return `
         <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
@@ -2998,10 +2988,9 @@ function renderHistoryList() {
         : file.name;
       const fileLang = getFileLanguage(file.path);
       const isMd = isMarkdownFile(file.path);
-      const langBadge =
-        isReadableFile(file.path) && !isMd
-          ? `<span class="code-badge-pill code-badge-${escapeHtml(fileLang)}" style="margin-left: 6px;">${escapeHtml(getLanguageDisplayName(fileLang))}</span>`
-          : "";
+      const langBadge = (isReadableFile(file.path) && !isMd)
+        ? `<span class="code-badge-pill code-badge-${escapeHtml(fileLang)}" style="margin-left: 6px;">${escapeHtml(getLanguageDisplayName(fileLang))}</span>`
+        : "";
 
       return `
       <div class="gh-action-item" onclick="openMarkdownFile('${file.owner}', '${file.name}', '${file.path}')">
@@ -5440,9 +5429,7 @@ function switchEditorTab(tab) {
     }
     if (previewPane) previewPane.classList.add("hidden");
     if (writePane) writePane.classList.remove("hidden");
-    const isMd = isMarkdownFile(
-      appState.currentFile ? appState.currentFile.path : "",
-    );
+    const isMd = isMarkdownFile(appState.currentFile ? appState.currentFile.path : "");
     if (formatTools) formatTools.classList.toggle("hidden", !isMd);
   }
 }
@@ -5957,12 +5944,9 @@ async function executeCommitAndPush() {
  * Syncs ARIA aria-invalid attribute with native CSS :user-invalid state.
  */
 function syncNewFileAriaInvalid(inputEl) {
-  if (!inputEl || typeof inputEl.matches !== "function") return;
+  if (!inputEl || typeof inputEl.matches !== 'function') return;
   try {
-    inputEl.setAttribute(
-      "aria-invalid",
-      inputEl.matches(":user-invalid") ? "true" : "false",
-    );
+    inputEl.setAttribute('aria-invalid', inputEl.matches(':user-invalid') ? 'true' : 'false');
   } catch (e) {}
 }
 
@@ -5971,38 +5955,38 @@ function syncNewFileAriaInvalid(inputEl) {
  * Automatically appends .md if no .md extension is present.
  */
 function resolveNewFileTarget(rawInput) {
-  if (typeof rawInput !== "string") return null;
-  const cleaned = rawInput.trim().replace(/^\/+|\/+$/g, "");
+  if (typeof rawInput !== 'string') return null;
+  const cleaned = rawInput.trim().replace(/^\/+|\/+$/g, '');
   if (!cleaned) return null;
 
   // Reject invalid filename characters or control characters
-  if (/[\x00-\x1f\\:*?"<>|]/.test(cleaned) || cleaned.includes("//")) {
+  if (/[\x00-\x1f\\:*?"<>|]/.test(cleaned) || cleaned.includes('//')) {
     return null;
   }
 
-  const rawSegments = cleaned.split("/").map((s) => s.trim());
-  if (rawSegments.some((s) => !s || s === "." || s === "..")) {
+  const rawSegments = cleaned.split('/').map(s => s.trim());
+  if (rawSegments.some(s => !s || s === '.' || s === '..')) {
     return null;
   }
 
   const lastIdx = rawSegments.length - 1;
-  let leafName = rawSegments[lastIdx].replace(/\.+$/, "");
+  let leafName = rawSegments[lastIdx].replace(/\.+$/, '');
   if (!leafName) return null;
 
   // If user did not provide an extension, default to .md. If provided (.java, .kt, .swift, .js, .py, .rb, etc.), keep it.
   if (!/\.[a-zA-Z0-9]+$/i.test(leafName)) {
-    leafName += ".md";
+    leafName += '.md';
   }
   rawSegments[lastIdx] = leafName;
 
   const fullSegments = [...appState.currentPath, ...rawSegments];
-  const fullPath = fullSegments.join("/");
+  const fullPath = fullSegments.join('/');
   const parentSegments = fullSegments.slice(0, -1);
 
   return {
     fullPath,
     fileName: leafName,
-    parentSegments,
+    parentSegments
   };
 }
 
@@ -6010,28 +5994,28 @@ function resolveNewFileTarget(rawInput) {
  * Updates the live resolved path preview and commit placeholder while typing.
  */
 function updateNewFileResolvedPreview() {
-  const nameInput = document.getElementById("newFileNameInput");
-  const previewEl = document.getElementById("newFileResolvedPreview");
-  const commitInput = document.getElementById("newFileCommitInput");
+  const nameInput = document.getElementById('newFileNameInput');
+  const previewEl = document.getElementById('newFileResolvedPreview');
+  const commitInput = document.getElementById('newFileCommitInput');
   if (!nameInput || !previewEl) return;
 
   const raw = nameInput.value;
   if (!raw || !raw.trim()) {
-    previewEl.textContent = "";
-    previewEl.classList.add("hidden");
-    if (commitInput) commitInput.placeholder = "Create document.md";
+    previewEl.textContent = '';
+    previewEl.classList.add('hidden');
+    if (commitInput) commitInput.placeholder = 'Create document.md';
     return;
   }
 
   const resolved = resolveNewFileTarget(raw);
   if (!resolved) {
-    previewEl.textContent = "";
-    previewEl.classList.add("hidden");
+    previewEl.textContent = '';
+    previewEl.classList.add('hidden');
     return;
   }
 
   previewEl.innerHTML = `Đường dẫn tạo: <code>${escapeHtml(resolved.fullPath)}</code>`;
-  previewEl.classList.remove("hidden");
+  previewEl.classList.remove('hidden');
   if (commitInput) {
     commitInput.placeholder = `Create ${resolved.fileName}`;
   }
@@ -6041,14 +6025,14 @@ function updateNewFileResolvedPreview() {
  * Wires event listeners for Create File modal, semantic <form>, and validation states.
  */
 function initCreateFileModalListeners() {
-  const modal = document.getElementById("createFileModal");
-  const form = document.getElementById("createFileForm");
-  const nameInput = document.getElementById("newFileNameInput");
-  const btnClose = document.getElementById("btnCloseCreateFileModal");
-  const btnCancel = document.getElementById("btnCancelCreateFileModal");
+  const modal = document.getElementById('createFileModal');
+  const form = document.getElementById('createFileForm');
+  const nameInput = document.getElementById('newFileNameInput');
+  const btnClose = document.getElementById('btnCloseCreateFileModal');
+  const btnCancel = document.getElementById('btnCancelCreateFileModal');
 
   if (modal) {
-    modal.addEventListener("click", (e) => {
+    modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         closeCreateFileModal();
       }
@@ -6056,34 +6040,34 @@ function initCreateFileModalListeners() {
   }
 
   if (btnClose) {
-    btnClose.addEventListener("click", () => closeCreateFileModal());
+    btnClose.addEventListener('click', () => closeCreateFileModal());
   }
 
   if (btnCancel) {
-    btnCancel.addEventListener("click", () => closeCreateFileModal());
+    btnCancel.addEventListener('click', () => closeCreateFileModal());
   }
 
   if (nameInput) {
-    nameInput.addEventListener("input", () => {
-      nameInput.setCustomValidity("");
-      const errEl = document.getElementById("createFileApiError");
+    nameInput.addEventListener('input', () => {
+      nameInput.setCustomValidity('');
+      const errEl = document.getElementById('createFileApiError');
       if (errEl) {
-        errEl.textContent = "";
-        errEl.classList.add("hidden");
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
       }
-      if (nameInput.hasAttribute("aria-invalid")) {
+      if (nameInput.hasAttribute('aria-invalid')) {
         syncNewFileAriaInvalid(nameInput);
       }
       updateNewFileResolvedPreview();
     });
 
-    nameInput.addEventListener("blur", () => {
+    nameInput.addEventListener('blur', () => {
       syncNewFileAriaInvalid(nameInput);
     });
   }
 
   if (form) {
-    form.addEventListener("submit", (e) => {
+    form.addEventListener('submit', (e) => {
       e.preventDefault();
       executeCreateNewFile();
     });
@@ -6095,71 +6079,66 @@ function initCreateFileModalListeners() {
  */
 function openCreateFileModal() {
   if (!appState.currentRepo) {
-    showFlash("Vui lòng chọn một repository trước khi tạo file.", "info");
+    showFlash('Vui lòng chọn một repository trước khi tạo file.', 'info');
     return;
   }
 
   if (!appState.token) {
-    showFlash("Cần kết nối GitHub PAT để tạo file mới trên repo.", "error");
+    showFlash('Cần kết nối GitHub PAT để tạo file mới trên repo.', 'error');
     return;
   }
 
   if (!navigator.onLine || appState.isOffline) {
-    showFlash(
-      "Bạn đang ngoại tuyến (Offline). Vui lòng kết nối mạng để tạo file mới.",
-      "error",
-      4000,
-    );
+    showFlash('Bạn đang ngoại tuyến (Offline). Vui lòng kết nối mạng để tạo file mới.', 'error', 4000);
     return;
   }
 
   const { owner, name, defaultBranch } = appState.currentRepo;
-  const folderDisplay =
-    appState.currentPath.length > 0
-      ? `/${appState.currentPath.join("/")}`
-      : "/ (Thư mục gốc)";
+  const folderDisplay = appState.currentPath.length > 0
+    ? `/${appState.currentPath.join('/')}`
+    : '/ (Thư mục gốc)';
 
-  const folderInfoEl = document.getElementById("createFileFolderInfo");
+  const folderInfoEl = document.getElementById('createFileFolderInfo');
   if (folderInfoEl) {
     folderInfoEl.innerHTML = `
-      <div><span class="text-muted">Repo:</span> <strong>${escapeHtml(owner)}/${escapeHtml(name)}</strong> <span class="text-muted">(${escapeHtml(defaultBranch || "main")})</span></div>
+      <div><span class="text-muted">Repo:</span> <strong>${escapeHtml(owner)}/${escapeHtml(name)}</strong> <span class="text-muted">(${escapeHtml(defaultBranch || 'main')})</span></div>
       <div><span class="text-muted">Thư mục:</span> <code>${escapeHtml(folderDisplay)}</code></div>
     `;
   }
 
-  const form = document.getElementById("createFileForm");
+  const form = document.getElementById('createFileForm');
   if (form) {
     form.reset();
   }
 
-  const nameInput = document.getElementById("newFileNameInput");
+  const nameInput = document.getElementById('newFileNameInput');
   if (nameInput) {
-    nameInput.setCustomValidity("");
-    nameInput.removeAttribute("aria-invalid");
+    nameInput.setCustomValidity('');
+    nameInput.removeAttribute('aria-invalid');
   }
 
-  const chkOpenEditor = document.getElementById("chkOpenEditorAfterCreate");
+  const chkOpenEditor = document.getElementById('chkOpenEditorAfterCreate');
   if (chkOpenEditor) {
     chkOpenEditor.checked = true;
   }
 
-  const previewEl = document.getElementById("newFileResolvedPreview");
+  const previewEl = document.getElementById('newFileResolvedPreview');
   if (previewEl) {
-    previewEl.textContent = "";
-    previewEl.classList.add("hidden");
+    previewEl.textContent = '';
+    previewEl.classList.add('hidden');
   }
 
-  const errEl = document.getElementById("createFileApiError");
+  const errEl = document.getElementById('createFileApiError');
   if (errEl) {
-    errEl.textContent = "";
-    errEl.classList.add("hidden");
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
   }
 
   setCreateFileLoadingState(false);
 
-  const modal = document.getElementById("createFileModal");
+  const modal = document.getElementById('createFileModal');
   if (modal) {
-    modal.classList.remove("hidden");
+    modal.classList.remove('hidden');
     if (nameInput) {
       setTimeout(() => {
         nameInput.focus();
@@ -6173,8 +6152,8 @@ function openCreateFileModal() {
  */
 function closeCreateFileModal() {
   if (appState.isCreatingFile) return;
-  const modal = document.getElementById("createFileModal");
-  if (modal) modal.classList.add("hidden");
+  const modal = document.getElementById('createFileModal');
+  if (modal) modal.classList.add('hidden');
 }
 
 /**
@@ -6182,12 +6161,12 @@ function closeCreateFileModal() {
  */
 function setCreateFileLoadingState(isLoading) {
   appState.isCreatingFile = isLoading;
-  const btnConfirm = document.getElementById("btnConfirmCreateFile");
-  const btnCancel = document.getElementById("btnCancelCreateFileModal");
-  const btnClose = document.getElementById("btnCloseCreateFileModal");
-  const nameInput = document.getElementById("newFileNameInput");
-  const commitInput = document.getElementById("newFileCommitInput");
-  const chkOpenEditor = document.getElementById("chkOpenEditorAfterCreate");
+  const btnConfirm = document.getElementById('btnConfirmCreateFile');
+  const btnCancel = document.getElementById('btnCancelCreateFileModal');
+  const btnClose = document.getElementById('btnCloseCreateFileModal');
+  const nameInput = document.getElementById('newFileNameInput');
+  const commitInput = document.getElementById('newFileCommitInput');
+  const chkOpenEditor = document.getElementById('chkOpenEditorAfterCreate');
 
   if (btnCancel) btnCancel.disabled = isLoading;
   if (btnClose) btnClose.disabled = isLoading;
@@ -6221,21 +6200,21 @@ function setCreateFileLoadingState(isLoading) {
 async function executeCreateNewFile() {
   if (appState.isCreatingFile || !appState.currentRepo) return;
 
-  const nameInput = document.getElementById("newFileNameInput");
-  const commitInput = document.getElementById("newFileCommitInput");
-  const chkOpenEditor = document.getElementById("chkOpenEditorAfterCreate");
-  const errEl = document.getElementById("createFileApiError");
+  const nameInput = document.getElementById('newFileNameInput');
+  const commitInput = document.getElementById('newFileCommitInput');
+  const chkOpenEditor = document.getElementById('chkOpenEditorAfterCreate');
+  const errEl = document.getElementById('createFileApiError');
 
   if (!nameInput) return;
 
   if (errEl) {
-    errEl.textContent = "";
-    errEl.classList.add("hidden");
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
   }
 
   const resolved = resolveNewFileTarget(nameInput.value);
   if (!resolved) {
-    nameInput.setCustomValidity("Tên file hoặc đường dẫn không hợp lệ.");
+    nameInput.setCustomValidity('Tên file hoặc đường dẫn không hợp lệ.');
     syncNewFileAriaInvalid(nameInput);
     nameInput.reportValidity();
     nameInput.focus();
@@ -6246,12 +6225,12 @@ async function executeCreateNewFile() {
 
   // Instant local duplicate check against loaded tree entries
   const existsLocally = appState.currentTreeEntries.some(
-    (entry) => entry.path.toLowerCase() === fullPath.toLowerCase(),
+    entry => entry.path.toLowerCase() === fullPath.toLowerCase()
   );
   if (existsLocally) {
     if (errEl) {
       errEl.textContent = `Tệp hoặc thư mục "${fullPath}" đã tồn tại trong repository. Vui lòng chọn tên khác.`;
-      errEl.classList.remove("hidden");
+      errEl.classList.remove('hidden');
     }
     nameInput.focus();
     return;
@@ -6259,130 +6238,106 @@ async function executeCreateNewFile() {
 
   if (!navigator.onLine || appState.isOffline) {
     if (errEl) {
-      errEl.textContent =
-        "Không có kết nối mạng. Vui lòng kiểm tra Internet và thử lại.";
-      errEl.classList.remove("hidden");
+      errEl.textContent = 'Không có kết nối mạng. Vui lòng kiểm tra Internet và thử lại.';
+      errEl.classList.remove('hidden');
     }
     return;
   }
 
   const { owner, name, defaultBranch } = appState.currentRepo;
   const targetBranch = defaultBranch || null;
-  const commitMessage =
-    commitInput && commitInput.value.trim()
-      ? commitInput.value.trim()
-      : `Create ${fileName}`;
+  const commitMessage = (commitInput && commitInput.value.trim())
+    ? commitInput.value.trim()
+    : `Create ${fileName}`;
   const shouldOpenEditor = chkOpenEditor ? chkOpenEditor.checked : true;
 
   setCreateFileLoadingState(true);
 
   try {
     // 1. Verify file does not already exist on remote GitHub branch
-    const branchQuery = targetBranch
-      ? `?ref=${encodeURIComponent(targetBranch)}`
-      : "";
-    const checkRes = await fetch(
-      `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(fullPath)}${branchQuery}`,
-      {
-        headers: {
-          Authorization: `Bearer ${appState.token}`,
-          Accept: "application/vnd.github.v3+json",
-        },
-        cache: "no-store",
+    const branchQuery = targetBranch ? `?ref=${encodeURIComponent(targetBranch)}` : '';
+    const checkRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(fullPath)}${branchQuery}`, {
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3+json'
       },
-    );
+      cache: 'no-store'
+    });
 
     if (checkRes.status === 200) {
-      throw new Error(
-        `Đường dẫn "${fullPath}" đã tồn tại trên GitHub. Vui lòng đặt tên khác để tránh ghi đè.`,
-      );
+      throw new Error(`Đường dẫn "${fullPath}" đã tồn tại trên GitHub. Vui lòng đặt tên khác để tránh ghi đè.`);
     } else if (checkRes.status === 401 || checkRes.status === 403) {
-      throw new Error(
-        "GitHub PAT không hợp lệ hoặc không có quyền truy cập repository này.",
-      );
+      throw new Error('GitHub PAT không hợp lệ hoặc không có quyền truy cập repository này.');
     }
 
     // 2. Create new empty Markdown file via PUT /repos/{owner}/{repo}/contents/{path}
     const payload = {
       message: commitMessage,
-      content: utf8ToBase64(""),
+      content: utf8ToBase64('')
     };
     if (targetBranch) {
       payload.branch = targetBranch;
     }
 
-    const putRes = await fetch(
-      `https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(fullPath)}`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${appState.token}`,
-          Accept: "application/vnd.github.v3+json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+    const putRes = await fetch(`https://api.github.com/repos/${owner}/${name}/contents/${encodeGitPath(fullPath)}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${appState.token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
       },
-    );
+      body: JSON.stringify(payload)
+    });
 
     if (!putRes.ok) {
-      let apiMsg = "";
+      let apiMsg = '';
       try {
         const errData = await putRes.json();
-        apiMsg = errData.message || "";
+        apiMsg = errData.message || '';
       } catch (e) {}
 
       if (putRes.status === 401) {
-        throw new Error("GitHub PAT đã hết hạn hoặc không hợp lệ (HTTP 401).");
+        throw new Error('GitHub PAT đã hết hạn hoặc không hợp lệ (HTTP 401).');
       } else if (putRes.status === 403 || putRes.status === 404) {
         throw new Error(
-          `Không đủ quyền tạo file trên repository (HTTP ${putRes.status}). Hãy đảm bảo PAT của bạn có quyền "repo" (Classic PAT) hoặc "Contents: Read and write" (Fine-grained PAT).${apiMsg ? ` Chi tiết: ${apiMsg}` : ""}`,
+          `Không đủ quyền tạo file trên repository (HTTP ${putRes.status}). Hãy đảm bảo PAT của bạn có quyền "repo" (Classic PAT) hoặc "Contents: Read and write" (Fine-grained PAT).${apiMsg ? ` Chi tiết: ${apiMsg}` : ''}`
         );
       } else if (putRes.status === 422) {
-        throw new Error(
-          `Không thể tạo file (HTTP 422 — file có thể đã tồn tại hoặc tên không hợp lệ)${apiMsg ? `: ${apiMsg}` : "."}`,
-        );
+        throw new Error(`Không thể tạo file (HTTP 422 — file có thể đã tồn tại hoặc tên không hợp lệ)${apiMsg ? `: ${apiMsg}` : '.'}`);
       } else {
-        throw new Error(
-          `Tạo file thất bại (HTTP ${putRes.status})${apiMsg ? `: ${apiMsg}` : "."}`,
-        );
+        throw new Error(`Tạo file thất bại (HTTP ${putRes.status})${apiMsg ? `: ${apiMsg}` : '.'}`);
       }
     }
 
     const putData = await putRes.json();
-    const newBlobSha =
-      putData.content && putData.content.sha ? putData.content.sha : "";
-    const newCommitSha =
-      putData.commit && putData.commit.sha ? putData.commit.sha : newBlobSha;
-    const newCommitDate =
-      putData.commit &&
-      (putData.commit.committer?.date || putData.commit.author?.date)
-        ? putData.commit.committer?.date || putData.commit.author?.date
-        : new Date().toISOString();
+    const newBlobSha = (putData.content && putData.content.sha) ? putData.content.sha : '';
+    const newCommitSha = (putData.commit && putData.commit.sha) ? putData.commit.sha : newBlobSha;
+    const newCommitDate = (putData.commit && (putData.commit.committer?.date || putData.commit.author?.date))
+      ? (putData.commit.committer?.date || putData.commit.author?.date)
+      : new Date().toISOString();
 
     // 3. Inject any new intermediate folder 'tree' entries + the new 'blob' entry into currentTreeEntries
-    let accumDir = "";
-    parentSegments.forEach((seg) => {
+    let accumDir = '';
+    parentSegments.forEach(seg => {
       accumDir = accumDir ? `${accumDir}/${seg}` : seg;
-      const hasTreeEntry = appState.currentTreeEntries.some(
-        (e) => e.path === accumDir && e.type === "tree",
-      );
+      const hasTreeEntry = appState.currentTreeEntries.some(e => e.path === accumDir && e.type === 'tree');
       if (!hasTreeEntry) {
         appState.currentTreeEntries.push({
           path: accumDir,
-          mode: "040000",
-          type: "tree",
-          sha: "",
+          mode: '040000',
+          type: 'tree',
+          sha: ''
         });
       }
     });
 
-    if (!appState.currentTreeEntries.some((e) => e.path === fullPath)) {
+    if (!appState.currentTreeEntries.some(e => e.path === fullPath)) {
       appState.currentTreeEntries.push({
         path: fullPath,
-        mode: "100644",
-        type: "blob",
+        mode: '100644',
+        type: 'blob',
         sha: newBlobSha,
-        size: 0,
+        size: 0
       });
     }
 
@@ -6393,11 +6348,11 @@ async function executeCreateNewFile() {
       owner,
       name,
       path: fullPath,
-      content: "",
+      content: '',
       sha: newBlobSha,
       lastCommitSha: newCommitSha,
       lastCommitDate: newCommitDate,
-      lastSyncedAt: Date.now(),
+      lastSyncedAt: Date.now()
     });
     markStateDirty();
 
@@ -6411,25 +6366,21 @@ async function executeCreateNewFile() {
       renderFileTree();
       await openMarkdownFile(owner, name, fullPath);
       enterEditMode();
-      showFlash(
-        `Đã tạo "${fileName}" trên GitHub! Bạn có thể soạn nội dung ngay.`,
-        "success",
-        3500,
-      );
+      showFlash(`Đã tạo "${fileName}" trên GitHub! Bạn có thể soạn nội dung ngay.`, 'success', 3500);
     } else {
-      showFlash(
-        `Đã tạo file "${fullPath}" trên GitHub thành công!`,
-        "success",
-        3500,
-      );
+      showFlash(`Đã tạo file "${fullPath}" trên GitHub thành công!`, 'success', 3500);
     }
   } catch (err) {
-    console.error("Create file error:", err);
+    console.error('Create file error:', err);
     setCreateFileLoadingState(false);
     if (errEl) {
-      errEl.textContent =
-        err.message || "Đã xảy ra lỗi khi tạo file mới trên GitHub.";
-      errEl.classList.remove("hidden");
+      errEl.textContent = err.message || 'Đã xảy ra lỗi khi tạo file mới trên GitHub.';
+      errEl.classList.remove('hidden');
     }
   }
 }
+
+
+
+
+
