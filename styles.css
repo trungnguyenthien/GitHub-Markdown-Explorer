@@ -2618,12 +2618,44 @@ h2.tts-active-reading {
 /* --------------------------------------------------------------------------
    CODE FILE VIEWER (for .java, .kt, .swift, .js, .py, .rb, etc.)
    -------------------------------------------------------------------------- */
+/* --------------------------------------------------------------------------
+   Code File Viewer (.java, .kt, .swift, .js, .py, .rb)
+   Maximized display space: zero padding on container, compact gutter,
+   reduced font size, and tight 1:1 synchronized line spacing.
+   -------------------------------------------------------------------------- */
+.viewer-body:has(.code-file-viewer),
+.viewer-body.has-code-file {
+  padding: 0 !important;
+  border: 1px solid var(--color-border-default);
+  overflow: hidden;
+}
+
+.viewer-body:has(.code-file-viewer) #markdownViewerPanel,
+.viewer-body.has-code-file #markdownViewerPanel {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.viewer-body:has(.code-file-viewer) .code-file-viewer,
+.viewer-body.has-code-file .code-file-viewer {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+.editor-preview-pane:has(.code-file-viewer) {
+  padding: 0 !important;
+}
+
 .code-file-viewer {
+  --code-line-height: calc(15px * var(--md-content-scale, 1));
+  --code-font-size: calc(11px * var(--md-content-scale, 1));
+  --code-gutter-font-size: calc(10px * var(--md-content-scale, 1));
   border: 1px solid var(--color-border-default, #d0d7de);
   border-radius: 6px;
   background-color: var(--color-canvas-default, #ffffff);
   overflow: hidden;
-  margin: 4px 0 16px 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   min-inline-size: 0;
@@ -2633,30 +2665,32 @@ h2.tts-active-reading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 3px 6px;
   background-color: var(--color-canvas-subtle, #f6f8fa);
   border-bottom: 1px solid var(--color-border-default, #d0d7de);
-  font-size: 12px;
+  font-size: 11px;
   flex-wrap: wrap;
+  min-height: 28px;
+  box-sizing: border-box;
 }
 
 .code-file-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   min-inline-size: 0;
 }
 
 .code-file-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: 1px 6px;
+  border-radius: 10px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .code-file-badge.lang-java { background-color: rgba(176, 114, 25, 0.15); color: #b07219; border: 1px solid rgba(176, 114, 25, 0.3); }
@@ -2668,8 +2702,19 @@ h2.tts-active-reading {
 
 .code-file-stat {
   color: var(--color-fg-muted, #656d76);
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-variant-numeric: tabular-nums;
+}
+
+.code-file-header .btn-copy-code {
+  position: static;
+  top: auto;
+  right: auto;
+  padding: 2px 6px;
+  font-size: 10.5px;
+  min-height: 22px;
+  gap: 3px;
+  border-radius: 4px;
 }
 
 .code-file-scroll {
@@ -2679,8 +2724,8 @@ h2.tts-active-reading {
   -webkit-overflow-scrolling: touch;
   background-color: var(--color-canvas-default, #ffffff);
   font-family: var(--font-family-mono);
-  font-size: calc(13px * var(--md-content-scale, 1));
-  line-height: calc(20px * var(--md-content-scale, 1));
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
   min-inline-size: 0;
 }
 
@@ -2690,34 +2735,36 @@ h2.tts-active-reading {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  padding: 12px 10px;
+  padding: 2px 4px 2px 2px;
   text-align: right;
   background-color: var(--color-canvas-subtle, #f6f8fa);
   border-right: 1px solid var(--color-border-default, #d0d7de);
   color: var(--color-fg-muted, #8c959f);
   user-select: none;
   -webkit-user-select: none;
-  font-size: calc(12px * var(--md-content-scale, 1));
-  line-height: calc(20px * var(--md-content-scale, 1));
+  font-size: var(--code-gutter-font-size);
+  line-height: var(--code-line-height);
   flex-shrink: 0;
   box-sizing: border-box;
-  min-width: 44px;
+  min-width: 24px;
 }
 
 .code-gutter span {
   display: block;
-  height: calc(20px * var(--md-content-scale, 1));
-  line-height: calc(20px * var(--md-content-scale, 1));
+  height: var(--code-line-height);
+  line-height: var(--code-line-height);
+  box-sizing: border-box;
 }
 
 .code-content {
   flex: 1 1 auto;
   margin: 0 !important;
-  padding: 12px 16px !important;
+  padding: 2px 4px !important;
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
-  line-height: calc(20px * var(--md-content-scale, 1)) !important;
+  font-size: var(--code-font-size) !important;
+  line-height: var(--code-line-height) !important;
   white-space: pre !important;
   word-break: normal !important;
   word-wrap: normal !important;
@@ -2728,6 +2775,7 @@ h2.tts-active-reading {
 .code-content code {
   background: transparent !important;
   padding: 0 !important;
+  margin: 0 !important;
   font-family: inherit !important;
   font-size: inherit !important;
   line-height: inherit !important;

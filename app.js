@@ -1547,6 +1547,10 @@ async function openMarkdownFile(owner, name, path) {
 
   // Adjust toolbar buttons visibility based on file type (TOC and TTS are for Markdown documents)
   const isMdFile = isMarkdownFile(path);
+  const viewerBody = document.querySelector("#viewViewer .viewer-body");
+  if (viewerBody) {
+    viewerBody.classList.toggle("has-code-file", !isMdFile && isReadableFile(path));
+  }
   const btnToggleToc = document.getElementById("btnToggleToc");
   const btnHeaderToc = document.getElementById("btnHeaderToc");
   const btnToggleTts = document.getElementById("btnToggleTts");
@@ -1801,8 +1805,10 @@ function renderMarkdown(rawContent) {
 
   const viewerPanel = document.getElementById("markdownViewerPanel");
   const rawPanel = document.getElementById("rawMarkdownPanel");
+  const viewerBody = document.querySelector("#viewViewer .viewer-body");
 
   if (!rawContent || !rawContent.trim()) {
+    if (viewerBody) viewerBody.classList.remove("has-code-file");
     viewerPanel.innerHTML = `
       <div class="blankslate" style="padding: 48px 16px; text-align: center; color: var(--color-fg-muted);">
         <svg class="octicon octicon-file" viewBox="0 0 16 16" width="36" height="36" fill="currentColor" style="opacity: 0.4; margin-bottom: 12px;">
@@ -1826,6 +1832,7 @@ function renderMarkdown(rawContent) {
   // Branch: If current file is a supported code file (.java, .kt, .swift, .js, .py, .rb, etc.)
   const currentPath = appState.currentFile ? appState.currentFile.path : "";
   if (isReadableFile(currentPath) && !isMarkdownFile(currentPath)) {
+    if (viewerBody) viewerBody.classList.add("has-code-file");
     renderCodeFileContent(rawContent, currentPath, viewerPanel);
     if (rawPanel) rawPanel.textContent = rawContent;
     applyFontScale(appState.fontScale);
@@ -1833,6 +1840,7 @@ function renderMarkdown(rawContent) {
     clearReaderTableOfContents();
     return;
   }
+  if (viewerBody) viewerBody.classList.remove("has-code-file");
 
   const renderer = new marked.Renderer();
 
